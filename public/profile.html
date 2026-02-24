@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>회원 정보 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .profile-page { max-width: 480px; margin: 0 auto; padding: 2rem 1rem; }
+    .profile-card { background: var(--bg-card); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .profile-card h2 { font-size: 1rem; color: var(--neon); margin-bottom: 1rem; }
+    .profile-row { margin-bottom: 1rem; }
+    .profile-row:last-child { margin-bottom: 0; }
+    .profile-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .profile-value { font-size: 0.95rem; word-break: break-all; }
+    .profile-value.wallet { font-family: monospace; font-size: 0.85rem; }
+    .profile-denied { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+    .profile-denied a { color: var(--neon); }
+    .profile-success { font-size: 0.85rem; color: var(--neon); margin-top: 0.5rem; }
+    .profile-error { font-size: 0.85rem; color: var(--danger); margin-top: 0.5rem; }
+    .profile-card button { width: 100%; padding: 0.6rem; background: var(--neon); color: var(--bg-dark); border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+    .profile-card button:hover { background: var(--neon-dim); color: var(--text); }
+    .profile-photo-row { margin-bottom: 1rem; }
+    .profile-photo-wrap { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .profile-photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); background: var(--bg-dark); }
+    .profile-photo-btn { width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; }
+    .profile-bio-count { color: var(--text-muted); font-weight: 400; margin-left: 0.25rem; }
+    .profile-bio-input { width: 100%; padding: 0.6rem; margin-top: 0.25rem; margin-bottom: 0.5rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 4rem; }
+    .profile-bio-input:focus { outline: none; border-color: var(--neon); }
+    .profile-bio-save { width: auto; padding: 0.5rem 1rem; font-size: 0.85rem; margin-top: 0.25rem; }
+    .profile-crop-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .profile-crop-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; max-width: 100%; }
+    .profile-crop-box h3 { font-size: 1rem; color: var(--neon); margin-bottom: 1rem; }
+    .profile-crop-viewport { width: 300px; height: 300px; overflow: hidden; position: relative; margin: 0 auto 1rem; border-radius: 50%; border: 2px solid var(--border); background: var(--bg-dark); cursor: move; touch-action: none; }
+    .profile-crop-viewport img { display: block; position: absolute; pointer-events: none; }
+    .profile-crop-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .profile-crop-actions button { width: auto; padding: 0.5rem 1rem; }
+    .profile-crop-actions .profile-crop-cancel { background: var(--bg-dark); color: var(--text); border: 1px solid var(--border); }
+    .profile-crop-actions .profile-crop-cancel:hover { border-color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
+        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
+        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
+        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
+          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
+          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="profileCropModal" class="profile-crop-overlay" style="display:none;" aria-modal="true" aria-labelledby="profileCropTitle">
+    <div class="profile-crop-box">
+      <h3 id="profileCropTitle">프로필 사진 조정</h3>
+      <p class="profile-label" style="margin-bottom:0.5rem;">사진을 드래그해서 원하는 영역을 맞춰 주세요.</p>
+      <div id="profileCropViewport" class="profile-crop-viewport">
+        <img id="profileCropImg" src="" alt="">
+      </div>
+      <div class="profile-crop-actions">
+        <button type="button" id="profileCropCancel" class="profile-photo-btn profile-crop-cancel">취소</button>
+        <button type="button" id="profileCropApply" class="profile-photo-btn">적용</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileDenied" class="profile-denied" style="display:none;">
+    <p>로그인한 회원만 이용할 수 있습니다.</p>
+    <a href="/login.html">로그인</a> · <a href="/">홈으로</a>
+  </div>
+
+  <div id="profilePage" class="profile-page" style="display:none;">
+    <a href="/" class="back-link">← 홈으로</a>
+    <h1 style="font-size:1.25rem; margin-bottom:1.5rem;">회원 정보</h1>
+
+    <div class="profile-card">
+      <h2>내 정보</h2>
+      <div class="profile-row profile-photo-row">
+        <div class="profile-photo-wrap">
+          <img id="profilePhoto" class="profile-photo" src="" alt="프로필 사진" width="80" height="80">
+          <input type="file" id="profilePhotoInput" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="프로필 사진 선택" style="display:none;">
+          <div>
+            <button type="button" id="profilePhotoBtn" class="profile-photo-btn">사진 변경</button>
+            <p class="profile-label" style="margin-top:0.35rem;">1MB 이하 · 400×400 정사각형으로 자동 조정</p>
+          </div>
+        </div>
+      </div>
+      <div class="profile-row">
+        <div class="profile-label">닉네임</div>
+        <div id="infoDisplayName" class="profile-value">—</div>
+      </div>
+      <div class="profile-row">
+        <div class="profile-label">지갑 주소</div>
+        <div id="infoWallet" class="profile-value wallet">—</div>
+      </div>
+      <div class="profile-row">
+        <div class="profile-label">간단한 자기소개 <span id="bioCount" class="profile-bio-count">0/300</span></div>
+        <textarea id="inputBio" class="profile-bio-input" placeholder="자기소개를 입력하세요 (300자 이내)" maxlength="300" rows="3"></textarea>
+        <p id="bioMsg" class="profile-success" style="display:none;"></p>
+        <p id="bioErr" class="profile-error" style="display:none;"></p>
+        <button type="button" id="bioSave" class="profile-bio-save">자기소개 저장</button>
+      </div>
+    </div>
+
+    <div class="profile-card">
+      <h2>닉네임 변경</h2>
+      <p class="profile-label">영문, 숫자만 5~12자 (한 달에 한 번 무료 변경, 중복 불가)</p>
+      <p id="nicknameCooldown" class="profile-label" style="color:var(--neon); display:none;"></p>
+      <form id="formNickname">
+        <input type="text" id="inputDisplayName" minlength="5" maxlength="12" pattern="[a-zA-Z0-9]*" placeholder="새 닉네임 (5~12자)" autocomplete="username" style="width:100%; padding:0.6rem; margin-bottom:0.5rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:4px; color:var(--text);">
+        <p id="nicknameMsg" class="profile-success" style="display:none;"></p>
+        <p id="nicknameErr" class="profile-error" style="display:none;"></p>
+        <button type="submit" id="nicknameSubmit" style="margin-top:0.5rem;">닉네임 저장</button>
+      </form>
+    </div>
+
+    <div class="profile-card">
+      <h2>비밀번호 변경</h2>
+      <form id="formPassword">
+        <label for="inputPassword" class="profile-label">새 비밀번호 (8자 이상, 영문·숫자 포함)</label>
+        <input type="password" id="inputPassword" minlength="8" placeholder="8자 이상, 영문·숫자 포함" autocomplete="new-password" style="width:100%; padding:0.6rem; margin-bottom:0.5rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:4px; color:var(--text);">
+        <label for="inputPasswordConfirm" class="profile-label">새 비밀번호 확인</label>
+        <input type="password" id="inputPasswordConfirm" placeholder="동일하게 입력" style="width:100%; padding:0.6rem; margin-bottom:0.5rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:4px; color:var(--text);">
+        <p id="passwordMsg" class="profile-success" style="display:none;"></p>
+        <p id="passwordErr" class="profile-error" style="display:none;"></p>
+        <button type="submit" style="margin-top:0.5rem;">비밀번호 변경</button>
+      </form>
+    </div>
+
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var profileDenied = document.getElementById('profileDenied');
+      var profilePage = document.getElementById('profilePage');
+      var infoDisplayName = document.getElementById('infoDisplayName');
+      var infoWallet = document.getElementById('infoWallet');
+      var formNickname = document.getElementById('formNickname');
+      var inputDisplayName = document.getElementById('inputDisplayName');
+      var nicknameMsg = document.getElementById('nicknameMsg');
+      var nicknameErr = document.getElementById('nicknameErr');
+      var nicknameCooldown = document.getElementById('nicknameCooldown');
+      var nicknameSubmit = document.getElementById('nicknameSubmit');
+      var formPassword = document.getElementById('formPassword');
+      var inputPassword = document.getElementById('inputPassword');
+      var inputPasswordConfirm = document.getElementById('inputPasswordConfirm');
+      var passwordMsg = document.getElementById('passwordMsg');
+      var passwordErr = document.getElementById('passwordErr');
+      var navMenuUser = document.getElementById('navMenuUser');
+
+      var nicknameRegex = /^[a-zA-Z0-9]{5,12}$/;
+      var profilePhoto = document.getElementById('profilePhoto');
+      var profilePhotoInput = document.getElementById('profilePhotoInput');
+      var profilePhotoBtn = document.getElementById('profilePhotoBtn');
+      var inputBio = document.getElementById('inputBio');
+      var bioCount = document.getElementById('bioCount');
+      var bioMsg = document.getElementById('bioMsg');
+      var bioErr = document.getElementById('bioErr');
+      var bioSave = document.getElementById('bioSave');
+
+      var placeholderAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle fill="%231a1a1e" cx="40" cy="40" r="40"/><circle fill="%236b7280" cx="40" cy="32" r="12"/><path fill="%236b7280" d="M24 72c0-12 7.2-22 16-27 8.8 5 16 15 16 27H24z"/></svg>');
+
+      function fillInfo(user) {
+        infoDisplayName.textContent = user.displayName || '—';
+        infoWallet.textContent = user.walletAddress || '—';
+        inputDisplayName.placeholder = user.displayName || '새 닉네임';
+        if (profilePhoto) profilePhoto.src = (user.profileImageUrl && user.profileImageUrl.trim()) ? user.profileImageUrl : placeholderAvatar;
+        if (inputBio) inputBio.value = user.bio != null ? user.bio : '';
+        if (bioCount) bioCount.textContent = (user.bio || '').length + '/300';
+        if (user.nextDisplayNameChangeAt && new Date(user.nextDisplayNameChangeAt).getTime() > Date.now()) {
+          var d = new Date(user.nextDisplayNameChangeAt);
+          nicknameCooldown.textContent = '다음 무료 변경일: ' + d.toLocaleDateString('ko-KR');
+          nicknameCooldown.style.display = 'block';
+          nicknameSubmit.disabled = false;
+        } else {
+          nicknameCooldown.style.display = 'none';
+        }
+      }
+
+      function init() {
+        var user = window.TornFiAuth.getUser();
+        if (!user) {
+          profileDenied.style.display = 'block';
+          profilePage.style.display = 'none';
+          var navLogin = document.getElementById('navLogin');
+          var navRegister = document.getElementById('navRegister');
+          var nac = document.getElementById('navAdminCenter');
+          if (navLogin) navLogin.style.display = 'inline';
+          if (navRegister) navRegister.style.display = 'inline';
+          if (navMenuUser) navMenuUser.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+          return;
+        }
+        profileDenied.style.display = 'none';
+        profilePage.style.display = 'block';
+        fillInfo(user);
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && data.user) fillInfo(data.user);
+          })
+          .catch(function () {});
+        var navLogin = document.getElementById('navLogin');
+        var navRegister = document.getElementById('navRegister');
+        var nac = document.getElementById('navAdminCenter');
+        if (navLogin) navLogin.style.display = 'none';
+        if (navRegister) navRegister.style.display = 'none';
+        var navProfile = document.getElementById('navProfile');
+        if (navProfile) navProfile.style.display = 'block';
+        if (navMenuUser) navMenuUser.style.display = 'block';
+        if (nac) nac.style.display = user.isAdmin ? 'inline-flex' : 'none';
+      }
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      var navLogout = document.getElementById('navLogout');
+      if (navLogout) navLogout.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        window.TornFiAuth.logout().then(function () { window.location.href = '/'; });
+      });
+
+      formNickname.addEventListener('submit', function (e) {
+        e.preventDefault();
+        nicknameMsg.style.display = 'none';
+        nicknameErr.style.display = 'none';
+        var name = inputDisplayName.value.trim();
+        if (!name) {
+          nicknameErr.textContent = '닉네임을 입력해 주세요.';
+          nicknameErr.style.display = 'block';
+          return;
+        }
+        if (!nicknameRegex.test(name)) {
+          nicknameErr.textContent = '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
+          nicknameErr.style.display = 'block';
+          return;
+        }
+        fetch('/api/me', {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              nicknameMsg.textContent = data.message || '저장되었습니다.';
+              nicknameMsg.style.display = 'block';
+              nicknameErr.style.display = 'none';
+              infoDisplayName.textContent = name;
+              window.TornFiAuth.init().then(function () { fillInfo(window.TornFiAuth.getUser() || {}); });
+            } else {
+              nicknameErr.textContent = data.message || '저장에 실패했습니다.';
+              nicknameErr.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            nicknameErr.textContent = '저장에 실패했습니다.';
+            nicknameErr.style.display = 'block';
+          });
+      });
+
+      formPassword.addEventListener('submit', function (e) {
+        e.preventDefault();
+        passwordMsg.style.display = 'none';
+        passwordErr.style.display = 'none';
+        var pwd = inputPassword.value;
+        var confirm = inputPasswordConfirm.value;
+        if (pwd.length < 8) {
+          passwordErr.textContent = '비밀번호는 8자 이상이어야 합니다.';
+          passwordErr.style.display = 'block';
+          return;
+        }
+        if (!/[a-zA-Z]/.test(pwd) || !/\d/.test(pwd)) {
+          passwordErr.textContent = '비밀번호는 영문과 숫자를 모두 포함해야 합니다.';
+          passwordErr.style.display = 'block';
+          return;
+        }
+        if (pwd !== confirm) {
+          passwordErr.textContent = '비밀번호가 일치하지 않습니다.';
+          passwordErr.style.display = 'block';
+          return;
+        }
+        fetch('/api/me', {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              passwordMsg.textContent = data.message || '비밀번호가 변경되었습니다.';
+              passwordMsg.style.display = 'block';
+              passwordErr.style.display = 'none';
+              inputPassword.value = '';
+              inputPasswordConfirm.value = '';
+            } else {
+              passwordErr.textContent = data.message || '변경에 실패했습니다.';
+              passwordErr.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            passwordErr.textContent = '변경에 실패했습니다.';
+            passwordErr.style.display = 'block';
+          });
+      });
+
+      inputDisplayName.addEventListener('input', function () {
+        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+      });
+
+      var PROFILE_AVATAR_MAX_SIZE = 1 * 1024 * 1024;
+      var PROFILE_AVATAR_MAX_DIM = 400;
+      var CROP_SIZE = 300;
+
+      var profileCropModal = document.getElementById('profileCropModal');
+      var profileCropViewport = document.getElementById('profileCropViewport');
+      var profileCropImg = document.getElementById('profileCropImg');
+      var profileCropCancel = document.getElementById('profileCropCancel');
+      var profileCropApply = document.getElementById('profileCropApply');
+
+      var cropObjectUrl = null;
+      var cropImgDisplayW = 0;
+      var cropImgDisplayH = 0;
+      var cropDrag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+
+      function setCropImagePosition(left, top) {
+        var maxLeft = Math.min(0, CROP_SIZE - cropImgDisplayW);
+        var maxTop = Math.min(0, CROP_SIZE - cropImgDisplayH);
+        profileCropImg.style.left = Math.max(maxLeft, Math.min(0, left)) + 'px';
+        profileCropImg.style.top = Math.max(maxTop, Math.min(0, top)) + 'px';
+      }
+
+      function openCropModal(file) {
+        if (!file || !file.type.match(/^image\/(jpeg|png|gif|webp)$/)) return;
+        if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+        cropObjectUrl = URL.createObjectURL(file);
+        profileCropImg.onload = function () {
+          var nw = profileCropImg.naturalWidth;
+          var nh = profileCropImg.naturalHeight;
+          var scale = Math.max(CROP_SIZE / nw, CROP_SIZE / nh);
+          cropImgDisplayW = Math.round(nw * scale);
+          cropImgDisplayH = Math.round(nh * scale);
+          profileCropImg.style.width = cropImgDisplayW + 'px';
+          profileCropImg.style.height = cropImgDisplayH + 'px';
+          setCropImagePosition((CROP_SIZE - cropImgDisplayW) / 2, (CROP_SIZE - cropImgDisplayH) / 2);
+          profileCropModal.style.display = 'flex';
+        };
+        profileCropImg.onerror = function () {
+          URL.revokeObjectURL(cropObjectUrl);
+          cropObjectUrl = null;
+          alert('이미지를 불러올 수 없습니다.');
+        };
+        profileCropImg.src = cropObjectUrl;
+      }
+
+      function closeCropModal() {
+        profileCropModal.style.display = 'none';
+        if (cropObjectUrl) { URL.revokeObjectURL(cropObjectUrl); cropObjectUrl = null; }
+        profileCropImg.src = '';
+      }
+
+      function getCroppedBlob(cb) {
+        var left = parseInt(profileCropImg.style.left, 10) || 0;
+        var top = parseInt(profileCropImg.style.top, 10) || 0;
+        var scaleX = profileCropImg.naturalWidth / cropImgDisplayW;
+        var scaleY = profileCropImg.naturalHeight / cropImgDisplayH;
+        var sx = (-left) * scaleX;
+        var sy = (-top) * scaleY;
+        var sw = CROP_SIZE * scaleX;
+        var sh = CROP_SIZE * scaleY;
+        var canvas = document.createElement('canvas');
+        canvas.width = PROFILE_AVATAR_MAX_DIM;
+        canvas.height = PROFILE_AVATAR_MAX_DIM;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(profileCropImg, sx, sy, sw, sh, 0, 0, PROFILE_AVATAR_MAX_DIM, PROFILE_AVATAR_MAX_DIM);
+        canvas.toBlob(function (blob) {
+          if (!blob) cb(new Error('이미지 처리에 실패했습니다.'));
+          else if (blob.size > PROFILE_AVATAR_MAX_SIZE) cb(new Error('프로필 사진은 1MB 이하로 선택해 주세요.'));
+          else cb(null, blob);
+        }, 'image/jpeg', 0.85);
+      }
+
+      function onCropDragStart(e) {
+        e.preventDefault();
+        var x = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+        var y = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+        cropDrag.active = true;
+        cropDrag.startX = x;
+        cropDrag.startY = y;
+        cropDrag.startLeft = parseInt(profileCropImg.style.left, 10) || 0;
+        cropDrag.startTop = parseInt(profileCropImg.style.top, 10) || 0;
+      }
+      function onCropDragMove(e) {
+        if (!cropDrag.active) return;
+        e.preventDefault();
+        var x = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+        var y = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+        setCropImagePosition(cropDrag.startLeft + (x - cropDrag.startX), cropDrag.startTop + (y - cropDrag.startY));
+      }
+      function onCropDragEnd() { cropDrag.active = false; }
+
+      if (profileCropViewport) {
+        profileCropViewport.addEventListener('mousedown', onCropDragStart);
+        profileCropViewport.addEventListener('touchstart', onCropDragStart, { passive: false });
+      }
+      document.addEventListener('mousemove', function (e) {
+        if (cropDrag.active) onCropDragMove(e);
+      });
+      document.addEventListener('touchmove', function (e) {
+        if (cropDrag.active) { e.preventDefault(); onCropDragMove(e); }
+      }, { passive: false });
+      document.addEventListener('mouseup', onCropDragEnd);
+      document.addEventListener('touchend', onCropDragEnd);
+
+      if (profileCropCancel) profileCropCancel.addEventListener('click', closeCropModal);
+      if (profileCropModal) profileCropModal.addEventListener('click', function (e) { if (e.target === profileCropModal) closeCropModal(); });
+      if (profileCropApply) profileCropApply.addEventListener('click', function () {
+        getCroppedBlob(function (err, blob) {
+          if (err) { alert(err.message); return; }
+          closeCropModal();
+          profilePhotoInput.value = '';
+          profilePhotoBtn.disabled = true;
+          var fd = new FormData();
+          fd.append('avatar', blob, 'avatar.jpg');
+          fetch('/api/me/avatar', { method: 'POST', credentials: 'same-origin', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              profilePhotoBtn.disabled = false;
+              if (data.ok && data.profileImageUrl) {
+                if (profilePhoto) profilePhoto.src = data.profileImageUrl;
+                window.TornFiAuth.init().then(function () { fillInfo(window.TornFiAuth.getUser() || {}); });
+              } else if (data.message) alert(data.message);
+            })
+            .catch(function () { profilePhotoBtn.disabled = false; });
+        });
+      });
+
+      if (profilePhotoBtn && profilePhotoInput) {
+        profilePhotoBtn.addEventListener('click', function () { profilePhotoInput.click(); });
+        profilePhotoInput.addEventListener('change', function () {
+          var file = profilePhotoInput.files && profilePhotoInput.files[0];
+          if (!file) { profilePhotoInput.value = ''; return; }
+          if (file.size > PROFILE_AVATAR_MAX_SIZE) { alert('프로필 사진은 1MB 이하로 선택해 주세요.'); profilePhotoInput.value = ''; return; }
+          openCropModal(file);
+          profilePhotoInput.value = '';
+        });
+      }
+
+      if (inputBio) inputBio.addEventListener('input', function () {
+        if (bioCount) bioCount.textContent = this.value.length + '/300';
+      });
+
+      if (bioSave && inputBio) {
+        bioSave.addEventListener('click', function () {
+          bioMsg.style.display = 'none';
+          bioErr.style.display = 'none';
+          var text = inputBio.value.trim();
+          fetch('/api/me', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bio: text }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.ok) {
+                bioMsg.textContent = data.message || '저장되었습니다.';
+                bioMsg.style.display = 'block';
+                bioErr.style.display = 'none';
+                if (data.user) fillInfo(data.user);
+                if (bioCount) bioCount.textContent = (data.user && data.user.bio ? data.user.bio : text).length + '/300';
+              } else {
+                bioErr.textContent = data.message || '저장에 실패했습니다.';
+                bioErr.style.display = 'block';
+              }
+            })
+            .catch(function () {
+              bioErr.textContent = '저장에 실패했습니다.';
+              bioErr.style.display = 'block';
+            });
+        });
+      }
+
+      if (window.TornFiAuth.getUser()) {
+        init();
+      } else {
+        window.TornFiAuth.init().then(init);
+      }
+    })();
+  </script>
+</body>
+</html>

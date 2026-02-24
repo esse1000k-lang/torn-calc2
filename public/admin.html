@@ -1,0 +1,2098 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>관리자 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .admin-page { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem; position: relative; z-index: 1; box-sizing: border-box; overflow-x: hidden; overflow-y: visible; }
+    .admin-header { margin-bottom: 1.25rem; }
+    .admin-header .back-link { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text-muted); text-decoration: none; font-size: 0.875rem; margin-bottom: 0.5rem; transition: color 0.2s ease; }
+    .admin-header .back-link:hover { color: var(--neon); }
+    .admin-header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; color: var(--text); margin: 0; }
+    .admin-header h1 span { color: var(--neon); font-weight: 700; }
+
+    .admin-section { margin-bottom: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-sizing: border-box; }
+    .admin-section-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); background: rgba(0, 0, 0, 0.15); }
+    .admin-section h2 { font-size: 0.9375rem; font-weight: 600; color: var(--neon); letter-spacing: -0.01em; margin: 0 0 0.2rem 0; }
+    .admin-section-desc { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5; margin: 0; }
+    .admin-section-body { padding: 1rem 1.25rem; box-sizing: border-box; }
+
+    .admin-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 0 0 10px 10px; }
+    .admin-table-wrap.torn-deposit-incoming-scroll { max-height: 260px; overflow-y: auto; }
+    .admin-table-wrap.reverse-exchange-scroll { max-height: 280px; overflow-y: auto; }
+    .admin-table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 0.8125rem; }
+    .admin-table th, .admin-table td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; box-sizing: border-box; }
+    .admin-table thead th { color: var(--text-muted); font-weight: 500; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; background: rgba(0, 0, 0, 0.2); }
+    #managementTable thead th:nth-child(1), #usersTable thead th:nth-child(1) { width: 10%; min-width: 88px; }
+    #usersTable thead th:nth-child(2) { width: 72px; min-width: 72px; }
+    #managementTable thead th:nth-child(2), #usersTable thead th:nth-child(3) { width: 22%; min-width: 120px; }
+    #managementTable thead th:nth-child(3), #usersTable thead th:nth-child(4) { width: 10%; min-width: 72px; }
+    #managementTable thead th:nth-child(4) { width: 24%; min-width: 180px; }
+    #managementTable thead th:nth-child(5) { width: 8%; min-width: 64px; }
+    #managementTable { table-layout: fixed; }
+    #managementTable thead th:nth-child(4) { width: 240px; min-width: 240px; }
+    #managementTable thead th:nth-child(5) { width: 72px; min-width: 72px; text-align: center; }
+    #managementTable td:nth-child(4), #managementTable td:nth-child(5) { padding: 0.5rem 0.6rem; }
+    #managementTable td.admin-cell-actions { flex-direction: row; flex-wrap: nowrap; display: flex; align-items: center; }
+    #managementTable td:nth-child(5).admin-cell-actions { justify-content: center; }
+    #managementTable .points-form { flex-direction: row; display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: nowrap; }
+    #managementTable .points-form input { width: 64px; min-height: 32px; height: 32px; padding: 0 0.4rem; font-size: 0.8rem; }
+    #managementTable .admin-cell-actions { gap: 0.35rem; }
+    #managementTable .admin-btn { min-height: 32px; height: 32px; padding: 0 0.6rem; font-size: 0.75rem; }
+    #usersTable { table-layout: fixed; }
+    #usersTable thead th:nth-child(5) { width: 72px; text-align: center; }
+    #usersTable thead th:nth-child(6) { width: 90px; }
+    #usersTable thead th:nth-child(7) { width: 64px; }
+    #usersTable thead th:nth-child(8) { width: 140px; }
+    #usersTable thead th:nth-child(9) { width: 100px; text-align: center; }
+    #usersTable td:nth-child(5), #usersTable td:nth-child(9) { text-align: center; }
+    #usersTable .user-staked { font-variant-numeric: tabular-nums; }
+    #usersTable .admin-cell-center { text-align: center; }
+    .admin-table tbody tr { transition: background 0.15s ease; }
+    .admin-table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+    .admin-fake-badge { display: inline-block; padding: 0.15em 0.5em; font-size: 0.75rem; font-weight: 600; color: #1a1a1a; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 4px; }
+    .admin-real-badge { font-size: 0.8rem; color: var(--text-muted); }
+    .admin-table tbody tr:last-child td { border-bottom: none; }
+    .admin-table .wallet { font-family: 'SF Mono', 'Consolas', monospace; font-size: 0.75rem; word-break: break-all; color: var(--text-muted); line-height: 1.45; }
+
+    .admin-btn { min-height: 36px; height: 36px; padding: 0 0.875rem; font-size: 0.8125rem; font-weight: 500; line-height: 1; background: var(--neon); color: var(--bg-dark); border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s ease, box-shadow 0.2s ease; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    .admin-btn:hover { background: var(--neon-dim); box-shadow: 0 0 16px var(--neon-glow); }
+    .admin-btn:active { transform: scale(0.98); }
+    .admin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .admin-btn--burn { background: var(--danger); color: #fff; }
+    .admin-btn--burn:hover { background: #ff5577; color: #fff; }
+    .admin-btn--freeze { background: #2563eb; color: #fff; }
+    .admin-btn--freeze:hover { background: #3b82f6; color: #fff; }
+    .admin-btn--outline { background: transparent; color: var(--neon); border: 1px solid var(--neon); }
+    .admin-btn--outline:hover { background: rgba(0,255,136,0.1); }
+    .admin-tn-source-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); gap: 0.5rem; flex-wrap: wrap; }
+    .admin-tn-source-row:last-child { border-bottom: none; }
+    .admin-btn--unfreeze { background: var(--text-muted); color: #fff; }
+    .admin-btn--unfreeze:hover { background: #4a5568; color: #fff; }
+
+    .admin-table .admin-cell-actions { white-space: nowrap; min-width: 0; vertical-align: middle; display: flex; align-items: center; justify-content: flex-start; gap: 0.4rem; flex-wrap: nowrap; width: 100%; box-sizing: border-box; }
+    .admin-table td.admin-cell-actions:not(:has(.points-form)) { justify-content: center; }
+    .admin-table .admin-cell-actions .admin-btn { margin: 0; flex-shrink: 0; }
+    .admin-table td.admin-cell-actions:has(.points-form) { min-width: 0; }
+    .admin-table .points-form { display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap; }
+    .admin-table .points-form input { width: 72px; min-height: 36px; height: 36px; padding: 0 0.5rem; font-size: 0.8125rem; line-height: 1; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); box-sizing: border-box; }
+    .admin-table .points-form input:focus { outline: none; border-color: var(--neon); }
+    .admin-table .points-form .admin-btn { flex-shrink: 0; }
+    .admin-table .btn-group { display: inline-flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
+
+    .management-detail-td { vertical-align: top; padding: 1rem; background: rgba(0,0,0,0.15); border-radius: 0 0 10px 10px; border: 1px solid var(--border); border-top: none; box-sizing: border-box; }
+    .management-detail-inner .admin-table { border-radius: 8px; overflow: hidden; }
+    .management-tx-table th { padding: 0.6rem 0.85rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); background: rgba(0,0,0,0.25); border-bottom: 1px solid var(--border); }
+    .management-tx-table td { vertical-align: middle; padding: 0.6rem 0.85rem; font-size: 0.8125rem; border-bottom: 1px solid var(--border); }
+    .management-tx-table tbody tr:last-child td { border-bottom: none; }
+    .management-tx-wallet { font-family: 'SF Mono', Consolas, monospace; font-size: 0.75rem; word-break: break-all; color: var(--text-muted); margin-right: 0.5rem; line-height: 1.4; max-width: 160px; display: inline-block; vertical-align: middle; }
+    .management-tx-table .management-tx-status-cell { padding-left: 1rem; }
+    .admin-copy-btn { flex-shrink: 0; width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--neon); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; vertical-align: middle; transition: background 0.2s, border-color 0.2s, color 0.2s; }
+    .admin-copy-btn:hover { background: rgba(0,255,136,0.1); border-color: var(--neon); color: var(--neon); }
+    .management-tx-status-select { min-width: 96px; height: 32px; padding: 0 0.6rem; font-size: 0.8125rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; }
+    .management-tx-status-select:hover { border-color: rgba(0,255,136,0.4); }
+    .management-tx-status-select:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 2px rgba(0,255,136,0.12); }
+    .management-tx-status-select:disabled { opacity: 0.6; cursor: wait; }
+    .management-tx-empty { margin: 0; font-size: 0.875rem; color: var(--text-muted); padding: 0.75rem 0; }
+    .management-reverse-status-cell { vertical-align: middle; }
+    .management-reverse-status-select { min-width: 100px; height: 32px; padding: 0 0.6rem; font-size: 0.8125rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; }
+    .management-reverse-status-select:hover { border-color: rgba(0,255,136,0.4); }
+    .management-reverse-status-select:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 2px rgba(0,255,136,0.12); }
+
+    .admin-search-wrap { margin-bottom: 1rem; position: relative; }
+    .admin-search-wrap input { width: 100%; max-width: 280px; min-height: 40px; padding: 0 0.75rem 0 2.25rem; font-size: 0.875rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); box-sizing: border-box; }
+    .admin-search-wrap input::placeholder { color: var(--text-muted); }
+    .admin-search-wrap input:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.12); }
+    .admin-search-wrap .admin-search-icon { position: absolute; left: 0.625rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.875rem; line-height: 1; pointer-events: none; }
+    .admin-summary { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 8px; margin-bottom: 1rem !important; border: 1px solid var(--border); border-left: 3px solid var(--neon); font-size: 0.875rem; box-sizing: border-box; }
+    .admin-summary strong { color: var(--neon); font-weight: 600; }
+
+    /* 이중 아이디 탐지 전용 */
+    #adminDuplicateCheckSection .admin-section-body { padding: 1.25rem 1.5rem; }
+    .duplicate-check-body { display: flex; flex-direction: column; gap: 1.25rem; }
+    .duplicate-check-search { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
+    .duplicate-check-search input { flex: 1; min-width: 200px; max-width: 420px; min-height: 42px; padding: 0 1rem; font-size: 0.9rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+    .duplicate-check-search input::placeholder { color: var(--text-muted); }
+    .duplicate-check-search input:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 2px rgba(0,255,136,0.12); }
+    .duplicate-check-search .admin-btn { min-height: 42px; padding: 0 1.25rem; font-size: 0.875rem; }
+    .duplicate-check-msg { font-size: 0.875rem; margin: 0; padding: 0.5rem 0; }
+    .duplicate-check-err { color: var(--danger); }
+    .duplicate-check-loading { color: var(--text-muted); }
+    #duplicateCheckResult { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 0.5rem; }
+    .duplicate-check-block { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; box-sizing: border-box; }
+    .duplicate-check-block h3 { font-size: 0.875rem; font-weight: 600; color: var(--neon); margin: 0 0 0.75rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.5rem; }
+    .duplicate-check-block h3::before { content: ''; width: 4px; height: 1em; background: var(--neon); border-radius: 2px; }
+    .duplicate-check-block .admin-section-desc { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-muted); }
+    .duplicate-check-block .admin-section-desc p { margin: 0 0 0.35em 0; }
+    .duplicate-check-block .admin-section-desc p:last-child { margin-bottom: 0; }
+    .duplicate-check-block ul { margin: 0; padding-left: 1.25rem; font-size: 0.8125rem; color: var(--text); line-height: 1.6; }
+    .duplicate-check-block .admin-table-wrap { margin: 0 -0.25rem 0 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .duplicate-check-block .admin-table { min-width: 320px; font-size: 0.8125rem; }
+    .duplicate-check-block .admin-table th, .duplicate-check-block .admin-table td { padding: 0.6rem 0.85rem; }
+    #duplicateCheckByIp .duplicate-check-block, #duplicateCheckByWallet { display: grid; gap: 1.25rem; }
+    .duplicate-check-wallet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+    #duplicateCheckUserBox.duplicate-check-user-card { padding: 1rem 1.25rem; border-radius: 10px; border-left: 4px solid var(--neon); margin-bottom: 0; }
+    .duplicate-check-ip-badge { display: inline-block; padding: 0.25em 0.6em; font-size: 0.8rem; background: rgba(0,255,136,0.12); color: var(--neon); border-radius: 6px; font-family: monospace; }
+
+    .admin-msg { font-size: 0.875rem; }
+    .admin-denied-box { max-width: 360px; margin: 0 auto; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2); }
+    .admin-denied { text-align: center; padding: 3rem 1.25rem; color: var(--text-muted); }
+    .admin-denied p { font-size: 0.9375rem; margin-bottom: 1rem; }
+    .admin-denied a { color: var(--neon); text-decoration: none; font-weight: 500; transition: opacity 0.2s ease; }
+    .admin-denied a:hover { opacity: 0.85; }
+
+    .admin-pin-gate { max-width: 360px; margin: 3rem auto; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 255, 136, 0.08); }
+    .admin-pin-gate h2 { font-size: 1.1rem; font-weight: 600; color: var(--neon); margin-bottom: 0.75rem; letter-spacing: -0.01em; }
+    .admin-pin-gate .admin-section-desc { margin-bottom: 1.25rem; font-size: 0.9rem; }
+    .admin-pin-gate input { width: 100%; padding: 0.75rem 1rem; margin-bottom: 1rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1.1rem; letter-spacing: 0.25em; text-align: center; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    .admin-pin-gate input:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.12); }
+    .admin-pin-gate .pin-err { font-size: 0.85rem; color: var(--danger); margin-bottom: 0.5rem; }
+    .admin-pin-gate .admin-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; border-radius: 8px; margin-top: 0.25rem; }
+
+    .admin-pin-change { max-width: 420px; padding: 1.5rem; background: rgba(17, 17, 19, 0.6); border: 1px solid var(--border); border-radius: 12px; }
+    .admin-pin-change .admin-section-header { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem; }
+    .admin-pin-change input { width: 100%; padding: 0.6rem 0.85rem; margin-bottom: 0.6rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; transition: border-color 0.2s ease; }
+    .admin-pin-change input:focus { outline: none; border-color: var(--neon); }
+    .admin-pin-change .msg { font-size: 0.85rem; margin-top: 0.5rem; }
+    .admin-pin-change .admin-btn { margin-top: 0.5rem; padding: 0.5rem 1rem; }
+
+    .admin-section .admin-table-wrap { margin: 0 -1rem 0; border-radius: 0 0 10px 10px; }
+    .admin-section:has(.admin-table-wrap) .admin-section-body { padding-bottom: 1.25rem; }
+    .admin-auto-credit-section { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .admin-auto-credit-title { font-size: 0.9375rem; font-weight: 600; color: var(--neon); margin: 0 0 0.25rem 0; }
+    .admin-tx-link { color: var(--neon); text-decoration: none; }
+    .admin-tx-link:hover { text-decoration: underline; }
+    .admin-level-table-wrap { max-width: 420px; }
+    .admin-level-table { font-size: 0.875rem; }
+    .admin-level-table th, .admin-level-table td { padding: 0.5rem 0.75rem; }
+    .admin-level-table--admin { background: rgba(0, 255, 136, 0.06); }
+    .admin-level-table--admin td { color: var(--text-muted); }
+    .admin-level-table--admin td:last-child { color: var(--neon); font-weight: 500; }
+    .admin-level-table .level-icon { margin-right: 0.35rem; }
+
+    .admin-pin-gate input { box-sizing: border-box; }
+    .admin-pin-change input { box-sizing: border-box; }
+    .admin-confirm-layer { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.78); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
+    .admin-confirm-box { background: var(--bg-card); border: 1px solid rgba(0,255,136,0.35); border-radius: 12px; padding: 1.75rem; max-width: 400px; width: 100%; box-shadow: 0 0 24px rgba(0,255,136,0.08), 0 8px 32px rgba(0,0,0,0.4); }
+    .admin-confirm-box h3 { display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; color: var(--neon); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .admin-confirm-box h3::before { content: ''; display: inline-block; width: 22px; height: 22px; background: var(--neon); border-radius: 50%; opacity: 0.9; flex-shrink: 0; }
+    .admin-confirm-box .admin-section-desc { font-size: 0.9rem; line-height: 1.5; margin-bottom: 0.75rem; color: var(--text); }
+    .admin-confirm-box .confirm-address { font-family: monospace; font-size: 0.8rem; word-break: break-all; background: rgba(0,0,0,0.3); padding: 0.6rem; border-radius: 6px; margin: 0.75rem 0; color: var(--text); border: 1px solid var(--border); }
+    .admin-confirm-box .confirm-pin-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem; margin-bottom: 0.35rem; display: block; }
+    .admin-confirm-box .confirm-pin-input { width: 100%; padding: 0.6rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 1rem; letter-spacing: 0.2em; text-align: center; box-sizing: border-box; }
+    .admin-confirm-box .confirm-pin-input:focus { outline: none; border-color: var(--neon); }
+    .admin-confirm-box .confirm-pin-err { font-size: 0.8rem; color: var(--danger); margin-top: 0.35rem; }
+    .admin-confirm-box .confirm-actions { display: flex; gap: 0.5rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .admin-confirm-box .confirm-actions button { flex: 1; padding: 0.6rem; border-radius: 6px; font-size: 0.9rem; cursor: pointer; border: none; font-weight: 500; }
+    .admin-confirm-box .confirm-actions .btn-cancel { background: var(--bg-dark); color: var(--text); border: 1px solid var(--border); }
+    .admin-confirm-box .confirm-actions .btn-cancel:hover { background: rgba(255,255,255,0.05); }
+    .admin-confirm-box .confirm-actions .btn-confirm { background: var(--neon); color: var(--bg-dark); }
+    .admin-confirm-box .confirm-actions .btn-confirm:hover { background: var(--neon-dim); }
+    .admin-completion-warn { font-size: 0.8rem; color: var(--danger); font-weight: 600; margin: 0 0 0.75rem 0; }
+    .admin-confirm-box.completion-box .admin-completion-warn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; margin: 0 0 1rem 0; background: rgba(255,51,102,0.12); border: 1px solid rgba(255,51,102,0.4); border-radius: 8px; font-size: 0.8rem; }
+    .admin-confirm-box.completion-box .admin-completion-warn::before { content: '⚠'; font-size: 0.95rem; }
+
+    .admin-nav-inner { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; margin-bottom: 1.25rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); align-items: center; overflow: visible; }
+    .admin-nav-inner a { font-size: 0.8125rem; color: var(--text-muted); text-decoration: none; transition: color 0.2s; padding: 0.45rem 0.6rem; border-radius: 6px; white-space: nowrap; }
+    .admin-nav-inner a:hover { color: var(--neon); }
+    .admin-nav-inner a.is-active { color: var(--neon); font-weight: 600; background: rgba(0, 255, 136, 0.1); }
+    .admin-nav-dropdown-wrap { position: relative; flex-shrink: 0; overflow: visible; }
+    .admin-nav-dropdown-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 172px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.4); padding: 0.35rem; z-index: 100; display: none; }
+    .admin-nav-dropdown-wrap:hover .admin-nav-dropdown-menu { display: block; }
+    .admin-nav-dropdown-menu a { display: block; padding: 0.5rem 0.75rem; white-space: nowrap; border-radius: 6px; font-size: 0.8125rem; }
+    .admin-nav-dropdown-menu a:hover { background: rgba(0, 255, 136, 0.1); }
+    .admin-panel { display: none; margin-bottom: 0; }
+    .admin-panel.is-active { display: block; }
+    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminForceWithdrawSection { scroll-margin-top: 0.5rem; }
+    #adminUsersSection .admin-btn { min-height: 18px; height: 18px; padding: 0 0.4375rem; border-radius: 4px; font-size: 0.8125rem; }
+    #adminUsersSection .admin-section-body { padding: 1.25rem 1.25rem 1.5rem; }
+    #adminUsersSection .admin-create-user-wrap {
+      margin-bottom: 1.25rem;
+      padding: 1rem 1.25rem;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      border-left: 3px solid var(--neon);
+      box-sizing: border-box;
+    }
+    #adminUsersSection .admin-create-user-label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+      font-weight: 500;
+    }
+    #adminUsersSection .admin-create-user-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    #adminUsersSection .admin-create-user-wrap input[type="text"],
+    #adminUsersSection .admin-create-user-wrap select {
+      min-height: 24px;
+      height: 24px;
+      padding: 0 0.5rem;
+      font-size: 0.8125rem;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      box-sizing: border-box;
+    }
+    #adminUsersSection .admin-create-user-wrap input:focus,
+    #adminUsersSection .admin-create-user-wrap select:focus {
+      outline: none;
+      border-color: var(--neon);
+    }
+    #adminUsersSection .admin-create-user-wrap input#createUserDisplayName { width: 8rem; min-width: 6rem; }
+    #adminUsersSection .admin-create-user-wrap input#createUserWallet { width: 14rem; min-width: 10rem; font-family: ui-monospace, monospace; font-size: 0.75rem; }
+    #adminUsersSection .admin-create-user-wrap select#createUserLevel { min-width: 6.5rem; }
+    #adminUsersSection .admin-search-wrap { margin-bottom: 0.75rem; }
+    #adminUsersSection .admin-search-wrap input { min-height: 32px; height: 32px; padding: 0 0.6rem 0 2rem; font-size: 0.8125rem; }
+    #adminUsersSection .admin-summary { margin-bottom: 1rem !important; padding: 0.6rem 1rem; gap: 0.75rem; font-size: 0.8125rem; }
+    #adminUsersSection .admin-table-wrap { margin: 0 -1.25rem 0; border-radius: 0 0 10px 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #adminUsersSection .admin-table { font-size: 0.8125rem; }
+    #adminUsersSection .admin-table th,
+    #adminUsersSection .admin-table td { padding: 0.5rem 0.65rem; vertical-align: middle; }
+    #adminUsersSection .admin-table thead th { font-size: 0.7rem; }
+    #adminUsersSection .admin-table .points-form input { min-height: 20px; height: 20px; width: 4rem; padding: 0 0.35rem; font-size: 0.8125rem; border-radius: 4px; }
+    #adminUsersSection .admin-table .admin-cell-actions { gap: 0.3rem; }
+    #adminUsersSection .admin-table { min-width: 520px; }
+    .admin-account-info p { margin-bottom: 0.6rem; font-size: 0.9rem; }
+    .admin-account-info .mono { font-family: ui-monospace, monospace; font-size: 0.85rem; word-break: break-all; }
+    html { scroll-behavior: smooth; }
+    .admin-exchange-group { border-color: rgba(0, 255, 136, 0.2); }
+    .admin-exchange-group > .admin-section-header { background: rgba(0, 255, 136, 0.06); }
+
+    .admin-tfi-intro { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5; }
+    .admin-tfi-summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+    .admin-tfi-summary-item { padding: 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); border-radius: 10px; border-left: 3px solid var(--neon); box-sizing: border-box; }
+    .admin-tfi-summary-item .label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; line-height: 1.3; }
+    .admin-tfi-summary-item strong { font-size: 1.125rem; color: var(--neon); font-weight: 600; }
+    .admin-management-summary-box { padding: 1rem; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); border-radius: 10px; border-left: 3px solid var(--neon); margin-bottom: 1.25rem; font-size: 0.9375rem; }
+    .admin-management-summary-box strong { color: var(--neon); font-weight: 600; }
+    .admin-tfi-refresh-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .admin-tfi-refresh-row .admin-btn { flex-shrink: 0; }
+    .admin-tfi-collateral-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.12); box-sizing: border-box; }
+    .admin-tfi-collateral-wrap .block-title { font-size: 0.875rem; font-weight: 600; color: var(--neon); margin: 0 0 0.5rem 0; }
+    .admin-tfi-collateral-wrap .block-desc { font-size: 0.8125rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
+    .admin-tfi-collateral-wrap .block { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .admin-tfi-collateral-wrap .block:last-child { border-bottom: none; }
+    .admin-tfi-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem 1.25rem; margin: 0.75rem 0 0; }
+    .admin-tfi-stats-grid .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.2rem; }
+    .admin-tfi-stats-grid .stat-value { font-size: 0.9375rem; font-weight: 600; color: var(--neon); }
+    .admin-tfi-actions-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .admin-tfi-actions-row .admin-btn { flex-shrink: 0; }
+    .admin-tfi-highlight-box { padding: 0.75rem 1rem; background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 8px; margin: 0.75rem 0; }
+    .admin-tfi-highlight-box .stat-value { font-size: 1.05rem; margin-top: 0.25rem; color: var(--neon); font-weight: 600; }
+
+    @media (max-width: 768px) {
+      .admin-page { padding: 1rem 0.75rem; }
+      .admin-header { margin-bottom: 1rem; }
+      .admin-header h1 { font-size: 1.125rem; }
+      .admin-nav-inner { gap: 0.3rem 0.5rem; padding: 0.5rem 0; margin-bottom: 1rem; overflow: visible; flex-wrap: wrap; }
+      .admin-nav-inner a { padding: 0.45rem 0.55rem; font-size: 0.8rem; }
+      .admin-nav-dropdown-menu { min-width: 160px; z-index: 100; }
+      .admin-section { margin-bottom: 1.25rem; border-radius: 8px; }
+      .admin-section-header { padding: 0.875rem 1rem; }
+      .admin-section-body { padding: 0.875rem 1rem; }
+      .admin-section .admin-table-wrap { margin: 0 -1rem 0; border-radius: 0 0 8px 8px; }
+      .admin-section h2 { font-size: 0.875rem; }
+      .admin-section-desc { font-size: 0.8rem; }
+      .admin-table { min-width: 420px; font-size: 0.75rem; }
+      .admin-table th, .admin-table td { padding: 0.5rem 0.6rem; }
+      .admin-btn { min-height: 40px; height: 40px; padding: 0 0.75rem; font-size: 0.8rem; }
+      .admin-table .points-form input { min-height: 40px; height: 40px; width: 64px; }
+      .admin-summary { padding: 0.65rem 0.875rem; gap: 0.5rem; font-size: 0.8125rem; flex-direction: row; flex-wrap: wrap; }
+      .admin-tfi-summary-row { grid-template-columns: 1fr; gap: 0.75rem; }
+      .admin-tfi-summary-item { padding: 0.875rem 1rem; }
+      .admin-tfi-summary-item strong { font-size: 1rem; }
+      .admin-tfi-intro { font-size: 0.8125rem; margin-bottom: 1rem; }
+      .admin-management-summary-box { padding: 0.875rem 1rem; font-size: 0.875rem; margin-bottom: 1rem; }
+      .admin-tfi-collateral-wrap .block { padding: 0.875rem 1rem; }
+      .admin-tfi-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem 1rem; }
+      .admin-tfi-actions-row { gap: 0.5rem; margin-top: 0.5rem; }
+      .admin-pin-gate { margin: 1.5rem auto; padding: 1.5rem; max-width: 100%; border-radius: 12px; }
+      .admin-denied-box { margin: 1.5rem 0.75rem; padding: 1.5rem; }
+      .admin-confirm-layer { padding: 0.75rem; align-items: flex-start; padding-top: 2rem; }
+      .admin-confirm-box { max-width: 100%; margin: 0; padding: 1.25rem; border-radius: 10px; }
+      .admin-confirm-box .confirm-actions { flex-direction: column; }
+      .admin-confirm-box .confirm-actions button { min-height: 44px; }
+      .management-detail-td { padding: 0.875rem 1rem; border-radius: 0 0 8px 8px; }
+      .management-tx-status-select, .management-reverse-status-select { min-width: 90px; min-height: 38px; }
+      .admin-search-wrap input { max-width: 100%; min-height: 40px; }
+      #adminDuplicateCheckSection .admin-section-body { padding: 1rem 1.25rem; }
+      .duplicate-check-search input { max-width: 100%; }
+      .duplicate-check-wallet-grid { grid-template-columns: 1fr; }
+      #adminUsersSection .admin-section-body { padding: 1rem; }
+      #adminUsersSection .admin-btn { min-height: 18px; height: 18px; padding: 0 0.4375rem; font-size: 0.8125rem; }
+      #adminUsersSection .admin-create-user-wrap { padding: 0.875rem 1rem; margin-bottom: 1rem; }
+      #adminUsersSection .admin-create-user-wrap input#createUserDisplayName { max-width: 12rem; }
+      #adminUsersSection .admin-create-user-wrap input#createUserWallet { max-width: 100%; }
+      #adminUsersSection .admin-table-wrap { margin: 0 -1rem 0; }
+    }
+    @media (max-width: 480px) {
+      .admin-page { padding: 0.75rem 0.5rem; }
+      .admin-section-header, .admin-section-body { padding: 0.75rem; }
+      .admin-section .admin-table-wrap { margin: 0 -0.75rem 0; }
+      .admin-table th, .admin-table td { padding: 0.45rem 0.5rem; font-size: 0.7rem; }
+      #managementTable thead th:nth-child(1), #usersTable thead th:nth-child(1) { min-width: 70px; }
+      #managementTable thead th:nth-child(2), #usersTable thead th:nth-child(2) { min-width: 90px; }
+      #managementTable thead th:nth-child(4) { min-width: 220px; width: 220px; }
+      #managementTable .points-form input { width: 58px; }
+      #adminUsersSection .admin-section-body { padding: 0.75rem 0.5rem 1rem; }
+      #adminUsersSection .admin-table-wrap { margin: 0 -0.5rem 0; border-radius: 0 0 8px 8px; }
+      #adminUsersSection .admin-create-user-wrap { padding: 0.75rem 0.875rem; }
+      #adminUsersSection .admin-create-user-row { flex-direction: column; align-items: stretch; }
+      #adminUsersSection .admin-create-user-wrap input#createUserDisplayName,
+      #adminUsersSection .admin-create-user-wrap input#createUserWallet,
+      #adminUsersSection .admin-create-user-wrap select#createUserLevel { width: 100%; min-width: 0; max-width: none; }
+      #adminUsersSection .admin-summary { padding: 0.5rem 0.75rem; flex-wrap: wrap; }
+      #adminDuplicateCheckSection .admin-section-body { padding: 0.875rem 1rem; }
+      .duplicate-check-block { padding: 0.875rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
+        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
+        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
+        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
+          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
+          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="adminDenied" class="admin-denied" style="display:none;">
+    <div class="admin-denied-box">
+      <p>관리자만 접근할 수 있습니다.</p>
+      <a href="/">홈으로</a>
+    </div>
+  </div>
+
+  <div id="adminPage" class="admin-page" style="display:none;">
+    <div id="adminPinGate" class="admin-pin-gate" style="display:none;">
+      <h2>관리자 비밀번호</h2>
+      <p class="admin-section-desc">6자리 숫자를 입력하세요.</p>
+      <p class="pin-err" id="adminPinErr" style="display:none;"></p>
+      <form id="adminPinForm">
+        <input type="password" id="adminPinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="******" autocomplete="off">
+        <button type="submit" class="admin-btn">입장</button>
+      </form>
+    </div>
+
+    <div id="adminContent" style="display:none;">
+    <header class="admin-header">
+      <a href="/" class="back-link">← 홈으로</a>
+      <h1><span>TornFi</span> 관리자</h1>
+    </header>
+    <nav class="admin-nav-inner" aria-label="관리자 메뉴">
+      <a href="#" class="admin-nav-link is-active" data-panel="adminPinChange">비밀번호</a>
+      <div class="admin-nav-dropdown-wrap">
+        <a href="#" class="admin-nav-link" data-panel="adminAccountSection">회원</a>
+        <div class="admin-nav-dropdown-menu">
+          <a href="#" class="admin-nav-link" data-panel="adminLevelTable">🔱 등급 관리</a>
+          <a href="#" class="admin-nav-link" data-panel="adminPending">⏳ 가입 승인</a>
+          <a href="#" class="admin-nav-link" data-panel="adminUsersSection">👤 개별 관리</a>
+          <a href="#" class="admin-nav-link" data-panel="adminForceWithdrawSection">🚫 강제 탈퇴</a>
+          <a href="#" class="admin-nav-link" data-panel="adminDuplicateCheckSection">🔗 이중 아이디 탐지</a>
+        </div>
+      </div>
+      <a href="#" class="admin-nav-link" data-panel="adminTornadoNewsSection">📰 뉴스 소스 · 수집</a>
+    </nav>
+
+    <section id="adminPinChange" class="admin-section admin-panel admin-pin-change is-active">
+      <div class="admin-section-header">
+        <h2>관리자 비밀번호 변경</h2>
+        <p class="admin-section-desc">6자리 숫자 비밀번호로 관리자 페이지 접근을 제한합니다.</p>
+      </div>
+      <div class="admin-section-body">
+        <form id="adminChangePinForm">
+          <input type="password" id="currentPin" placeholder="현재 비밀번호 6자리" maxlength="6" inputmode="numeric" autocomplete="off">
+          <input type="password" id="newPin" placeholder="새 비밀번호 6자리" maxlength="6" inputmode="numeric" autocomplete="off">
+          <input type="password" id="newPinConfirm" placeholder="새 비밀번호 확인" maxlength="6" inputmode="numeric" autocomplete="off">
+          <button type="submit" class="admin-btn">비밀번호 변경</button>
+        </form>
+        <p id="adminChangePinMsg" class="msg" style="display:none;"></p>
+      </div>
+    </section>
+
+    <section id="adminAccountSection" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>현재 로그인 계정</h2>
+        <p class="admin-section-desc">현재 로그인한 관리자 계정 정보입니다. 닉네임·비밀번호는 <a href="/profile.html" style="color:var(--neon);">내 정보</a>에서 수정할 수 있습니다.</p>
+      </div>
+      <div class="admin-section-body">
+        <div id="adminAccountInfo" class="admin-account-info" style="display:none;">
+          <p><strong>닉네임</strong> <span id="adminAccountDisplayName"></span></p>
+          <p><strong>지갑 주소</strong> <span id="adminAccountWallet" class="mono"></span></p>
+        </div>
+        <p id="adminAccountLoading" class="text-muted">불러오는 중…</p>
+        <p id="adminAccountError" class="msg" style="display:none; color:var(--danger);"></p>
+      </div>
+    </section>
+
+    <section id="adminLevelTable" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>회원 등급표</h2>
+      </div>
+      <div class="admin-section-body">
+        <div class="admin-level-table-wrap">
+          <table class="admin-table admin-level-table">
+            <thead>
+              <tr>
+                <th>등급</th>
+                <th>레벨</th>
+                <th>스테이킹 기준 (TORN)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="level-icon" aria-hidden="true">🐚</span> 조개</td><td>Lv.1</td><td>1개 미만</td></tr>
+              <tr><td><span class="level-icon" aria-hidden="true">🦐</span> 새우</td><td>Lv.2</td><td>1,000개 미만</td></tr>
+              <tr><td><span class="level-icon" aria-hidden="true">🐡</span> 광어</td><td>Lv.3</td><td>2,000개 미만</td></tr>
+              <tr><td><span class="level-icon" aria-hidden="true">🦭</span> 물개</td><td>Lv.4</td><td>3,000개 미만</td></tr>
+              <tr><td><span class="level-icon" aria-hidden="true">🦈</span> 상어</td><td>Lv.5</td><td>4,000개 미만</td></tr>
+              <tr><td><span class="level-icon" aria-hidden="true">🐋</span> 고래</td><td>Lv.6</td><td>4,000개 이상</td></tr>
+              <tr class="admin-level-table--admin"><td><span class="level-icon" aria-hidden="true">👤</span> 관리자</td><td>—</td><td>회원 관리에서 지정 (등급 동기화·등급 지정 권한)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminPending" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>승인 대기</h2>
+        <p class="admin-section-desc">가입 후 승인 대기 중인 회원 목록입니다. <strong>신규 가입 자동 승인</strong>이 켜져 있으면 가입 즉시 로그인 가능합니다.</p>
+        <div class="admin-sync-pool-wrap" style="margin-top:0.5rem;">
+          <label class="admin-auto-approve-label"><input type="checkbox" id="autoApproveNewUsersCheckbox"> 신규 가입 자동 승인</label>
+          <span id="autoApproveMsg" class="admin-msg text-muted" style="margin-left:0.5rem;"></span>
+        </div>
+      </div>
+      <div class="admin-section-body">
+        <p id="pendingNone" class="text-muted" style="font-size:0.9rem; display:none;">승인 대기 중인 회원이 없습니다.</p>
+        <div class="admin-table-wrap">
+          <table id="pendingTable" class="admin-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>닉네임</th>
+                <th>지갑 주소</th>
+                <th>추천인</th>
+                <th>가입일</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminUsersSection" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>회원 관리</h2>
+        <p class="admin-section-desc">가입된 회원 목록입니다. 하트 지급/차감은 양수=지급, 음수=차감 입력 후 적용하세요. 관리자가 생성한 테스트 회원은 로그인할 수 없으며 구분 표시됩니다.</p>
+      </div>
+      <div class="admin-section-body">
+        <div class="admin-create-user-wrap">
+          <form autocomplete="off" style="display:contents" onsubmit="return false" aria-hidden="true">
+            <label class="admin-create-user-label" for="createUserDisplayName">테스트 회원 생성 (가짜 회원, 로그인 불가)</label>
+            <div class="admin-create-user-row">
+              <input type="text" id="createUserDisplayName" name="x-nickname" placeholder="닉네임" autocomplete="off" maxlength="20" data-lpignore="true" data-form-type="other">
+              <input type="text" id="createUserWallet" name="x-wallet" placeholder="지갑 주소 (선택, 비우면 0x0...)" autocomplete="off" data-lpignore="true" data-form-type="other">
+              <select id="createUserLevel" name="x-level" title="등급">
+                <option value="1">Lv.1 조개</option>
+                <option value="2">Lv.2 새우</option>
+                <option value="3">Lv.3 광어</option>
+                <option value="4">Lv.4 물개</option>
+                <option value="5">Lv.5 상어</option>
+                <option value="6">Lv.6 고래</option>
+              </select>
+              <button type="button" id="createUserBtn" class="admin-btn">생성</button>
+            </div>
+          </form>
+        </div>
+        <div class="admin-search-wrap">
+          <span class="admin-search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="usersSearchInput" name="x-search" placeholder="닉네임 또는 지갑 주소로 검색" autocomplete="off" data-lpignore="true" data-form-type="other">
+        </div>
+        <p class="admin-summary">
+          회원 수: <strong id="usersSummaryCount">0</strong>명
+        </p>
+        <div class="admin-table-wrap">
+          <table id="usersTable" class="admin-table">
+            <thead>
+              <tr>
+                <th>닉네임</th>
+                <th>구분</th>
+                <th>지갑 주소</th>
+                <th>등급</th>
+                <th>관리자</th>
+                <th>스테이킹(TORN)</th>
+                <th>하트 ❤️</th>
+                <th>지급/차감</th>
+                <th>강퇴 / 삭제</th>
+              </tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminDuplicateCheckSection" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>이중 아이디 탐지</h2>
+        <p class="admin-section-desc">지갑 주소 또는 가입 시 IP로 이중 가입·연쇄 송금 관계를 조회합니다. (IP·지갑 커플링, 연쇄 송금 네트워크, 지갑/스테이킹 3일 기준)</p>
+      </div>
+      <div class="admin-section-body">
+        <div class="duplicate-check-body">
+          <div class="duplicate-check-search">
+            <input type="text" id="duplicateCheckInput" placeholder="지갑 주소 또는 IP 입력" aria-label="지갑 주소 또는 IP">
+            <button type="button" id="duplicateCheckBtn" class="admin-btn">조회</button>
+          </div>
+          <p id="duplicateCheckErr" class="duplicate-check-msg duplicate-check-err" style="display:none;"></p>
+          <p id="duplicateCheckLoading" class="duplicate-check-msg duplicate-check-loading" style="display:none;">조회 중… (이더스캔 API 호출로 다소 걸릴 수 있습니다)</p>
+          <div id="duplicateCheckResult" style="display:none;">
+            <div id="duplicateCheckByIp" style="display:none;">
+              <div class="duplicate-check-block">
+                <h3>동일 IP 가입 회원</h3>
+                <p class="admin-section-desc">IP: <span class="duplicate-check-ip-badge" id="duplicateCheckIpValue"></span></p>
+                <div class="admin-table-wrap">
+                  <table class="admin-table">
+                    <thead>
+                      <tr><th>닉네임</th><th>지갑 주소</th><th>가입일</th></tr>
+                    </thead>
+                    <tbody id="duplicateCheckByIpBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div id="duplicateCheckByWallet" style="display:none;">
+              <div id="duplicateCheckUserBox" class="admin-summary duplicate-check-user-card"></div>
+              <div class="duplicate-check-wallet-grid">
+                <div class="duplicate-check-block">
+                  <h3>동일 IP에서 가입한 다른 회원</h3>
+                  <div id="duplicateCheckSameIpBox" class="admin-section-desc"></div>
+                </div>
+                <div class="duplicate-check-block">
+                  <h3>최근 30일 내 거래한 회원 (연쇄 송금)</h3>
+                  <div id="duplicateCheckTransferBox" class="admin-section-desc"></div>
+                </div>
+                <div class="duplicate-check-block">
+                  <h3>지갑 · 스테이킹</h3>
+                  <div id="duplicateCheckWalletAgeBox" class="admin-section-desc"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminTornadoNewsSection" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>뉴스 소스 · 수집</h2>
+        <p class="admin-section-desc">토네이도 뉴스 자동 수집에 사용할 소스(URL)와 키워드를 관리하고, 지금 수집을 실행합니다. 뉴스 목록은 <a href="/tornado-news.html" style="color:var(--neon);">토네이도 뉴스</a>에서 볼 수 있습니다.</p>
+      </div>
+      <div class="admin-section-body">
+        <div class="admin-tn-block" style="margin-bottom:1.5rem;">
+          <h3 style="font-size:0.9rem; font-weight:600; color:var(--neon); margin:0 0 0.5rem 0;">수집 키워드</h3>
+          <p class="admin-section-desc" style="margin:0 0 0.5rem 0;">제목·요약에 아래 키워드 중 하나라도 있으면 수집합니다. 한 줄에 한 키워드씩 입력하세요.</p>
+          <textarea id="adminTnKeywords" rows="4" placeholder="프라이버시&#10;토네이도 캐시&#10;tornado cash&#10;TORN&#10;해킹&#10;세탁&#10;mixer&#10;privacy" style="width:100%; padding:0.6rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; color:var(--text); font-family:inherit; font-size:0.9rem; resize:vertical; box-sizing:border-box;"></textarea>
+          <button type="button" id="adminTnKeywordsSave" class="admin-btn admin-btn--outline" style="margin-top:0.5rem;">키워드 저장</button>
+          <span id="adminTnKeywordsMsg" style="font-size:0.85rem; color:var(--text-muted); margin-left:0.5rem;"></span>
+        </div>
+        <div class="admin-tn-block" style="margin-bottom:1.5rem;">
+          <h3 style="font-size:0.9rem; font-weight:600; color:var(--neon); margin:0 0 0.5rem 0;">뉴스 기사 관리</h3>
+          <p class="admin-section-desc" style="margin:0 0 0.5rem 0;">저장된 기사 목록입니다. 삭제 시 복구할 수 없습니다.</p>
+          <div class="admin-table-wrap" style="max-height:280px; overflow-y:auto;">
+            <table class="admin-table" style="min-width:480px;">
+              <thead>
+                <tr>
+                  <th>제목</th>
+                  <th style="width:90px;">출처</th>
+                  <th style="width:100px;">날짜</th>
+                  <th style="width:60px; text-align:center;">삭제</th>
+                </tr>
+              </thead>
+              <tbody id="adminTnNewsBody"></tbody>
+            </table>
+          </div>
+          <p id="adminTnNewsEmpty" class="text-muted" style="font-size:0.9rem; display:none; margin-top:0.5rem;">저장된 기사가 없습니다.</p>
+        </div>
+        <div class="admin-tn-block" style="margin-bottom:1.5rem;">
+          <h3 style="font-size:0.9rem; font-weight:600; color:var(--neon); margin:0 0 0.5rem 0;">뉴스 소스 (URL)</h3>
+          <div id="adminTornadoNewsSourcesList" class="admin-tn-sources-list" style="margin-bottom:1rem;"></div>
+          <div class="admin-tn-sources-add" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; margin-bottom:1rem;">
+            <input type="text" id="adminTnSourceName" placeholder="소스 이름" style="width:140px; padding:0.5rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; color:var(--text);">
+            <input type="url" id="adminTnSourceUrl" placeholder="URL" style="flex:1; min-width:180px; padding:0.5rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; color:var(--text);">
+            <button type="button" id="adminTnAddSourceBtn" class="admin-btn admin-btn--outline">소스 추가</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; flex-direction:column; align-items:flex-start;">
+          <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <button type="button" id="adminTnFetchBtn" class="admin-btn">지금 수집</button>
+            <span id="adminTnFetchMsg" style="font-size:0.85rem; color:var(--text-muted);"></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" id="adminTnTranslateExistingBtn" class="admin-btn admin-btn--outline">기존 기사 한글 번역</button>
+            <span id="adminTnTranslateExistingMsg" style="font-size:0.85rem; color:var(--text-muted);"></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" id="adminTnDedupeBtn" class="admin-btn admin-btn--outline">중복 기사 제거</button>
+            <span id="adminTnDedupeMsg" style="font-size:0.85rem; color:var(--text-muted);"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminForceWithdrawSection" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>강제 탈퇴</h2>
+        <p class="admin-section-desc">강퇴 처리된 회원 목록입니다. 회원 관리에서 강퇴한 아이디가 여기로 기록됩니다.</p>
+      </div>
+      <div class="admin-section-body">
+        <p class="admin-summary">
+          강퇴 건수: <strong id="forceWithdrawSummaryCount">0</strong>건
+          <button type="button" id="forceWithdrawClearBtn" class="admin-btn admin-btn--burn" style="margin-left:1rem;">선택 삭제</button>
+          <span style="font-size:0.8125rem; color:var(--text-muted); margin-left:0.5rem;">삭제된 지갑은 재가입 가능합니다.</span>
+        </p>
+        <div class="admin-table-wrap">
+          <table id="forceWithdrawTable" class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:2.5rem;"><input type="checkbox" id="forceWithdrawSelectAll" title="전체 선택"></th>
+                <th>닉네임</th>
+                <th>지갑 주소</th>
+                <th>강퇴 일시</th>
+                <th>처리자</th>
+              </tr>
+            </thead>
+            <tbody id="forceWithdrawBody"></tbody>
+          </table>
+        </div>
+        <p id="forceWithdrawNone" class="text-muted" style="font-size:0.9rem; display:none;">강제 탈퇴된 회원이 없습니다.</p>
+      </div>
+    </section>
+    </div>
+  </div>
+
+  <div id="tornDepositConfirmLayer" class="admin-confirm-layer" style="display:none;">
+    <div class="admin-confirm-box">
+      <h3>입금 주소 저장 확인</h3>
+      <p class="admin-section-desc">아래 주소가 맞는지 다시 한번 확인해 주세요. 저장하려면 관리자 비밀번호(6자리)를 입력하세요.</p>
+      <p id="tornDepositConfirmAddress" class="confirm-address"></p>
+      <label class="confirm-pin-label">관리자 비밀번호</label>
+      <input type="password" id="tornDepositConfirmPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="******" autocomplete="off" class="confirm-pin-input">
+      <p id="tornDepositConfirmPinErr" class="confirm-pin-err" style="display:none;"></p>
+      <div class="confirm-actions">
+        <button type="button" id="tornDepositConfirmCancel" class="btn-cancel">취소</button>
+        <button type="button" id="tornDepositConfirmOk" class="btn-confirm">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="completionConfirmLayer" class="admin-confirm-layer" style="display:none;">
+    <div class="admin-confirm-box completion-box">
+      <h3>교환 완료</h3>
+      <p class="admin-section-desc">해당 회원 지갑으로 전송을 완료하셨다면 아래에서 <strong>전송 완료</strong>를 눌러 주세요.</p>
+      <label class="confirm-pin-label">TORN 전송 TX 해시 (선택)</label>
+      <input type="text" id="completionTxInput" placeholder="0x... (선택)" class="confirm-pin-input" style="letter-spacing:normal; text-align:left;">
+      <div class="confirm-actions">
+        <button type="button" id="completionConfirmCancel" class="btn-cancel">취소</button>
+        <button type="button" id="completionConfirmOk" class="btn-confirm">전송 완료</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="forceWithdrawConfirmLayer" class="admin-confirm-layer" style="display:none;">
+    <div class="admin-confirm-box">
+      <h3>강제 탈퇴 확인</h3>
+      <p class="admin-section-desc">해당 회원을 강제 탈퇴시키겠습니까? 계정이 삭제됩니다.</p>
+      <p id="forceWithdrawConfirmName" class="confirm-address" style="margin:0.75rem 0;"></p>
+      <div class="confirm-actions">
+        <button type="button" id="forceWithdrawConfirmCancel" class="btn-cancel">취소</button>
+        <button type="button" id="forceWithdrawConfirmOk" class="btn-confirm">승인</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var pendingCompletion = null;
+      var adminDenied = document.getElementById('adminDenied');
+      var adminPage = document.getElementById('adminPage');
+      var adminPinGate = document.getElementById('adminPinGate');
+      var adminContent = document.getElementById('adminContent');
+      var adminPinForm = document.getElementById('adminPinForm');
+      var adminPinInput = document.getElementById('adminPinInput');
+      var adminPinErr = document.getElementById('adminPinErr');
+      var adminChangePinForm = document.getElementById('adminChangePinForm');
+      var adminChangePinMsg = document.getElementById('adminChangePinMsg');
+      var pendingNone = document.getElementById('pendingNone');
+      var pendingTable = document.getElementById('pendingTable');
+      var pendingBody = document.getElementById('pendingBody');
+      var usersBody = document.getElementById('usersBody');
+      var usersSearchInput = document.getElementById('usersSearchInput');
+      var lastRegularUsers = [];
+
+      (function setupCompletionConfirmLayer() {
+        var layer = document.getElementById('completionConfirmLayer');
+        var input = document.getElementById('completionTxInput');
+        var okBtn = document.getElementById('completionConfirmOk');
+        var cancelBtn = document.getElementById('completionConfirmCancel');
+        if (!layer) return;
+        if (cancelBtn) cancelBtn.addEventListener('click', function () {
+          if (pendingCompletion && pendingCompletion.selectEl) pendingCompletion.selectEl.value = pendingCompletion.selectEl.getAttribute('data-prev');
+          pendingCompletion = null;
+          layer.style.display = 'none';
+          if (input) input.value = '';
+        });
+        if (okBtn) okBtn.addEventListener('click', function () {
+          if (!pendingCompletion) return;
+          var txId = pendingCompletion.txId;
+          var selectEl = pendingCompletion.selectEl;
+          var txHash = (input && input.value) ? input.value.trim() : '';
+          pendingCompletion = null;
+          layer.style.display = 'none';
+          if (input) input.value = '';
+          if (selectEl) selectEl.disabled = true;
+          fetch('/api/admin/tfi-transactions/' + encodeURIComponent(txId) + '/status', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'completed', transactionHash: txHash }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data.ok && selectEl) selectEl.value = selectEl.getAttribute('data-prev');
+              else if (selectEl) {
+                selectEl.value = 'completed';
+                selectEl.setAttribute('data-prev', 'completed');
+                var row = selectEl.closest('tr');
+                if (row) {
+                  var completeBtn = row.querySelector('[data-complete-tx]');
+                  if (completeBtn && completeBtn.parentElement) completeBtn.parentElement.innerHTML = '';
+                }
+              }
+            })
+            .catch(function () { if (selectEl) selectEl.value = selectEl.getAttribute('data-prev'); })
+            .finally(function () { if (selectEl) selectEl.disabled = false; });
+        });
+      })();
+
+      function applyUsersFilter() {
+        var q = (usersSearchInput && usersSearchInput.value || '').trim().toLowerCase();
+        var list = lastRegularUsers;
+        if (q) {
+          list = lastRegularUsers.filter(function (u) {
+            var name = (u.displayName || '').toLowerCase();
+            var wallet = (u.walletAddress || '').toLowerCase();
+            return name.indexOf(q) !== -1 || wallet.indexOf(q) !== -1;
+          });
+        }
+        usersBody.innerHTML = renderUserRows(list);
+        attachTableHandlers(usersBody);
+        attachForceWithdrawHandlers(usersBody);
+        attachDeleteUserHandlers(usersBody);
+        attachLevelAdminHandlers(usersBody);
+        attachUserPointsHandlers(usersBody);
+      }
+
+      var LEVEL_NAMES = { 1: '조개', 2: '새우', 3: '광어', 4: '물개', 5: '상어', 6: '고래' };
+      var LEVEL_BADGES = { 1: '🐚', 2: '🦐', 3: '🐡', 4: '🦭', 5: '🦈', 6: '🐋' };
+      function levelBadge(lv) {
+        var n = Math.min(6, Math.max(1, parseInt(lv, 10) || 1));
+        var icon = LEVEL_BADGES[n] || '';
+        var name = LEVEL_NAMES[n] || '';
+        return (icon ? icon + ' ' : '') + 'Lv.' + n + (name ? ' ' + name : '');
+      }
+      function formatStaked(n) {
+        if (n == null || typeof n !== 'number' || isNaN(n)) return '—';
+        if (n >= 1000) return n.toLocaleString('ko-KR', { maximumFractionDigits: 1 });
+        return n.toFixed(1);
+      }
+      function renderUserRows(list) {
+        return list.map(function (u) {
+          var lv = Math.min(6, Math.max(1, parseInt(u.level, 10) || 1));
+          var pts = typeof u.points === 'number' ? u.points : 0;
+          var isFake = !!u.isFake;
+          var zeroWallet = '0x0000000000000000000000000000000000000000';
+          var walletDisplay = (isFake && (!u.walletAddress || u.walletAddress.toLowerCase() === zeroWallet.toLowerCase())) ? '—' : (u.walletAddress || '');
+          var badge = isFake ? '<span class="admin-fake-badge" title="관리자 생성 테스트 회원 (로그인 불가)">테스트</span>' : '<span class="admin-real-badge">실제</span>';
+          var isFounder = (u.displayName || '') === 'TornFi';
+          var levelAdminChecked = !!u.levelAdmin;
+          var levelAdminDisabled = isFounder ? ' disabled' : '';
+          var levelAdminCell = '<td class="admin-cell-center"><input type="checkbox" class="level-admin-cb" data-user-id="' + u.id + '"' + (levelAdminChecked ? ' checked' : '') + levelAdminDisabled + ' title="관리자 지정"></td>';
+          var stakedCell = '<td class="user-staked">' + formatStaked(u.staked) + '</td>';
+          var pointsCell = '<td class="points-current">' + pts + '</td>';
+          var pointsAction = '<td class="admin-cell-actions"><input type="number" data-points-delta placeholder="+/-" style="width:5rem;margin-right:0.25rem;" step="1"> <button type="button" class="admin-btn" data-points-apply="' + u.id + '">적용</button></td>';
+          var btn = isFake
+            ? '<button type="button" class="admin-btn admin-btn--burn" data-delete-user-btn="' + u.id + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">삭제</button>'
+            : '<button type="button" class="admin-btn admin-btn--burn" data-force-withdraw-btn="' + u.id + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">강퇴</button>';
+          return '<tr data-user-id="' + u.id + '"><td>' + (u.displayName || '-') + '</td><td>' + badge + '</td><td class="wallet">' + walletDisplay + '</td><td class="user-level">' + levelBadge(lv) + '</td>' + levelAdminCell + stakedCell + pointsCell + pointsAction + '<td class="admin-cell-actions">' + btn + '</td></tr>';
+        }).join('');
+      }
+
+      var pendingForceWithdrawUserId = null;
+      (function setupForceWithdrawConfirmLayer() {
+        var layer = document.getElementById('forceWithdrawConfirmLayer');
+        var cancelBtn = document.getElementById('forceWithdrawConfirmCancel');
+        var okBtn = document.getElementById('forceWithdrawConfirmOk');
+        if (!layer) return;
+        if (cancelBtn) cancelBtn.addEventListener('click', function () {
+          pendingForceWithdrawUserId = null;
+          layer.style.display = 'none';
+        });
+        if (okBtn) okBtn.addEventListener('click', function () {
+          if (!pendingForceWithdrawUserId) return;
+          var id = pendingForceWithdrawUserId;
+          pendingForceWithdrawUserId = null;
+          layer.style.display = 'none';
+          okBtn.disabled = true;
+          fetch('/api/admin/users/' + encodeURIComponent(id) + '/force-withdraw', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+              if (res.ok) {
+                if (typeof loadUsers === 'function') loadUsers();
+                if (res.message) alert(res.message);
+              } else if (res.message) {
+                alert(res.message);
+              }
+            })
+            .catch(function () { alert('강제 탈퇴 처리 중 오류가 발생했습니다.'); })
+            .finally(function () { okBtn.disabled = false; });
+        });
+      })();
+      function attachForceWithdrawHandlers(tbody) {
+        if (!tbody) return;
+        var layer = document.getElementById('forceWithdrawConfirmLayer');
+        var nameEl = document.getElementById('forceWithdrawConfirmName');
+        tbody.querySelectorAll('[data-force-withdraw-btn]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = this.getAttribute('data-force-withdraw-btn');
+            var displayName = (this.getAttribute('data-display-name') || '').replace(/&quot;/g, '"') || '(닉네임 없음)';
+            pendingForceWithdrawUserId = id;
+            if (nameEl) nameEl.textContent = displayName + ' — 강제 탈퇴하시겠습니까?';
+            if (layer) layer.style.display = 'flex';
+          });
+        });
+      }
+      function attachDeleteUserHandlers(tbody) {
+        if (!tbody) return;
+        tbody.querySelectorAll('[data-delete-user-btn]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = this.getAttribute('data-delete-user-btn');
+            var displayName = (this.getAttribute('data-display-name') || '').replace(/&quot;/g, '"') || '(닉네임 없음)';
+            if (!confirm('테스트 회원 "' + displayName + '"을(를) 삭제하시겠습니까?')) return;
+            btn.disabled = true;
+            fetch('/api/admin/users/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (res) {
+                if (res.ok) {
+                  if (typeof loadUsers === 'function') loadUsers();
+                  if (res.message) alert(res.message);
+                } else if (res.message) alert(res.message);
+              })
+              .catch(function () { alert('삭제 처리 중 오류가 발생했습니다.'); })
+              .finally(function () { btn.disabled = false; });
+          });
+        });
+      }
+
+      function attachLevelAdminHandlers(tbody) {
+        if (!tbody) return;
+        tbody.querySelectorAll('.level-admin-cb').forEach(function (cb) {
+          cb.addEventListener('change', function () {
+            if (this.disabled) return;
+            var userId = this.getAttribute('data-user-id');
+            var levelAdmin = this.checked;
+            var el = this;
+            el.disabled = true;
+            fetch('/api/admin/users/' + encodeURIComponent(userId) + '/level-admin', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ levelAdmin: levelAdmin }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  var u = lastRegularUsers.find(function (x) { return x.id === userId; });
+                  if (u) u.levelAdmin = data.levelAdmin;
+                  if (data.message) alert(data.message);
+                } else {
+                  el.checked = !levelAdmin;
+                  if (data && data.message) alert(data.message);
+                }
+              })
+              .catch(function () { el.checked = !levelAdmin; alert('관리자 설정 중 오류가 발생했습니다.'); })
+              .finally(function () { el.disabled = false; });
+          });
+        });
+      }
+
+      function attachUserPointsHandlers(tbody) {
+        if (!tbody) return;
+        tbody.querySelectorAll('[data-points-apply]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var userId = this.getAttribute('data-points-apply');
+            var row = this.closest('tr');
+            var input = row ? row.querySelector('[data-points-delta]') : null;
+            var deltaVal = input && input.value.trim() !== '' ? parseInt(input.value, 10) : NaN;
+            if (isNaN(deltaVal) || deltaVal === 0) {
+              alert('지급/차감할 하트를 숫자로 입력해 주세요. 양수=지급, 음수=차감.');
+              return;
+            }
+            btn.disabled = true;
+            fetch('/api/admin/users/' + encodeURIComponent(userId) + '/points', {
+              method: 'PATCH',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ delta: deltaVal }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok && typeof data.points === 'number') {
+                  var cell = row ? row.querySelector('.points-current') : null;
+                  if (cell) cell.textContent = data.points;
+                  var u = lastRegularUsers.find(function (x) { return x.id === userId; });
+                  if (u) u.points = data.points;
+                  if (input) input.value = '';
+                  if (data.message) alert(data.message);
+                } else if (data && data.message) alert(data.message);
+              })
+              .catch(function () { alert('하트 반영 중 오류가 발생했습니다.'); })
+              .finally(function () { btn.disabled = false; });
+          });
+        });
+      }
+
+      function attachTableHandlers(tbody) {
+        if (!tbody) return;
+      }
+
+      function loadPending() {
+        fetch('/api/admin/pending-users', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            var list = data.users || [];
+            if (list.length === 0) {
+              pendingNone.style.display = 'block';
+              pendingTable.style.display = 'none';
+              return;
+            }
+            pendingNone.style.display = 'none';
+            pendingTable.style.display = 'table';
+            pendingBody.innerHTML = list.map(function (u) {
+              var date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ko-KR') : '-';
+              return '<tr><td>' + (u.displayName || '-') + '</td><td class="wallet">' + (u.walletAddress || '') + '</td><td>' + (u.referrer || '-') + '</td><td>' + date + '</td><td class="admin-cell-actions"><button type="button" class="admin-btn" data-approve="' + u.id + '">승인</button> <button type="button" class="admin-btn admin-btn--burn" data-reject="' + u.id + '">거부</button></td></tr>';
+            }).join('');
+            pendingBody.querySelectorAll('[data-approve]').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var id = this.getAttribute('data-approve');
+                this.disabled = true;
+                fetch('/api/admin/approve/' + id, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } })
+                  .then(function (r) { return r.json(); })
+                  .then(function (res) {
+                    if (res.ok) loadPending();
+                    if (res.message) alert(res.message);
+                  })
+                  .finally(function () { btn.disabled = false; });
+              });
+            });
+            pendingBody.querySelectorAll('[data-reject]').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var id = this.getAttribute('data-reject');
+                if (!confirm('이 가입 신청을 거부하시겠습니까?\n해당 회원 정보가 삭제되며, 사용자는 다시 가입해야 합니다.')) return;
+                this.disabled = true;
+                fetch('/api/admin/reject/' + id, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } })
+                  .then(function (r) { return r.json(); })
+                  .then(function (res) {
+                    if (res.ok) loadPending();
+                    if (res.message) alert(res.message);
+                  })
+                  .catch(function () { alert('거부 처리 중 오류가 발생했습니다.'); })
+                  .finally(function () { btn.disabled = false; });
+              });
+            });
+          });
+      }
+
+      function loadUsers() {
+        fetch('/api/admin/users?includeStaking=1', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            var list = data.users || [];
+            var regularUsers = list.filter(function (u) { return !u.managementAccount; });
+            lastRegularUsers = regularUsers;
+            var countEl = document.getElementById('usersSummaryCount');
+            if (countEl) countEl.textContent = regularUsers.length;
+            applyUsersFilter();
+          });
+      }
+
+      if (usersSearchInput) usersSearchInput.addEventListener('input', applyUsersFilter);
+
+      var createUserBtn = document.getElementById('createUserBtn');
+      var createUserDisplayName = document.getElementById('createUserDisplayName');
+      var createUserWallet = document.getElementById('createUserWallet');
+      var createUserLevel = document.getElementById('createUserLevel');
+      if (createUserBtn && createUserDisplayName) {
+        createUserBtn.addEventListener('click', function () {
+          var name = (createUserDisplayName.value || '').trim();
+          if (!name) {
+            alert('닉네임을 입력해 주세요.');
+            return;
+          }
+          var wallet = (createUserWallet && createUserWallet.value) ? createUserWallet.value.trim() : '';
+          var levelVal = (createUserLevel && createUserLevel.value) ? parseInt(createUserLevel.value, 10) : 1;
+          var body = { displayName: name };
+          if (wallet) body.walletAddress = wallet;
+          if (levelVal >= 1 && levelVal <= 6) body.level = levelVal;
+          createUserBtn.disabled = true;
+          fetch('/api/admin/users', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.ok) {
+                createUserDisplayName.value = '';
+                if (createUserWallet) createUserWallet.value = '';
+                if (createUserLevel) createUserLevel.value = '1';
+                if (typeof loadUsers === 'function') loadUsers();
+                if (data.message) alert(data.message);
+              } else if (data.message) alert(data.message);
+            })
+            .catch(function () { alert('테스트 회원 생성 중 오류가 발생했습니다.'); })
+            .finally(function () { createUserBtn.disabled = false; });
+        });
+      }
+
+      function loadTornDepositAddress() {
+        var inputEl = document.getElementById('tornDepositAddressInput');
+        if (!inputEl) return;
+        fetch('/api/admin/settings/torn-deposit-address', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && data.address) inputEl.value = data.address;
+          })
+          .catch(function () {});
+      }
+
+      function loadTotalPointsSummary() {
+        var elAll = document.getElementById('totalPointsAll');
+        var elMgmt = document.getElementById('totalPointsManagement');
+        var elRegular = document.getElementById('totalPointsRegular');
+        if (!elAll && !elMgmt && !elRegular) return;
+        fetch('/api/admin/users', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok || !Array.isArray(data.users)) return;
+            var list = data.users || [];
+            var total = 0;
+            var management = 0;
+            var regular = 0;
+            list.forEach(function (u) {
+              var pts = typeof u.points === 'number' ? u.points : 0;
+              total += pts;
+              if (u.managementAccount) management += pts;
+              else regular += pts;
+            });
+            var fmt = function (n) { return Number(n).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+            if (elAll) elAll.textContent = fmt(total);
+            if (elMgmt) elMgmt.textContent = fmt(management);
+            if (elRegular) elRegular.textContent = fmt(regular);
+          })
+          .catch(function () {
+            if (elAll) elAll.textContent = '—';
+            if (elMgmt) elMgmt.textContent = '—';
+            if (elRegular) elRegular.textContent = '—';
+          });
+      }
+
+      var supplySummary = { collateral: null, totalSupply: null, circulation: null };
+      function updateSupplySummaryDisplay() {
+        var elCol = document.getElementById('supplySummaryCollateral');
+        var elCirc = document.getElementById('supplySummaryCirculation');
+        var elCap = document.getElementById('supplySummaryCap');
+        var elRatio = document.getElementById('supplySummaryRatio');
+        var elRemain = document.getElementById('supplySummaryRemaining');
+        if (elCol) elCol.textContent = supplySummary.collateral != null ? formatTornNum(supplySummary.collateral) : '—';
+        if (elCirc) elCirc.textContent = supplySummary.circulation != null ? Number(supplySummary.circulation).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '—';
+        if (elCap) elCap.textContent = supplySummary.totalSupply != null ? Number(supplySummary.totalSupply).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '한도 없음';
+        var circ = supplySummary.circulation;
+        var col = supplySummary.collateral;
+        var cap = supplySummary.totalSupply;
+        if (elRatio) {
+          if (col != null && col > 0 && circ != null && !isNaN(circ)) {
+            elRatio.textContent = (circ / col * 100).toFixed(1) + '%';
+          } else { elRatio.textContent = '—'; }
+        }
+        var elLevel = document.getElementById('supplySummaryLevel');
+        if (elLevel) {
+          var pct = null;
+          if (cap != null && cap > 0 && circ != null && !isNaN(circ)) pct = circ / cap * 100;
+          else if (col != null && col > 0 && circ != null && !isNaN(circ)) pct = circ / col * 100;
+          if (pct != null) {
+            if (pct <= 30) {
+              elLevel.textContent = '안전';
+              elLevel.style.color = 'var(--neon)';
+            } else if (pct <= 50) {
+              elLevel.textContent = '보통';
+              elLevel.style.color = '#eab308';
+            } else if (pct <= 80) {
+              elLevel.textContent = '주의';
+              elLevel.style.color = '#f97316';
+            } else {
+              elLevel.textContent = '위험';
+              elLevel.style.color = 'var(--danger)';
+            }
+          } else {
+            elLevel.textContent = '—';
+            elLevel.style.color = '';
+          }
+        }
+        if (elRemain) {
+          if (cap != null && circ != null && !isNaN(circ)) {
+            var remain = Math.max(0, cap - circ);
+            elRemain.textContent = Number(remain).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          } else if (col != null && circ != null && !isNaN(circ)) {
+            var maxByCol = Math.max(0, Math.floor(col) - circ);
+            elRemain.textContent = '한도 미설정 · 최대 ' + Number(maxByCol).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          } else { elRemain.textContent = '—'; }
+        }
+      }
+      function loadTotalSupply() {
+        fetch('/api/admin/settings/total-supply', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            supplySummary.totalSupply = data.totalSupply != null ? data.totalSupply : null;
+            supplySummary.circulation = typeof data.circulation === 'number' ? data.circulation : null;
+            if (data.collateral != null) supplySummary.collateral = data.collateral;
+            updateSupplySummaryDisplay();
+          })
+          .catch(function () {});
+      }
+
+      function formatTornNum(n) {
+        if (n == null || isNaN(n)) return '—';
+        return Number(n).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' TORN';
+      }
+      function formatEthNum(n) {
+        if (n == null || isNaN(n)) return '—';
+        return Number(n).toLocaleString('en', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' ETH';
+      }
+      function loadTornReserveBalance() {
+        var elStaked = document.getElementById('tornReserveStaked');
+        var elReward = document.getElementById('tornReserveReward');
+        var elEth = document.getElementById('tornReserveEth');
+        var elWallet = document.getElementById('tornReserveWallet');
+        var elTotal = document.getElementById('tornReserveTotal');
+        var elErr = document.getElementById('tornReserveBalanceErr');
+        if (elStaked) elStaked.textContent = '조회 중…';
+        if (elReward) elReward.textContent = '조회 중…';
+        if (elEth) elEth.textContent = '조회 중…';
+        if (elWallet) elWallet.textContent = '조회 중…';
+        if (elTotal) elTotal.textContent = '조회 중…';
+        if (elErr) { elErr.style.display = 'none'; elErr.textContent = ''; }
+        fetch('/api/admin/torn-reserve-balance', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) {
+              if (elErr) { elErr.textContent = data.message || '조회 실패'; elErr.style.display = 'block'; }
+              if (elStaked) elStaked.textContent = '—';
+              if (elReward) elReward.textContent = '—';
+              if (elEth) elEth.textContent = '—';
+              if (elWallet) elWallet.textContent = '—';
+              if (elTotal) elTotal.textContent = '—';
+              supplySummary.collateral = null;
+              updateSupplySummaryDisplay();
+              return;
+            }
+            var tornInput = document.getElementById('tornDepositAddressInput');
+            if (tornInput && data.address) tornInput.value = data.address;
+            if (elStaked) elStaked.textContent = formatTornNum(data.staked);
+            if (elReward) elReward.textContent = formatTornNum(data.unclaimedReward);
+            if (elEth) elEth.textContent = formatEthNum(data.ethBalance);
+            if (elWallet) elWallet.textContent = formatTornNum(data.walletBalance);
+            if (elTotal) elTotal.textContent = formatTornNum(data.total);
+            supplySummary.collateral = typeof data.total === 'number' ? data.total : null;
+            updateSupplySummaryDisplay();
+          })
+          .catch(function () {
+            if (elErr) { elErr.textContent = '네트워크 오류.'; elErr.style.display = 'block'; }
+            if (elStaked) elStaked.textContent = '—';
+            if (elReward) elReward.textContent = '—';
+            if (elEth) elEth.textContent = '—';
+            if (elWallet) elWallet.textContent = '—';
+            if (elTotal) elTotal.textContent = '—';
+            supplySummary.collateral = null;
+            updateSupplySummaryDisplay();
+          });
+      }
+      var totalPointsRefreshBtn = document.getElementById('totalPointsRefreshBtn');
+      if (totalPointsRefreshBtn) totalPointsRefreshBtn.addEventListener('click', function () { loadTotalPointsSummary(); loadTotalSupply(); });
+
+      var totalSupplySaveBtn = document.getElementById('totalSupplySaveBtn');
+      var totalSupplyMsgEl = document.getElementById('totalSupplyMsg');
+      var totalSupplyConfirmLayer = document.getElementById('totalSupplyConfirmLayer');
+      var totalSupplyConfirmValue = document.getElementById('totalSupplyConfirmValue');
+      var totalSupplyConfirmPin = document.getElementById('totalSupplyConfirmPin');
+      var totalSupplyConfirmPinErr = document.getElementById('totalSupplyConfirmPinErr');
+      var totalSupplyConfirmCancel = document.getElementById('totalSupplyConfirmCancel');
+      var totalSupplyConfirmOk = document.getElementById('totalSupplyConfirmOk');
+      var pendingTotalSupplyValue = null;
+
+      function closeTotalSupplyConfirm() {
+        if (totalSupplyConfirmLayer) totalSupplyConfirmLayer.style.display = 'none';
+        if (totalSupplyConfirmPin) totalSupplyConfirmPin.value = '';
+        if (totalSupplyConfirmPinErr) { totalSupplyConfirmPinErr.style.display = 'none'; totalSupplyConfirmPinErr.textContent = ''; }
+        pendingTotalSupplyValue = null;
+      }
+
+      if (totalSupplyConfirmCancel) totalSupplyConfirmCancel.addEventListener('click', closeTotalSupplyConfirm);
+
+      if (totalSupplySaveBtn) {
+        totalSupplySaveBtn.addEventListener('click', function () {
+          var inputEl = document.getElementById('totalSupplyInput');
+          if (!inputEl) return;
+          var raw = inputEl.value.trim();
+          var val = raw === '' ? NaN : parseInt(inputEl.value, 10);
+          if (!Number.isInteger(val) || val < 0) {
+            if (totalSupplyMsgEl) { totalSupplyMsgEl.textContent = '0 이상의 정수를 입력해 주세요.'; totalSupplyMsgEl.style.color = 'var(--danger)'; }
+            return;
+          }
+          var maxAttr = inputEl.getAttribute('max');
+          if (maxAttr !== null && maxAttr !== '') {
+            var collateralMax = parseInt(maxAttr, 10);
+            if (!isNaN(collateralMax) && val > collateralMax) {
+              if (totalSupplyMsgEl) { totalSupplyMsgEl.textContent = '총 발행량은 담보(' + Number(collateralMax).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' TORN)를 초과할 수 없습니다.'; totalSupplyMsgEl.style.color = 'var(--danger)'; }
+              return;
+            }
+          }
+          if (totalSupplyMsgEl) { totalSupplyMsgEl.textContent = ''; }
+          pendingTotalSupplyValue = val;
+          if (totalSupplyConfirmValue) totalSupplyConfirmValue.textContent = Number(val).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          if (totalSupplyConfirmPin) totalSupplyConfirmPin.value = '';
+          if (totalSupplyConfirmPinErr) { totalSupplyConfirmPinErr.style.display = 'none'; }
+          if (totalSupplyConfirmLayer) totalSupplyConfirmLayer.style.display = 'flex';
+        });
+      }
+
+      if (totalSupplyConfirmOk) {
+        totalSupplyConfirmOk.addEventListener('click', function () {
+          if (pendingTotalSupplyValue == null) return;
+          var pin = (totalSupplyConfirmPin && totalSupplyConfirmPin.value || '').trim();
+          if (!/^[0-9]{6}$/.test(pin)) {
+            if (totalSupplyConfirmPinErr) { totalSupplyConfirmPinErr.textContent = '관리자 비밀번호 6자리를 입력해 주세요.'; totalSupplyConfirmPinErr.style.display = 'block'; }
+            return;
+          }
+          if (totalSupplyConfirmPinErr) totalSupplyConfirmPinErr.style.display = 'none';
+          totalSupplyConfirmOk.disabled = true;
+          fetch('/api/admin/verify-pin', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: pin }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data.ok) {
+                if (totalSupplyConfirmPinErr) { totalSupplyConfirmPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.'; totalSupplyConfirmPinErr.style.display = 'block'; }
+                totalSupplyConfirmOk.disabled = false;
+                return;
+              }
+              return fetch('/api/admin/settings/total-supply', {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ totalSupply: pendingTotalSupplyValue }),
+              }).then(function (r) { return r.json(); });
+            })
+            .then(function (data) {
+              if (data && data.ok) {
+                closeTotalSupplyConfirm();
+                loadTotalSupply();
+                loadTotalPointsSummary();
+                if (totalSupplyMsgEl) { totalSupplyMsgEl.textContent = data.message || '저장되었습니다.'; totalSupplyMsgEl.style.color = 'var(--neon)'; }
+              } else if (data && !data.ok) {
+                if (totalSupplyConfirmPinErr) { totalSupplyConfirmPinErr.textContent = data.message || '저장에 실패했습니다.'; totalSupplyConfirmPinErr.style.display = 'block'; }
+                if (totalSupplyMsgEl) { totalSupplyMsgEl.textContent = data.message || ''; totalSupplyMsgEl.style.color = 'var(--danger)'; }
+              }
+            })
+            .catch(function () {
+              if (totalSupplyConfirmPinErr) { totalSupplyConfirmPinErr.textContent = '저장 중 오류가 발생했습니다.'; totalSupplyConfirmPinErr.style.display = 'block'; }
+            })
+            .finally(function () { totalSupplyConfirmOk.disabled = false; });
+        });
+      }
+
+      var tornDepositAddressSaveBtn = document.getElementById('tornDepositAddressSave');
+      var tornDepositAddressMsgEl = document.getElementById('tornDepositAddressMsg');
+      var tornDepositConfirmLayer = document.getElementById('tornDepositConfirmLayer');
+      var tornDepositConfirmAddress = document.getElementById('tornDepositConfirmAddress');
+      var tornDepositConfirmPin = document.getElementById('tornDepositConfirmPin');
+      var tornDepositConfirmPinErr = document.getElementById('tornDepositConfirmPinErr');
+      var tornDepositConfirmCancel = document.getElementById('tornDepositConfirmCancel');
+      var tornDepositConfirmOk = document.getElementById('tornDepositConfirmOk');
+      var pendingTornDepositAddress = null;
+
+      function closeTornDepositConfirm() {
+        if (tornDepositConfirmLayer) tornDepositConfirmLayer.style.display = 'none';
+        if (tornDepositConfirmPin) tornDepositConfirmPin.value = '';
+        if (tornDepositConfirmPinErr) { tornDepositConfirmPinErr.style.display = 'none'; tornDepositConfirmPinErr.textContent = ''; }
+        pendingTornDepositAddress = null;
+      }
+
+      if (tornDepositConfirmCancel) tornDepositConfirmCancel.addEventListener('click', closeTornDepositConfirm);
+
+      if (tornDepositAddressSaveBtn) {
+        tornDepositAddressSaveBtn.addEventListener('click', function () {
+          var inputEl = document.getElementById('tornDepositAddressInput');
+          if (!inputEl) return;
+          var addr = (inputEl.value || '').trim();
+          if (!addr) {
+            if (tornDepositAddressMsgEl) { tornDepositAddressMsgEl.textContent = '주소를 입력해 주세요.'; tornDepositAddressMsgEl.style.display = 'block'; tornDepositAddressMsgEl.style.color = 'var(--danger)'; }
+            return;
+          }
+          pendingTornDepositAddress = addr;
+          if (tornDepositConfirmAddress) tornDepositConfirmAddress.textContent = addr;
+          if (tornDepositConfirmPin) tornDepositConfirmPin.value = '';
+          if (tornDepositConfirmPinErr) tornDepositConfirmPinErr.style.display = 'none';
+          if (tornDepositConfirmLayer) tornDepositConfirmLayer.style.display = 'flex';
+        });
+      }
+
+      if (tornDepositConfirmOk) {
+        tornDepositConfirmOk.addEventListener('click', function () {
+          if (!pendingTornDepositAddress) return;
+          var pin = (tornDepositConfirmPin && tornDepositConfirmPin.value || '').trim();
+          if (!/^[0-9]{6}$/.test(pin)) {
+            if (tornDepositConfirmPinErr) { tornDepositConfirmPinErr.textContent = '관리자 비밀번호 6자리를 입력해 주세요.'; tornDepositConfirmPinErr.style.display = 'block'; }
+            return;
+          }
+          if (tornDepositConfirmPinErr) tornDepositConfirmPinErr.style.display = 'none';
+          tornDepositConfirmOk.disabled = true;
+          fetch('/api/admin/verify-pin', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: pin }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (!data.ok) {
+                if (tornDepositConfirmPinErr) { tornDepositConfirmPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.'; tornDepositConfirmPinErr.style.display = 'block'; }
+                tornDepositConfirmOk.disabled = false;
+                return;
+              }
+              return fetch('/api/admin/settings/torn-deposit-address', {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address: pendingTornDepositAddress }),
+              }).then(function (r) { return r.json(); });
+            })
+            .then(function (patchRes) {
+              if (patchRes && patchRes.ok) {
+                var inputEl = document.getElementById('tornDepositAddressInput');
+                if (inputEl && patchRes.address) inputEl.value = patchRes.address;
+                closeTornDepositConfirm();
+                if (tornDepositAddressMsgEl) { tornDepositAddressMsgEl.textContent = patchRes.message || '저장되었습니다.'; tornDepositAddressMsgEl.style.color = 'var(--neon)'; tornDepositAddressMsgEl.style.display = 'block'; }
+                loadTornReserveBalance();
+              } else if (patchRes && patchRes.message && tornDepositConfirmPinErr) {
+                tornDepositConfirmPinErr.textContent = patchRes.message;
+                tornDepositConfirmPinErr.style.display = 'block';
+              }
+            })
+            .catch(function () {
+              if (tornDepositConfirmPinErr) { tornDepositConfirmPinErr.textContent = '저장 중 오류가 발생했습니다.'; tornDepositConfirmPinErr.style.display = 'block'; }
+            })
+            .finally(function () { tornDepositConfirmOk.disabled = false; });
+        });
+      }
+
+      if (tornDepositConfirmPin) {
+        tornDepositConfirmPin.addEventListener('input', function () {
+          this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        });
+      }
+
+      var tornReserveBalanceIntervalId = null;
+      function showPanel(panelId) {
+        if (tornReserveBalanceIntervalId) {
+          clearInterval(tornReserveBalanceIntervalId);
+          tornReserveBalanceIntervalId = null;
+        }
+        document.querySelectorAll('.admin-panel').forEach(function (el) { el.classList.remove('is-active'); });
+        document.querySelectorAll('.admin-nav-link').forEach(function (el) { el.classList.remove('is-active'); });
+        var panel = document.getElementById(panelId);
+        var link = document.querySelector('.admin-nav-link[data-panel="' + panelId + '"]');
+        if (panel) panel.classList.add('is-active');
+        if (link) link.classList.add('is-active');
+        var dropdownWraps = document.querySelectorAll('.admin-nav-dropdown-wrap');
+        var accountPanelIds = ['adminAccountSection', 'adminLevelTable', 'adminPending', 'adminUsersSection', 'adminForceWithdrawSection'];
+        if (dropdownWraps[0] && accountPanelIds.indexOf(panelId) !== -1) {
+          var accountMain = dropdownWraps[0].querySelector('.admin-nav-link');
+          if (accountMain) accountMain.classList.add('is-active');
+        }
+        if (panelId === 'adminAccountSection') {
+          loadAdminAccount();
+        }
+        if (panelId === 'adminPending') {
+          loadAutoApproveSetting();
+        }
+        if (panelId === 'adminForceWithdrawSection') {
+          loadForceWithdrawn();
+        }
+        if (panelId === 'adminTornadoNewsSection') {
+          loadTornadoNewsSources();
+          loadTornadoNewsKeywords();
+          loadTornadoNewsList();
+        }
+      }
+
+      function escapeHtmlTn(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      function loadTornadoNewsList() {
+        var tbody = document.getElementById('adminTnNewsBody');
+        var emptyEl = document.getElementById('adminTnNewsEmpty');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">불러오는 중…</td></tr>';
+        if (emptyEl) emptyEl.style.display = 'none';
+        fetch('/api/tornado-news?limit=50&offset=0', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok || !data.items) {
+              tbody.innerHTML = '<tr><td colspan="4" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
+              return;
+            }
+            var items = data.items;
+            if (items.length === 0) {
+              tbody.innerHTML = '';
+              if (emptyEl) emptyEl.style.display = 'block';
+              return;
+            }
+            if (emptyEl) emptyEl.style.display = 'none';
+            tbody.innerHTML = items.map(function (it) {
+              var title = (it.titleKo || it.title || '').slice(0, 80);
+              if ((it.titleKo || it.title || '').length > 80) title += '…';
+              var date = it.createdAt ? new Date(it.createdAt).toLocaleDateString('ko-KR') : '';
+              var src = escapeHtmlTn(it.sourceName || '—');
+              return '<tr data-id="' + escapeHtmlTn(it.id) + '">' +
+                '<td style="max-width:240px; overflow:hidden; text-overflow:ellipsis;" title="' + escapeHtmlTn(it.titleKo || it.title || '') + '">' + escapeHtmlTn(title) + '</td>' +
+                '<td>' + src + '</td>' +
+                '<td>' + escapeHtmlTn(date) + '</td>' +
+                '<td style="text-align:center;"><button type="button" class="admin-btn admin-btn--burn admin-tn-delete-item" data-id="' + escapeHtmlTn(it.id) + '" style="padding:0.3rem 0.5rem; font-size:0.75rem;">삭제</button></td>' +
+                '</tr>';
+            }).join('');
+            tbody.querySelectorAll('.admin-tn-delete-item').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                if (!id || !confirm('이 기사를 삭제할까요?')) return;
+                var row = btn.closest('tr');
+                if (row) row.style.opacity = '0.5';
+                btn.disabled = true;
+                fetch('/api/tornado-news/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' })
+                  .then(function (r) { return r.json(); })
+                  .then(function (res) {
+                    if (res.ok) loadTornadoNewsList();
+                    else { if (row) row.style.opacity = '1'; btn.disabled = false; alert(res.message || '삭제 실패'); }
+                  })
+                  .catch(function () { if (row) row.style.opacity = '1'; btn.disabled = false; });
+              });
+            });
+          })
+          .catch(function () {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
+          });
+      }
+      function loadTornadoNewsKeywords() {
+        var ta = document.getElementById('adminTnKeywords');
+        var msg = document.getElementById('adminTnKeywordsMsg');
+        if (!ta) return;
+        fetch('/api/tornado-news/keywords', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && Array.isArray(data.keywords)) {
+              ta.value = data.keywords.join('\n');
+            }
+            if (msg) msg.textContent = '';
+          })
+          .catch(function () { if (msg) msg.textContent = '키워드 불러오기 실패'; });
+      }
+      function loadTornadoNewsSources() {
+        var listEl = document.getElementById('adminTornadoNewsSourcesList');
+        if (!listEl) return;
+        fetch('/api/tornado-news/sources', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok || !data.sources) { listEl.innerHTML = '<p class="text-muted">소스가 없습니다.</p>'; return; }
+            var sources = data.sources;
+            if (sources.length === 0) { listEl.innerHTML = '<p class="text-muted">소스가 없습니다.</p>'; return; }
+            listEl.innerHTML = sources.map(function (s) {
+              return '<div class="admin-tn-source-row" data-id="' + escapeHtmlTn(s.id) + '">' +
+                '<span style="font-size:0.9rem; word-break:break-all;">' + escapeHtmlTn(s.name) + ' — ' + escapeHtmlTn(s.url) + '</span>' +
+                '<button type="button" class="admin-btn admin-btn--outline admin-tn-delete-source" data-delete="' + escapeHtmlTn(s.id) + '" style="padding:0.35rem 0.6rem; font-size:0.8rem;">삭제</button>' +
+                '</div>';
+            }).join('');
+            listEl.querySelectorAll('.admin-tn-delete-source').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var id = this.getAttribute('data-delete');
+                if (!id || !confirm('이 소스를 삭제할까요?')) return;
+                fetch('/api/tornado-news/sources/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' })
+                  .then(function (r) { return r.json(); })
+                  .then(function (d) { if (d.ok) loadTornadoNewsSources(); });
+              });
+            });
+          });
+      }
+      (function setupTornadoNewsAdmin() {
+        var addBtn = document.getElementById('adminTnAddSourceBtn');
+        var nameInput = document.getElementById('adminTnSourceName');
+        var urlInput = document.getElementById('adminTnSourceUrl');
+        var fetchBtn = document.getElementById('adminTnFetchBtn');
+        var fetchMsg = document.getElementById('adminTnFetchMsg');
+        if (addBtn && nameInput && urlInput) {
+          addBtn.addEventListener('click', function () {
+            var name = (nameInput.value || '').trim();
+            var url = (urlInput.value || '').trim();
+            if (!name || !url) { alert('이름과 URL을 입력해 주세요.'); return; }
+            addBtn.disabled = true;
+            fetch('/api/tornado-news/sources', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: name, url: url }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  nameInput.value = '';
+                  urlInput.value = '';
+                  loadTornadoNewsSources();
+                } else {
+                  alert(data.message || '추가 실패');
+                }
+              })
+              .finally(function () { addBtn.disabled = false; });
+          });
+        }
+        var translateExistingBtn = document.getElementById('adminTnTranslateExistingBtn');
+        var translateExistingMsg = document.getElementById('adminTnTranslateExistingMsg');
+        if (translateExistingBtn) {
+          translateExistingBtn.addEventListener('click', function () {
+            translateExistingMsg.textContent = '번역 중…';
+            translateExistingBtn.disabled = true;
+            fetch('/api/tornado-news/translate-existing', { method: 'POST', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  translateExistingMsg.textContent = data.translated ? data.translated + '건 번역됨.' + (data.remaining ? ' 남은 ' + data.remaining + '건은 다시 눌러 주세요.' : '') : '번역할 기사가 없습니다.';
+                } else {
+                  translateExistingMsg.textContent = data.message || '번역 실패';
+                }
+              })
+              .catch(function () { translateExistingMsg.textContent = '요청 실패'; })
+              .finally(function () { translateExistingBtn.disabled = false; });
+          });
+        }
+        var dedupeBtn = document.getElementById('adminTnDedupeBtn');
+        var dedupeMsg = document.getElementById('adminTnDedupeMsg');
+        if (dedupeBtn) {
+          dedupeBtn.addEventListener('click', function () {
+            dedupeMsg.textContent = '처리 중…';
+            dedupeBtn.disabled = true;
+            fetch('/api/tornado-news/dedupe', { method: 'POST', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  dedupeMsg.textContent = data.removed ? data.removed + '건 제거됨. ' + data.kept + '건 유지.' : '중복 없음.';
+                } else {
+                  dedupeMsg.textContent = data.message || '제거 실패';
+                }
+              })
+              .catch(function () { dedupeMsg.textContent = '요청 실패'; })
+              .finally(function () { dedupeBtn.disabled = false; });
+          });
+        }
+        if (fetchBtn && fetchMsg) {
+          fetchBtn.addEventListener('click', function () {
+            fetchMsg.textContent = '수집 중…';
+            fetchBtn.disabled = true;
+            fetch('/api/tornado-news/fetch', { method: 'POST', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  fetchMsg.textContent = '추가됨: ' + (data.added || 0) + '건' + (data.deduped ? ' 중복제거 ' + data.deduped + '건' : '') + (data.errors && data.errors.length ? ' (오류: ' + data.errors.length + '건)' : '');
+                  loadTornadoNewsList();
+                } else {
+                  fetchMsg.textContent = data.message || '수집 실패';
+                }
+              })
+              .catch(function () { fetchMsg.textContent = '요청 실패'; })
+              .finally(function () { fetchBtn.disabled = false; });
+          });
+        }
+        var keywordsSaveBtn = document.getElementById('adminTnKeywordsSave');
+        var keywordsMsg = document.getElementById('adminTnKeywordsMsg');
+        var keywordsTa = document.getElementById('adminTnKeywords');
+        if (keywordsSaveBtn && keywordsTa) {
+          keywordsSaveBtn.addEventListener('click', function () {
+            var raw = (keywordsTa.value || '').trim();
+            var keywords = raw.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+            if (keywords.length === 0) {
+              if (keywordsMsg) { keywordsMsg.textContent = '키워드를 한 줄에 하나씩 입력해 주세요.'; keywordsMsg.style.color = 'var(--danger)'; }
+              return;
+            }
+            keywordsSaveBtn.disabled = true;
+            if (keywordsMsg) keywordsMsg.textContent = '';
+            fetch('/api/tornado-news/keywords', {
+              method: 'PUT',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ keywords: keywords }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  if (keywordsMsg) { keywordsMsg.textContent = '저장되었습니다.'; keywordsMsg.style.color = 'var(--neon)'; }
+                } else {
+                  if (keywordsMsg) { keywordsMsg.textContent = data.message || '저장 실패'; keywordsMsg.style.color = 'var(--danger)'; }
+                }
+              })
+              .catch(function () {
+                if (keywordsMsg) { keywordsMsg.textContent = '요청 실패'; keywordsMsg.style.color = 'var(--danger)'; }
+              })
+              .finally(function () { keywordsSaveBtn.disabled = false; });
+          });
+        }
+      })();
+
+      function loadForceWithdrawn() {
+        var tbody = document.getElementById('forceWithdrawBody');
+        var countEl = document.getElementById('forceWithdrawSummaryCount');
+        var noneEl = document.getElementById('forceWithdrawNone');
+        var tableEl = document.getElementById('forceWithdrawTable');
+        if (!tbody) return;
+        fetch('/api/admin/force-withdrawn', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            var list = data.entries || [];
+            if (countEl) countEl.textContent = list.length;
+            if (list.length === 0) {
+              if (noneEl) noneEl.style.display = 'block';
+              if (tableEl) tableEl.style.display = 'none';
+              tbody.innerHTML = '';
+              return;
+            }
+            if (noneEl) noneEl.style.display = 'none';
+            if (tableEl) tableEl.style.display = 'table';
+            tbody.innerHTML = list.map(function (e) {
+              var id = (e.id || '').replace(/"/g, '&quot;');
+              var name = (e.displayName || '').trim() || '-';
+              var wallet = (e.walletAddress || '').trim() || '-';
+              var date = e.withdrawnAt ? new Date(e.withdrawnAt).toLocaleString('ko-KR') : '-';
+              var by = (e.withdrawnByDisplayName || '').trim() || '-';
+              return '<tr><td><input type="checkbox" class="force-withdraw-cb" value="' + id + '" data-entry-id="' + id + '"></td><td>' + name + '</td><td class="wallet">' + wallet + '</td><td>' + date + '</td><td>' + by + '</td></tr>';
+            }).join('');
+          });
+      }
+
+      (function setupForceWithdrawClearBtn() {
+        var btn = document.getElementById('forceWithdrawClearBtn');
+        var selectAll = document.getElementById('forceWithdrawSelectAll');
+        if (!btn) return;
+        if (selectAll) {
+          selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.force-withdraw-cb').forEach(function (cb) {
+              cb.checked = selectAll.checked;
+            });
+          });
+        }
+        btn.addEventListener('click', function () {
+          var ids = [];
+          document.querySelectorAll('.force-withdraw-cb:checked').forEach(function (cb) {
+            var id = cb.getAttribute('data-entry-id') || cb.value;
+            if (id) ids.push(id);
+          });
+          if (ids.length === 0) {
+            alert('삭제할 회원을 선택해 주세요.');
+            return;
+          }
+          if (!confirm('선택한 ' + ids.length + '건의 탈퇴 이력을 삭제하시겠습니까?\n삭제된 지갑은 재가입할 수 있습니다.')) return;
+          btn.disabled = true;
+          fetch('/api/admin/force-withdrawn', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: ids }),
+          })
+            .then(function (r) { return r.json().then(function (data) { return { status: r.status, data: data }; }); })
+            .then(function (result) {
+              if (result.data && result.data.ok) {
+                if (selectAll) selectAll.checked = false;
+                loadForceWithdrawn();
+                alert(result.data.message || '선택한 탈퇴 이력이 삭제되었습니다.');
+              } else if (result.status === 403) {
+                alert('관리자만 탈퇴 이력을 지울 수 있습니다.');
+              } else if (result.data && result.data.message) {
+                alert(result.data.message);
+              }
+            })
+            .catch(function () { alert('삭제 처리 중 오류가 발생했습니다.'); })
+            .finally(function () { btn.disabled = false; });
+        });
+      })();
+
+      (function setupDuplicateCheck() {
+        var input = document.getElementById('duplicateCheckInput');
+        var btn = document.getElementById('duplicateCheckBtn');
+        var errEl = document.getElementById('duplicateCheckErr');
+        var loadingEl = document.getElementById('duplicateCheckLoading');
+        var resultWrap = document.getElementById('duplicateCheckResult');
+        var byIpWrap = document.getElementById('duplicateCheckByIp');
+        var byWalletWrap = document.getElementById('duplicateCheckByWallet');
+        if (!btn || !input) return;
+        btn.addEventListener('click', function () {
+          var raw = (input.value || '').trim();
+          if (!raw) {
+            if (errEl) { errEl.textContent = '지갑 주소 또는 IP를 입력해 주세요.'; errEl.style.display = 'block'; }
+            if (resultWrap) resultWrap.style.display = 'none';
+            return;
+          }
+          if (errEl) errEl.style.display = 'none';
+          if (resultWrap) resultWrap.style.display = 'none';
+          loadingEl.style.display = 'block';
+          btn.disabled = true;
+          var isIp = !/^0x[a-fA-F0-9]{40}$/i.test(raw);
+          var query = isIp ? 'ip=' + encodeURIComponent(raw) : 'wallet=' + encodeURIComponent(raw);
+          fetch('/api/admin/duplicate-check?' + query, { credentials: 'same-origin' })
+            .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+            .then(function (result) {
+              loadingEl.style.display = 'none';
+              btn.disabled = false;
+              var data = result.data;
+              if (!data.ok) {
+                errEl.textContent = data.message || '조회에 실패했습니다.';
+                errEl.style.display = 'block';
+                return;
+              }
+              resultWrap.style.display = 'block';
+              if (data.mode === 'ip') {
+                byIpWrap.style.display = 'block';
+                byWalletWrap.style.display = 'none';
+                document.getElementById('duplicateCheckIpValue').textContent = data.ip || raw;
+                var list = data.users || [];
+                var tbody = document.getElementById('duplicateCheckByIpBody');
+                tbody.innerHTML = list.length === 0
+                  ? '<tr><td colspan="3" class="text-muted">해당 IP로 가입한 회원이 없습니다.</td></tr>'
+                  : list.map(function (u) {
+                      var name = (u.displayName || '').trim() || '-';
+                      var wallet = (u.walletAddress || '').trim() || '-';
+                      var date = u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-';
+                      return '<tr><td>' + name + '</td><td class="wallet">' + wallet + '</td><td>' + date + '</td></tr>';
+                    }).join('');
+              } else {
+                byIpWrap.style.display = 'none';
+                byWalletWrap.style.display = 'block';
+                var user = data.user;
+                var userBox = document.getElementById('duplicateCheckUserBox');
+                if (user) {
+                  userBox.innerHTML = '<strong>닉네임</strong> ' + (user.displayName || '-') + ' &nbsp;|&nbsp; <strong>지갑</strong> <span class="wallet">' + (user.walletAddress || '-') + '</span> &nbsp;|&nbsp; <strong>가입일</strong> ' + (user.createdAt ? new Date(user.createdAt).toLocaleString('ko-KR') : '-') + ' &nbsp;|&nbsp; <strong>가입 IP</strong> ' + (user.signupIp || '-');
+                } else {
+                  userBox.innerHTML = '해당 지갑으로 가입된 회원이 없습니다. (지갑 주소만 조회됨)';
+                }
+                var sameIp = data.sameIpUsers || [];
+                document.getElementById('duplicateCheckSameIpBox').innerHTML = sameIp.length === 0
+                  ? '<p class="text-muted">동일 IP에서 가입한 다른 회원 없음.</p>'
+                  : '<ul style="margin:0; padding-left:1.25rem;">' + sameIp.map(function (u) { return '<li>' + (u.displayName || '-') + ' — ' + (u.walletAddress || '').slice(0, 10) + '…' + (u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : ''); }).join('') + '</ul>';
+                var transfer = data.transferNetworkMembers || [];
+                document.getElementById('duplicateCheckTransferBox').innerHTML = transfer.length === 0
+                  ? '<p class="text-muted">최근 30일 내 거래한 회원 없음.</p>'
+                  : '<ul style="margin:0; padding-left:1.25rem;">' + transfer.map(function (u) { return '<li>' + (u.displayName || '-') + ' <span class="wallet">' + (u.walletAddress || '') + '</span>'; }).join('') + '</ul>';
+                var age = data.walletAge || {};
+                var firstTx = age.firstTxAt ? new Date(age.firstTxAt).toLocaleString('ko-KR') : '—';
+                var stakeCount = typeof age.stakeCount === 'number' ? age.stakeCount : 0;
+                document.getElementById('duplicateCheckWalletAgeBox').innerHTML = '<p><strong>최초 트랜잭션</strong> ' + firstTx + ' &nbsp;|&nbsp; <strong>스테이킹 횟수</strong> ' + stakeCount + '회</p>';
+              }
+            })
+            .catch(function () {
+              loadingEl.style.display = 'none';
+              btn.disabled = false;
+              errEl.textContent = '조회 중 오류가 발생했습니다.';
+              errEl.style.display = 'block';
+            });
+        });
+      })();
+
+      function loadAdminAccount() {
+        var infoEl = document.getElementById('adminAccountInfo');
+        var loadingEl = document.getElementById('adminAccountLoading');
+        var errEl = document.getElementById('adminAccountError');
+        infoEl.style.display = 'none';
+        errEl.style.display = 'none';
+        loadingEl.style.display = 'block';
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            loadingEl.style.display = 'none';
+            if (data.ok && data.user) {
+              var u = data.user;
+              document.getElementById('adminAccountDisplayName').textContent = u.displayName || '—';
+              document.getElementById('adminAccountWallet').textContent = u.walletAddress || '—';
+              infoEl.style.display = 'block';
+            } else {
+              errEl.textContent = data.message || '계정 정보를 불러올 수 없습니다.';
+              errEl.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            loadingEl.style.display = 'none';
+            errEl.textContent = '계정 정보를 불러오는데 실패했습니다.';
+            errEl.style.display = 'block';
+          });
+      }
+
+      document.querySelectorAll('.admin-nav-link').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          var panelId = this.getAttribute('data-panel');
+          if (panelId) showPanel(panelId);
+        });
+      });
+
+      function loadAutoApproveSetting() {
+        var cb = document.getElementById('autoApproveNewUsersCheckbox');
+        var msg = document.getElementById('autoApproveMsg');
+        if (!cb) return;
+        fetch('/api/admin/settings/auto-approve', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && typeof data.autoApproveNewUsers === 'boolean') {
+              cb.checked = data.autoApproveNewUsers;
+            }
+          });
+      }
+
+      var autoApproveCheckbox = document.getElementById('autoApproveNewUsersCheckbox');
+      var autoApproveMsg = document.getElementById('autoApproveMsg');
+      if (autoApproveCheckbox) {
+        autoApproveCheckbox.addEventListener('change', function () {
+          var enabled = this.checked;
+          if (autoApproveMsg) autoApproveMsg.textContent = '저장 중…';
+          fetch('/api/admin/settings/auto-approve', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ autoApproveNewUsers: enabled }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (autoApproveMsg) autoApproveMsg.textContent = data.ok && data.message ? data.message : '';
+            })
+            .catch(function () { if (autoApproveMsg) autoApproveMsg.textContent = '저장 실패'; });
+        });
+      }
+
+      function showAdminContent() {
+        adminPinGate.style.display = 'none';
+        adminContent.style.display = 'block';
+        loadPending();
+        loadUsers();
+        loadAutoApproveSetting();
+        loadTornDepositAddress();
+        loadTotalPointsSummary();
+        showPanel('adminPinChange');
+      }
+
+      adminPinForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        adminPinErr.style.display = 'none';
+        var pin = (adminPinInput.value || '').trim();
+        if (!/^[0-9]{6}$/.test(pin)) {
+          adminPinErr.textContent = '숫자 6자리를 입력해 주세요.';
+          adminPinErr.style.display = 'block';
+          return;
+        }
+        fetch('/api/admin/verify-pin', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: pin }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              showAdminContent();
+            } else {
+              adminPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.';
+              adminPinErr.style.display = 'block';
+              if (data.locked) {
+                var btn = adminPinForm.querySelector('button[type="submit"]');
+                if (adminPinInput) adminPinInput.disabled = true;
+                if (btn) btn.disabled = true;
+                setTimeout(function () {
+                  if (adminPinInput) adminPinInput.disabled = false;
+                  if (btn) btn.disabled = false;
+                  adminPinErr.style.display = 'none';
+                }, 15 * 60 * 1000);
+              }
+            }
+          })
+          .catch(function () {
+            adminPinErr.textContent = '비밀번호가 올바르지 않습니다.';
+            adminPinErr.style.display = 'block';
+          });
+      });
+
+      adminChangePinForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        adminChangePinMsg.style.display = 'none';
+        var currentPin = (document.getElementById('currentPin').value || '').trim();
+        var newPin = (document.getElementById('newPin').value || '').trim();
+        var newPinConfirm = (document.getElementById('newPinConfirm').value || '').trim();
+        if (!/^[0-9]{6}$/.test(currentPin) || !/^[0-9]{6}$/.test(newPin)) {
+          adminChangePinMsg.textContent = '비밀번호는 숫자 6자리로 입력해 주세요.';
+          adminChangePinMsg.style.display = 'block';
+          adminChangePinMsg.style.color = 'var(--danger)';
+          return;
+        }
+        if (newPin !== newPinConfirm) {
+          adminChangePinMsg.textContent = '새 비밀번호가 일치하지 않습니다.';
+          adminChangePinMsg.style.display = 'block';
+          adminChangePinMsg.style.color = 'var(--danger)';
+          return;
+        }
+        fetch('/api/admin/change-pin', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPin: currentPin, newPin: newPin }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            adminChangePinMsg.style.display = 'block';
+            if (data.ok) {
+              adminChangePinMsg.textContent = data.message || '변경되었습니다.';
+              adminChangePinMsg.style.color = 'var(--neon)';
+              document.getElementById('currentPin').value = '';
+              document.getElementById('newPin').value = '';
+              document.getElementById('newPinConfirm').value = '';
+            } else {
+              adminChangePinMsg.textContent = data.message || '변경에 실패했습니다.';
+              adminChangePinMsg.style.color = 'var(--danger)';
+            }
+          })
+          .catch(function () {
+            adminChangePinMsg.textContent = '변경에 실패했습니다.';
+            adminChangePinMsg.style.color = 'var(--danger)';
+            adminChangePinMsg.style.display = 'block';
+          });
+      });
+
+      function init() {
+        var user = window.TornFiAuth.getUser();
+        if (user && user.isAdmin) {
+          adminDenied.style.display = 'none';
+          adminPage.style.display = 'block';
+          var navLogin = document.getElementById('navLogin');
+          var navRegister = document.getElementById('navRegister');
+          var navProfile = document.getElementById('navProfile');
+          var navMenuUser = document.getElementById('navMenuUser');
+          var nac = document.getElementById('navAdminCenter');
+          if (navLogin) navLogin.style.display = 'none';
+          if (navRegister) navRegister.style.display = 'none';
+          if (navProfile) navProfile.style.display = 'block';
+          if (navMenuUser) navMenuUser.style.display = 'block';
+          if (nac) nac.style.display = 'inline-flex';
+          var navMenuBtn = document.getElementById('navMenuBtn');
+          var navMenuDropdown = document.getElementById('navMenuDropdown');
+          if (navMenuBtn && navMenuDropdown) {
+            navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+            navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+            document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+          }
+          var navLogout = document.getElementById('navLogout');
+          if (navLogout) navLogout.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (!confirm('로그아웃 하시겠습니까?')) return;
+            window.TornFiAuth.logout().then(function () { window.location.href = '/'; });
+          });
+          fetch('/api/admin/status', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.ok && data.pinVerified) {
+                showAdminContent();
+              } else {
+                adminPinGate.style.display = 'block';
+                adminContent.style.display = 'none';
+              }
+            })
+            .catch(function () {
+              adminPinGate.style.display = 'block';
+              adminContent.style.display = 'none';
+            });
+        } else {
+          adminDenied.style.display = 'block';
+          adminPage.style.display = 'none';
+          var navLogin = document.getElementById('navLogin');
+          var navRegister = document.getElementById('navRegister');
+          var navMenuUser = document.getElementById('navMenuUser');
+          var nac = document.getElementById('navAdminCenter');
+          if (navLogin) navLogin.style.display = 'block';
+          if (navRegister) navRegister.style.display = 'block';
+          if (navMenuUser) navMenuUser.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+        }
+      }
+      if (window.TornFiAuth.getUser()) {
+        init();
+      } else {
+        window.TornFiAuth.init().then(init);
+      }
+    })();
+  </script>
+</body>
+</html>

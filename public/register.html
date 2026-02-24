@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>회원가입 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
+        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
+        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
+        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
+          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
+          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="auth-page auth-page--register">
+    <a href="/" class="back-link">← 홈으로</a>
+    <div class="auth-card auth-card--register">
+      <div class="auth-card-head">
+        <h1>회원가입</h1>
+        <p class="auth-desc">닉네임과 지갑 주소로 활동하는 익명 커뮤니티</p>
+      </div>
+      <p class="auth-error" id="authError"></p>
+      <form id="registerForm">
+        <section class="auth-form-section auth-form-section--card">
+          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">1</span>계정 정보</h3>
+          <div class="auth-form-section-inner">
+            <div class="auth-form-block">
+              <label for="displayName">닉네임 (영문, 숫자만 5~12자)</label>
+              <input type="text" id="displayName" name="displayName" autocomplete="username" placeholder="영문·숫자 5~12자" minlength="5" maxlength="12" pattern="[a-zA-Z0-9]*" title="영문, 숫자만 5~12자">
+              <p class="nickname-validation" id="nicknameValidation" aria-live="polite" role="status"></p>
+            </div>
+            <div class="auth-form-block auth-form-block--password">
+              <span class="auth-form-block-title">비밀번호</span>
+              <label for="password">로그인 비밀번호</label>
+              <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="8자 이상, 영문·숫자 포함 (특수문자 권장)" minlength="8">
+              <label for="passwordConfirm">비밀번호 확인</label>
+              <input type="password" id="passwordConfirm" name="passwordConfirm" required placeholder="동일하게 입력">
+              <p class="password-confirm-validation" id="passwordConfirmValidation" aria-live="polite" role="status"></p>
+            </div>
+          </div>
+        </section>
+        <section class="auth-form-section auth-form-section--card">
+          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">2</span>지갑 주소</h3>
+          <div class="auth-form-section-inner">
+            <label for="walletAddress">내 스테이킹 지갑 주소 (타인 주소 작성 금지)</label>
+            <input type="text" id="walletAddress" name="walletAddress" required autocomplete="off" placeholder="0x... (42자)" spellcheck="false">
+            <p class="wallet-validation" id="walletValidation" aria-live="polite" role="status"></p>
+          </div>
+        </section>
+        <section class="auth-form-section auth-form-section--card">
+          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">3</span>추천인</h3>
+          <div class="auth-form-section-inner">
+            <label for="referrer">추천인 (선택사항)</label>
+            <input type="text" id="referrer" name="referrer" autocomplete="off" placeholder="선택 입력">
+          </div>
+        </section>
+        <div class="auth-submit-wrap">
+          <button type="submit" class="auth-submit-btn">가입하기</button>
+        </div>
+      </form>
+      <p class="auth-link">이미 계정이 있으신가요? <a href="/login.html">로그인</a></p>
+    </div>
+  </div>
+
+  <div id="registerWelcomeLayer" class="register-welcome-layer" style="display:none;">
+    <div class="register-welcome-card">
+      <div class="register-welcome-icon" aria-hidden="true">✨</div>
+      <h2 class="register-welcome-title">가입을 환영합니다</h2>
+      <p class="register-welcome-desc">가입 신청이 완료되었습니다.<br>관리자 승인 후 서비스를 이용하실 수 있습니다.<br><span class="register-welcome-time">(최소 1시간 ~ 최대 24시간)</span></p>
+      <p class="register-welcome-login"><span class="register-welcome-torn">Torn</span>Fi.com</p>
+      <a href="/" id="registerWelcomeBtn" class="register-welcome-btn">홈으로 돌아가기</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var form = document.getElementById('registerForm');
+      var errorEl = document.getElementById('authError');
+      var walletInput = document.getElementById('walletAddress');
+      var walletValidationEl = document.getElementById('walletValidation');
+      var nicknameValidationEl = document.getElementById('nicknameValidation');
+      var walletValid = false;
+      var walletStakingOk = false;
+      var walletStakingPending = false;
+      var walletCheckTimer = null;
+
+      var nicknameRegex = /^[a-zA-Z0-9]{5,12}$/;
+      var nicknameCheckTimer = null;
+      var displayNameInput = document.getElementById('displayName');
+      if (displayNameInput) {
+        displayNameInput.addEventListener('input', function () {
+          var v = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+          if (v !== this.value) this.value = v;
+          nicknameValidationEl.textContent = '';
+          nicknameValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok');
+          if (v.length > 0 && v.length < 5) nicknameValidationEl.textContent = '닉네임은 5~12자입니다.';
+          else if (v.length > 0 && !nicknameRegex.test(v)) nicknameValidationEl.textContent = '영문, 숫자만 5~12자 가능합니다.';
+          else if (v.length >= 5) {
+            if (nicknameCheckTimer) clearTimeout(nicknameCheckTimer);
+            nicknameCheckTimer = setTimeout(function () {
+              nicknameCheckTimer = null;
+              fetch('/api/public/check-nickname?displayName=' + encodeURIComponent(v))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                  if (displayNameInput.value.trim() !== v) return;
+                  if (data.available) {
+                    nicknameValidationEl.textContent = '사용 가능한 닉네임입니다.';
+                    nicknameValidationEl.classList.remove('wallet-validation--err');
+                    nicknameValidationEl.classList.add('wallet-validation--ok');
+                  } else {
+                    nicknameValidationEl.textContent = data.message || '이미 사용 중인 닉네임입니다.';
+                    nicknameValidationEl.classList.remove('wallet-validation--ok');
+                    nicknameValidationEl.classList.add('wallet-validation--err');
+                  }
+                })
+                .catch(function () {
+                  if (displayNameInput.value.trim() === v) nicknameValidationEl.textContent = '';
+                });
+            }, 400);
+          } else nicknameValidationEl.textContent = '';
+        });
+        displayNameInput.addEventListener('blur', function () {
+          var v = this.value.trim();
+          if (!v) { nicknameValidationEl.textContent = ''; nicknameValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok'); return; }
+          if (!nicknameRegex.test(v)) {
+            nicknameValidationEl.textContent = v.length < 5 ? '닉네임은 5~12자입니다.' : '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
+            nicknameValidationEl.classList.add('wallet-validation--err');
+            nicknameValidationEl.classList.remove('wallet-validation--ok');
+          } else {
+            fetch('/api/public/check-nickname?displayName=' + encodeURIComponent(v))
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (displayNameInput.value.trim() !== v) return;
+                if (data.available) {
+                  nicknameValidationEl.textContent = '사용 가능한 닉네임입니다.';
+                  nicknameValidationEl.classList.remove('wallet-validation--err');
+                  nicknameValidationEl.classList.add('wallet-validation--ok');
+                } else {
+                  nicknameValidationEl.textContent = data.message || '이미 사용 중인 닉네임입니다.';
+                  nicknameValidationEl.classList.remove('wallet-validation--ok');
+                  nicknameValidationEl.classList.add('wallet-validation--err');
+                }
+              })
+              .catch(function () {});
+          }
+        });
+      }
+
+      var passwordInput = document.getElementById('password');
+      var passwordConfirmInput = document.getElementById('passwordConfirm');
+      var passwordConfirmValidationEl = document.getElementById('passwordConfirmValidation');
+      function checkPasswordMatch() {
+        if (!passwordConfirmValidationEl) return;
+        var p = passwordInput ? passwordInput.value : '';
+        var c = passwordConfirmInput ? passwordConfirmInput.value : '';
+        if (c.length === 0) {
+          passwordConfirmValidationEl.textContent = '';
+          passwordConfirmValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok');
+          return;
+        }
+        if (p !== c) {
+          passwordConfirmValidationEl.textContent = '비밀번호가 일치하지 않습니다.';
+          passwordConfirmValidationEl.classList.remove('wallet-validation--ok');
+          passwordConfirmValidationEl.classList.add('wallet-validation--err');
+        } else {
+          passwordConfirmValidationEl.textContent = '일치합니다.';
+          passwordConfirmValidationEl.classList.remove('wallet-validation--err');
+          passwordConfirmValidationEl.classList.add('wallet-validation--ok');
+        }
+      }
+      if (passwordInput) passwordInput.addEventListener('input', checkPasswordMatch);
+      if (passwordConfirmInput) passwordConfirmInput.addEventListener('input', checkPasswordMatch);
+
+      function sameWalletAddress(a, b) {
+        if (!a || !b) return false;
+        var na = a.trim().toLowerCase();
+        var nb = b.trim().toLowerCase();
+        if (na === nb) return true;
+        try {
+          if (typeof ethers !== 'undefined' && ethers.getAddress) {
+            return ethers.getAddress(a) === ethers.getAddress(b);
+          }
+        } catch (e) {}
+        return false;
+      }
+
+      function checkStakingAndUpdate(addressForApi) {
+        walletStakingOk = false;
+        walletValid = false;
+        walletStakingPending = true;
+        walletValidationEl.classList.remove('wallet-validation--ok', 'wallet-validation--err');
+        walletValidationEl.textContent = 'TORN 스테이킹 확인 중…';
+        var timeoutId = setTimeout(function () {
+          timeoutId = null;
+          if (!walletStakingPending) return;
+          var current = walletInput.value.trim();
+          if (!sameWalletAddress(current, addressForApi)) return;
+          walletStakingPending = false;
+          walletValidationEl.textContent = '확인이 지연되고 있습니다. 입력창 밖을 클릭해 다시 시도해 주세요.';
+          walletValidationEl.classList.add('wallet-validation--err');
+        }, 15000);
+        fetch('/api/check-staking?walletAddress=' + encodeURIComponent(addressForApi))
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, status: r.status, data: data };
+            });
+          })
+          .then(function (result) {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = null;
+            walletStakingPending = false;
+            var currentAddress = walletInput.value.trim();
+            if (!sameWalletAddress(currentAddress, addressForApi)) {
+              walletValidationEl.textContent = '주소가 변경되었습니다. 입력창 밖을 클릭하면 다시 확인됩니다.';
+              walletValidationEl.classList.remove('wallet-validation--ok');
+              walletValidationEl.classList.add('wallet-validation--err');
+              return;
+            }
+            var data = result.data;
+            if (result.ok && data && data.staking) {
+              fetch('/api/public/check-wallet?walletAddress=' + encodeURIComponent(addressForApi))
+                .then(function (r) { return r.json(); })
+                .then(function (walletData) {
+                  var cur = walletInput.value.trim();
+                  if (!sameWalletAddress(cur, addressForApi)) return;
+                  if (walletData.registered) {
+                    walletStakingOk = true;
+                    walletValid = false;
+                    var msg = walletData.forceWithdrawn ? '강제 탈퇴된 지갑은 재가입할 수 없습니다. 관리자가 이력에서 삭제하면 재가입할 수 있습니다.' : (walletData.withdrawn ? '탈퇴한 지갑은 재가입할 수 없습니다.' : '이미 가입된 지갑 주소입니다.');
+                    walletValidationEl.textContent = msg;
+                    walletValidationEl.classList.remove('wallet-validation--ok');
+                    walletValidationEl.classList.add('wallet-validation--err');
+                  } else {
+                    walletStakingOk = true;
+                    walletValid = true;
+                    walletValidationEl.textContent = '스테이킹 확인 완료. (가입 가능)';
+                    walletValidationEl.classList.remove('wallet-validation--err');
+                    walletValidationEl.classList.add('wallet-validation--ok');
+                  }
+                })
+                .catch(function () {
+                  var cur = walletInput.value.trim();
+                  if (!sameWalletAddress(cur, addressForApi)) return;
+                  walletStakingOk = true;
+                  walletValid = true;
+                  walletValidationEl.textContent = '스테이킹 확인 완료. (가입 가능)';
+                  walletValidationEl.classList.remove('wallet-validation--err');
+                  walletValidationEl.classList.add('wallet-validation--ok');
+                });
+              return;
+            } else if (!result.ok && data && data.message) {
+              walletStakingOk = false;
+              walletValid = false;
+              walletValidationEl.textContent = data.message;
+              walletValidationEl.classList.remove('wallet-validation--ok');
+              walletValidationEl.classList.add('wallet-validation--err');
+            } else {
+              walletStakingOk = false;
+              walletValid = false;
+              walletValidationEl.textContent = '이 지갑은 TORN 토큰을 스테이킹하고 있지 않습니다.';
+              walletValidationEl.classList.remove('wallet-validation--ok');
+              walletValidationEl.classList.add('wallet-validation--err');
+            }
+          })
+          .catch(function (err) {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = null;
+            walletStakingPending = false;
+            var currentAddress = walletInput.value.trim();
+            if (!sameWalletAddress(currentAddress, addressForApi)) {
+              walletValidationEl.textContent = '주소가 변경되었습니다. 입력창 밖을 클릭하면 다시 확인됩니다.';
+              walletValidationEl.classList.remove('wallet-validation--ok');
+              walletValidationEl.classList.add('wallet-validation--err');
+              return;
+            }
+            walletStakingOk = false;
+            walletValid = false;
+            walletValidationEl.textContent = '스테이킹 확인에 실패했습니다. 서버가 켜져 있는지 확인하고, 잠시 후 다시 시도해 주세요.';
+            walletValidationEl.classList.remove('wallet-validation--ok');
+            walletValidationEl.classList.add('wallet-validation--err');
+          });
+      }
+
+      function validateWalletAddress(value) {
+        walletValidationEl.classList.remove('wallet-validation--ok', 'wallet-validation--err');
+        walletValidationEl.textContent = '';
+        walletStakingOk = false;
+        walletValid = false;
+        if (!value || !value.trim()) {
+          return;
+        }
+        var trimmed = value.trim();
+        var normalizedForApi = trimmed;
+        try {
+          if (typeof ethers !== 'undefined' && ethers.getAddress) {
+            normalizedForApi = ethers.getAddress(trimmed);
+          }
+        } catch (e) { normalizedForApi = trimmed; }
+        try {
+          if (typeof ethers !== 'undefined' && ethers.getAddress) {
+            ethers.getAddress(trimmed);
+            checkStakingAndUpdate(normalizedForApi);
+            return;
+          }
+          if (/^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+            checkStakingAndUpdate(normalizedForApi);
+            return;
+          }
+          walletValidationEl.textContent = '유효한 이더리움 주소가 아닙니다. (0x + 40자 16진수)';
+          walletValidationEl.classList.add('wallet-validation--err');
+        } catch (err) {
+          walletValidationEl.textContent = '유효한 이더리움 주소가 아닙니다.';
+          walletValidationEl.classList.add('wallet-validation--err');
+        }
+      }
+
+      walletInput.addEventListener('blur', function () {
+        if (walletCheckTimer) clearTimeout(walletCheckTimer);
+        walletCheckTimer = null;
+        validateWalletAddress(walletInput.value);
+      });
+      walletInput.addEventListener('input', function () {
+        var v = walletInput.value.trim();
+        if (!v) {
+          if (walletCheckTimer) clearTimeout(walletCheckTimer);
+          walletCheckTimer = null;
+          walletValidationEl.textContent = '';
+          walletValidationEl.classList.remove('wallet-validation--ok', 'wallet-validation--err');
+          walletValid = false;
+          walletStakingOk = false;
+          walletStakingPending = false;
+          return;
+        }
+        if (walletCheckTimer) clearTimeout(walletCheckTimer);
+        walletValidationEl.textContent = '';
+        walletValidationEl.classList.remove('wallet-validation--ok', 'wallet-validation--err');
+        if (v.length >= 42) {
+          walletCheckTimer = setTimeout(function () {
+            walletCheckTimer = null;
+            validateWalletAddress(walletInput.value.trim());
+          }, 500);
+        } else if (v.length > 2 && !/^0x[a-fA-F0-9]{40}$/.test(v)) {
+          walletValidationEl.textContent = '유효한 이더리움 주소가 아닙니다. (0x + 40자 16진수)';
+          walletValidationEl.classList.add('wallet-validation--err');
+        }
+      });
+
+      function clearTopError() {
+        if (errorEl) errorEl.textContent = '';
+      }
+      form.addEventListener('input', clearTopError);
+      form.addEventListener('change', clearTopError);
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearTopError();
+        var password = (document.getElementById('password').value || '').trim();
+        var passwordConfirm = (document.getElementById('passwordConfirm').value || '').trim();
+        if (password !== passwordConfirm) {
+          errorEl.textContent = '비밀번호가 일치하지 않습니다.';
+          return;
+        }
+        if (password.length < 8) {
+          errorEl.textContent = '비밀번호는 8자 이상이어야 합니다.';
+          return;
+        }
+        if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+          errorEl.textContent = '비밀번호는 영문과 숫자를 모두 포함해야 합니다.';
+          return;
+        }
+        var referrer = document.getElementById('referrer').value.trim() || undefined;
+        var displayName = document.getElementById('displayName').value.trim() || undefined;
+        var walletAddress = document.getElementById('walletAddress').value.trim();
+        if (displayName && !nicknameRegex.test(displayName)) {
+          errorEl.textContent = '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
+          return;
+        }
+        if (!walletAddress) {
+          errorEl.textContent = '이더리움 메인넷 지갑 주소를 입력해 주세요.';
+          return;
+        }
+        var addressToSend = walletAddress;
+        try {
+          if (typeof ethers !== 'undefined' && ethers.getAddress) {
+            addressToSend = ethers.getAddress(walletAddress);
+          }
+        } catch (err) {}
+        window.TornFiAuth.register(addressToSend, password, displayName, referrer)
+          .then(function (data) {
+            clearTopError();
+            if (walletValidationEl) {
+              walletValidationEl.classList.remove('wallet-validation--err');
+              walletValidationEl.textContent = '';
+            }
+            var welcomeLayer = document.getElementById('registerWelcomeLayer');
+            if (welcomeLayer) welcomeLayer.style.display = 'flex';
+          })
+          .catch(function (err) {
+            var msg = (err && err.message) ? String(err.message) : '가입에 실패했습니다.';
+            var isDuplicateWallet = msg.indexOf('이미 가입된 지갑') !== -1 || msg.indexOf('탈퇴한 지갑') !== -1 || msg.indexOf('강제 탈퇴된 지갑') !== -1;
+            var isServerError = msg.indexOf('JSON') !== -1 || msg.indexOf('fetch') !== -1 || msg === '가입에 실패했습니다.';
+            if (isDuplicateWallet && walletValidationEl) {
+              walletValid = false;
+              walletValidationEl.textContent = msg;
+              walletValidationEl.classList.remove('wallet-validation--ok');
+              walletValidationEl.classList.add('wallet-validation--err');
+              errorEl.textContent = '';
+            } else {
+              errorEl.textContent = isServerError ? '가입에 실패했습니다. 잠시 후 다시 시도해 주세요.' : msg;
+            }
+          });
+      });
+      window.TornFiAuth.onUser(function (u) {
+        var nl = document.getElementById('navLogin');
+        var nr = document.getElementById('navRegister');
+        var nmu = document.getElementById('navMenuUser');
+        var np = document.getElementById('navProfile');
+        var nac = document.getElementById('navAdminCenter');
+        if (u) {
+          if (nl) nl.style.display = 'none'; if (nr) nr.style.display = 'none';
+          if (nmu) nmu.style.display = 'block';
+          if (np) np.style.display = 'block';
+          if (nac) nac.style.display = u.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (nl) nl.style.display = 'block'; if (nr) nr.style.display = 'block';
+          if (nmu) nmu.style.display = 'none';
+          if (np) np.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+        }
+      });
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      var navLogout = document.getElementById('navLogout');
+      if (navLogout) navLogout.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        if (window.TornFiAuth && window.TornFiAuth.logout) window.TornFiAuth.logout().then(function () { window.location.href = '/'; });
+      });
+    })();
+  </script>
+</body>
+</html>

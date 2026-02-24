@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>게시판 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .board-page { max-width: 720px; margin: 0 auto; padding: 2rem 1rem; }
+    .board-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .board-list { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .board-row { display: block; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; transition: background 0.2s; }
+    .board-row:last-child { border-bottom: none; }
+    .board-row:hover { background: rgba(0, 255, 136, 0.06); }
+    .board-row .title { font-weight: 500; color: var(--text); margin-bottom: 0.25rem; }
+    .board-row .meta { font-size: 0.8rem; color: var(--text-muted); }
+    .board-empty { padding: 2rem; text-align: center; color: var(--text-muted); }
+    .board-detail { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .board-detail h2 { font-size: 1.1rem; color: var(--neon); margin-bottom: 0.75rem; }
+    .board-detail .meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; }
+    .board-detail .body { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .board-write { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .board-write input, .board-write textarea { width: 100%; padding: 0.6rem; margin-bottom: 1rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; }
+    .board-write textarea { min-height: 120px; resize: vertical; }
+    .board-write .msg { font-size: 0.85rem; margin-top: 0.5rem; }
+    .board-btn { padding: 0.5rem 1rem; font-size: 0.9rem; background: var(--neon); color: var(--bg-dark); border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
+    .board-btn:hover { background: var(--neon-dim); color: var(--text); }
+    .board-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .back-link { display: inline-block; margin-bottom: 1rem; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { color: var(--neon); }
+    .board-vote { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .board-vote .counts { font-size: 0.9rem; color: var(--text-muted); }
+    .board-vote .vote-btn { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer; }
+    .board-vote .vote-btn:hover { border-color: var(--neon); color: var(--neon); }
+    .board-vote .vote-btn.active-like { border-color: var(--neon); color: var(--neon); }
+    .board-donate-btn { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--neon); color: var(--neon); border-radius: 4px; cursor: pointer; margin-left: 0.5rem; }
+    .board-donate-btn:hover { background: rgba(0, 255, 136, 0.1); }
+    .board-donate-layer { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .board-donate-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; max-width: 320px; width: 90%; }
+    .board-donate-box h3 { font-size: 1rem; color: var(--neon); margin-bottom: 0.75rem; }
+    .board-donate-box input { width: 100%; padding: 0.6rem; margin-bottom: 1rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); }
+    .board-donate-box .err { font-size: 0.85rem; color: var(--danger); margin-bottom: 0.5rem; }
+    .board-edit-btn { margin-top: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; }
+    .board-edit-btn:hover { border-color: var(--neon); color: var(--neon); }
+    .board-edit-form { margin-top: 1rem; padding: 1rem; background: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border); }
+    .board-edit-form .pin-msg { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .board-edit-form input, .board-edit-form textarea { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; }
+    .board-edit-form textarea { min-height: 100px; resize: vertical; }
+    .board-detail-images { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .board-detail-images img { max-width: 100%; max-height: 280px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; object-fit: contain; }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
+        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
+        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
+        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
+          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
+          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="board-page">
+    <a href="/" class="back-link">← 홈으로</a>
+    <a href="/tornado-news.html" class="back-link" style="margin-left:1rem;">토네이도 뉴스</a>
+    <h1 style="font-size:1.25rem; margin-bottom:1.5rem;">게시판</h1>
+
+    <div id="boardDetail" class="board-detail" style="display:none;">
+      <h2 id="detailTitle"></h2>
+      <p id="detailMeta" class="meta"></p>
+      <div id="detailBody" class="body"></div>
+      <div id="detailImages" class="board-detail-images"></div>
+      <div id="boardVote" class="board-vote" style="display:none;"></div>
+      <button type="button" id="btnEdit" class="board-edit-btn" style="display:none;">수정</button>
+      <div id="boardEditForm" class="board-edit-form" style="display:none;">
+        <input type="text" id="editTitle" placeholder="제목" maxlength="200">
+        <textarea id="editBody" placeholder="내용" maxlength="10000"></textarea>
+        <button type="button" class="board-btn" id="editSubmit">수정 저장</button>
+        <button type="button" id="editCancel" class="board-btn" style="background:var(--bg-dark); color:var(--text); border:1px solid var(--border); margin-left:0.5rem;">취소</button>
+        <p id="editMsg" class="msg" style="display:none; margin-top:0.5rem;"></p>
+      </div>
+      <p style="margin-top:1rem;"><a href="/board.html" class="back-link">← 목록</a></p>
+    </div>
+
+    <div id="boardWrite" class="board-write" style="display:none;">
+      <h2 style="font-size:1rem; color:var(--neon); margin-bottom:1rem;">글쓰기</h2>
+      <form id="writeForm">
+        <input type="text" id="writeTitle" placeholder="제목" maxlength="200" required>
+        <textarea id="writeBody" placeholder="내용" maxlength="10000" required></textarea>
+        <label class="profile-label" style="display:block; margin-bottom:0.5rem;">사진 첨부 (최대 5장, 한 장당 2MB · JPG, PNG, GIF, WEBP)</label>
+        <input type="file" id="writeImages" accept="image/jpeg,image/png,image/gif,image/webp" multiple style="margin-bottom:1rem;">
+        <button type="submit" class="board-btn" id="writeSubmit">등록</button>
+      </form>
+      <p id="writeMsg" class="msg" style="display:none;"></p>
+    </div>
+
+    <div id="boardListWrap">
+      <div class="board-toolbar">
+        <span class="text-muted" id="boardTotal">글 0개</span>
+        <button type="button" class="board-btn" id="btnWrite" style="display:none;">글쓰기</button>
+      </div>
+      <div id="boardList" class="board-list"></div>
+      <p id="boardEmpty" class="board-empty" style="display:none;">아직 글이 없습니다.</p>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var boardList = document.getElementById('boardList');
+      var boardListWrap = document.getElementById('boardListWrap');
+      var boardEmpty = document.getElementById('boardEmpty');
+      var boardTotal = document.getElementById('boardTotal');
+      var boardDetail = document.getElementById('boardDetail');
+      var detailTitle = document.getElementById('detailTitle');
+      var detailMeta = document.getElementById('detailMeta');
+      var detailBody = document.getElementById('detailBody');
+      var boardWrite = document.getElementById('boardWrite');
+      var writeForm = document.getElementById('writeForm');
+      var writeTitle = document.getElementById('writeTitle');
+      var writeBody = document.getElementById('writeBody');
+      var writeImages = document.getElementById('writeImages');
+      var detailImages = document.getElementById('detailImages');
+      var writeMsg = document.getElementById('writeMsg');
+      var writeSubmit = document.getElementById('writeSubmit');
+      var btnWrite = document.getElementById('btnWrite');
+      var navLogin = document.getElementById('navLogin');
+      var navRegister = document.getElementById('navRegister');
+      var navProfile = document.getElementById('navProfile');
+      var navMenuUser = document.getElementById('navMenuUser');
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      var boardVote = document.getElementById('boardVote');
+      var btnEdit = document.getElementById('btnEdit');
+      var boardEditForm = document.getElementById('boardEditForm');
+      var editTitle = document.getElementById('editTitle');
+      var editBody = document.getElementById('editBody');
+      var editSubmit = document.getElementById('editSubmit');
+      var editCancel = document.getElementById('editCancel');
+      var editMsg = document.getElementById('editMsg');
+
+      var currentPost = null;
+
+      function updateNav(user) {
+        if (user) {
+          if (navLogin) navLogin.style.display = 'none';
+          if (navRegister) navRegister.style.display = 'none';
+          if (navMenuUser) navMenuUser.style.display = 'block';
+          if (navProfile) navProfile.style.display = 'block';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+          if (btnWrite) btnWrite.style.display = 'inline-block';
+        } else {
+          if (navLogin) navLogin.style.display = 'block';
+          if (navRegister) navRegister.style.display = 'block';
+          if (navMenuUser) navMenuUser.style.display = 'none';
+          if (navProfile) navProfile.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+          if (btnWrite) btnWrite.style.display = 'none';
+        }
+      }
+      window.TornFiAuth.onUser(updateNav);
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      var navLogout = document.getElementById('navLogout');
+      if (navLogout) navLogout.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
+      });
+
+      function showList() {
+        boardDetail.style.display = 'none';
+        boardWrite.style.display = 'none';
+        boardListWrap.style.display = 'block';
+      }
+
+      function showDetail(post) {
+        currentPost = post;
+        boardListWrap.style.display = 'none';
+        boardWrite.style.display = 'none';
+        boardDetail.style.display = 'block';
+        boardEditForm.style.display = 'none';
+        detailTitle.textContent = post.title;
+        detailMeta.textContent = post.authorDisplayName + ' · ' + (post.createdAt ? new Date(post.createdAt).toLocaleString('ko-KR') : '');
+        detailBody.textContent = post.body || '';
+
+        if (post.images && post.images.length > 0) {
+          detailImages.style.display = 'flex';
+          detailImages.innerHTML = post.images.map(function (src) {
+            return '<img src="' + escapeHtml(src) + '" alt="첨부" loading="lazy">';
+          }).join('');
+          detailImages.querySelectorAll('img').forEach(function (img) {
+            img.addEventListener('click', function () { window.open(this.src, '_blank'); });
+          });
+        } else {
+          detailImages.style.display = 'none';
+          detailImages.innerHTML = '';
+        }
+
+        var user = window.TornFiAuth.getUser();
+        var isAuthor = user && post.authorId === user.id;
+        var likeCount = post.likeCount != null ? post.likeCount : 0;
+        var userVote = post.userVote || null;
+
+        btnEdit.style.display = isAuthor ? 'inline-block' : 'none';
+        boardVote.style.display = 'block';
+        var voteHtml = '<span class="counts">👍 ' + likeCount + '</span>';
+        voteHtml += '<button type="button" class="vote-btn' + (userVote === 'like' ? ' active-like' : '') + '" data-vote="like">👍 좋아요</button>';
+        boardVote.innerHTML = voteHtml;
+        boardVote.querySelectorAll('.vote-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var type = this.getAttribute('data-vote');
+            if (!type || !currentPost) return;
+            if (!user) {
+              alert('로그인한 회원만 좋아요를 누를 수 있습니다.');
+              return;
+            }
+            fetch('/api/posts/' + currentPost.id + '/vote', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: type }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  fetch('/api/posts/' + currentPost.id, { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                      if (d.ok && d.post) showDetail(d.post);
+                    });
+                } else {
+                  if (data.message) alert(data.message);
+                }
+              });
+          });
+        });
+      }
+
+      function showWriteForm() {
+        boardListWrap.style.display = 'none';
+        boardDetail.style.display = 'none';
+        boardWrite.style.display = 'block';
+        writeTitle.value = '';
+        writeBody.value = '';
+        if (writeImages) writeImages.value = '';
+        writeMsg.style.display = 'none';
+      }
+
+      function loadList(limit, offset) {
+        var q = '?limit=' + (limit || 20) + '&offset=' + (offset || 0);
+        fetch('/api/posts' + q, { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            var posts = data.posts || [];
+            var total = data.total != null ? data.total : posts.length;
+            boardTotal.textContent = '글 ' + total + '개';
+            if (posts.length === 0) {
+              boardList.innerHTML = '';
+              boardEmpty.style.display = 'block';
+              return;
+            }
+            boardEmpty.style.display = 'none';
+            boardList.innerHTML = posts.map(function (p) {
+              var date = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ko-KR') : '';
+              var likeCount = p.likeCount != null ? p.likeCount : 0;
+              return '<a href="/board.html#' + p.id + '" class="board-row" data-id="' + p.id + '"><div class="title">' + escapeHtml(p.title) + '</div><div class="meta">' + escapeHtml(p.authorDisplayName || '—') + ' · ' + date + ' · 👍 ' + likeCount + '</div></a>';
+            }).join('');
+            boardList.querySelectorAll('.board-row').forEach(function (el) {
+              el.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = el.getAttribute('data-id');
+                if (id) window.location.hash = id;
+              });
+            });
+          });
+      }
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function applyHash() {
+        var id = (window.location.hash || '').replace(/^#/, '');
+        if (id) {
+          fetch('/api/posts/' + id, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (d.ok && d.post) showDetail(d.post);
+              else showList(); loadList();
+            })
+            .catch(function () { showList(); loadList(); });
+        } else {
+          showList();
+          loadList();
+        }
+      }
+
+      btnWrite.addEventListener('click', showWriteForm);
+
+      btnEdit.addEventListener('click', function () {
+        if (!currentPost) return;
+        editTitle.value = currentPost.title || '';
+        editBody.value = currentPost.body || '';
+        editMsg.style.display = 'none';
+        boardEditForm.style.display = 'block';
+      });
+
+      editCancel.addEventListener('click', function () {
+        boardEditForm.style.display = 'none';
+      });
+
+      editSubmit.addEventListener('click', function () {
+        if (!currentPost) return;
+        editMsg.style.display = 'none';
+        var title = (editTitle.value || '').trim();
+        var body = (editBody.value || '').trim();
+        if (!title) { editMsg.textContent = '제목을 입력해 주세요.'; editMsg.style.color = 'var(--danger)'; editMsg.style.display = 'block'; return; }
+        if (!body) { editMsg.textContent = '내용을 입력해 주세요.'; editMsg.style.color = 'var(--danger)'; editMsg.style.display = 'block'; return; }
+        editSubmit.disabled = true;
+        fetch('/api/posts/' + currentPost.id, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title, body: body }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && data.post) {
+              boardEditForm.style.display = 'none';
+              showDetail(data.post);
+            } else {
+              editMsg.textContent = data.message || '수정에 실패했습니다.';
+              editMsg.style.color = 'var(--danger)';
+              editMsg.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            editMsg.textContent = '수정에 실패했습니다.';
+            editMsg.style.color = 'var(--danger)';
+            editMsg.style.display = 'block';
+          })
+          .finally(function () { editSubmit.disabled = false; });
+      });
+
+      writeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        writeMsg.style.display = 'none';
+        if (!window.TornFiAuth.getUser()) {
+          writeMsg.textContent = '로그인한 회원만 글을 쓸 수 있습니다. 로그인 후 다시 시도해 주세요.';
+          writeMsg.style.color = 'var(--danger)';
+          writeMsg.style.display = 'block';
+          return;
+        }
+        var title = (writeTitle.value || '').trim();
+        var body = (writeBody.value || '').trim();
+        if (!title) { writeMsg.textContent = '제목을 입력해 주세요.'; writeMsg.style.display = 'block'; writeMsg.style.color = 'var(--danger)'; return; }
+        if (!body) { writeMsg.textContent = '내용을 입력해 주세요.'; writeMsg.style.display = 'block'; writeMsg.style.color = 'var(--danger)'; return; }
+        var files = writeImages.files || [];
+        if (files.length > 5) { writeMsg.textContent = '이미지는 최대 5장까지 첨부할 수 있습니다.'; writeMsg.style.display = 'block'; writeMsg.style.color = 'var(--danger)'; return; }
+        for (var i = 0; i < files.length; i++) {
+          if (files[i].size > 2 * 1024 * 1024) { writeMsg.textContent = '한 장당 2MB 이하로 올려 주세요.'; writeMsg.style.display = 'block'; writeMsg.style.color = 'var(--danger)'; return; }
+        }
+        writeSubmit.disabled = true;
+        var formData = new FormData();
+        formData.append('title', title);
+        formData.append('body', body);
+        for (var j = 0; j < files.length; j++) formData.append('images', files[j]);
+        fetch('/api/posts', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: formData,
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (r.ok && data.ok) {
+                showList();
+                loadList();
+              } else {
+                writeMsg.textContent = data.message || '등록에 실패했습니다.';
+                writeMsg.style.color = 'var(--danger)';
+                writeMsg.style.display = 'block';
+              }
+            }).catch(function () {
+              writeMsg.textContent = r.status === 401 ? '로그인이 필요합니다. 다시 로그인해 주세요.' : '서버 응답을 처리할 수 없습니다.';
+              writeMsg.style.color = 'var(--danger)';
+              writeMsg.style.display = 'block';
+            });
+          })
+          .catch(function () {
+            writeMsg.textContent = '네트워크 오류이거나 로그인 세션이 만료되었을 수 있습니다. 로그인 후 다시 시도해 주세요.';
+            writeMsg.style.color = 'var(--danger)';
+            writeMsg.style.display = 'block';
+          })
+          .finally(function () { writeSubmit.disabled = false; });
+      });
+
+      window.addEventListener('hashchange', applyHash);
+
+      if (window.TornFiAuth.getUser()) {
+        updateNav(window.TornFiAuth.getUser());
+        applyHash();
+      } else {
+        window.TornFiAuth.init().then(function () {
+          updateNav(window.TornFiAuth.getUser());
+          applyHash();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

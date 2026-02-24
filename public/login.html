@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>로그인 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
+        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
+        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
+        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
+          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
+          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-modal-layer">
+    <div class="login-modal-box">
+      <a href="/" class="login-modal-back" aria-label="닫기">×</a>
+      <a href="/" class="back-link">← 홈으로</a>
+      <div class="auth-card auth-card--login">
+        <h1 class="auth-title"><span class="auth-title-emoji">👋</span> 로그인</h1>
+        <p class="auth-error" id="authError"></p>
+        <form id="loginForm" class="auth-form">
+          <label for="loginWallet">지갑 주소</label>
+          <input type="text" id="loginWallet" name="wallet" required autocomplete="username" placeholder="0x로 시작하는 지갑 주소 입력">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="비밀번호 입력">
+          <button type="submit" class="auth-submit">로그인</button>
+        </form>
+        <p class="auth-link">계정이 없으신가요? <a href="/register.html">회원가입</a></p>
+      </div>
+      <p class="auth-brand"><a href="/">TornFi.com</a></p>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var layer = document.querySelector('.login-modal-layer');
+      var box = document.querySelector('.login-modal-box');
+      var errorEl = document.getElementById('authError');
+      if (layer && box) {
+        layer.addEventListener('click', function (e) {
+          if (e.target !== layer) return;
+          if (errorEl && errorEl.textContent.trim() !== '') return;
+          window.location.href = '/';
+        });
+      }
+
+      var form = document.getElementById('loginForm');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorEl.textContent = '';
+        var wallet = document.getElementById('loginWallet').value.trim();
+        var password = document.getElementById('password').value;
+        window.TornFiAuth.login(wallet, password)
+          .then(function () {
+            window.location.href = '/';
+          })
+          .catch(function (err) {
+            errorEl.textContent = (err && err.message) || '로그인에 실패했습니다.';
+          });
+      });
+      window.TornFiAuth.onUser(function (u) {
+        var nl = document.getElementById('navLogin');
+        var nr = document.getElementById('navRegister');
+        var nmu = document.getElementById('navMenuUser');
+        var np = document.getElementById('navProfile');
+        var nac = document.getElementById('navAdminCenter');
+        if (u) {
+          if (nl) nl.style.display = 'none'; if (nr) nr.style.display = 'none';
+          if (nmu) nmu.style.display = 'block';
+          if (np) np.style.display = 'block';
+          if (nac) nac.style.display = u.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (nl) nl.style.display = 'block'; if (nr) nr.style.display = 'block';
+          if (nmu) nmu.style.display = 'none';
+          if (np) np.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+        }
+      });
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      var navLogout = document.getElementById('navLogout');
+      if (navLogout) navLogout.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        if (window.TornFiAuth && window.TornFiAuth.logout) window.TornFiAuth.logout().then(function () { window.location.href = '/'; });
+      });
+    })();
+  </script>
+</body>
+</html>

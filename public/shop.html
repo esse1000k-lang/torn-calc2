@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>❤️ 상점 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .shop-page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 3rem; position: relative; z-index: 1; }
+    .shop-hero {
+      text-align: center; margin-bottom: 2rem;
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(0, 255, 136, 0.06) 50%, transparent 100%);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 16px;
+      padding: 1.75rem 1.5rem;
+    }
+    .shop-hero h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem 0; }
+    .shop-hero p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+    .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+    .back-link:hover { color: var(--neon); }
+    .shop-balance {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+      background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); border-radius: 12px;
+      border-left: 4px solid var(--neon);
+      font-size: 1.1rem; font-weight: 600; color: var(--text);
+    }
+    .shop-balance .heart { color: #ff6b9d; }
+    .shop-section-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem 0; }
+    .shop-category { margin-bottom: 2rem; }
+    .shop-category:last-child { margin-bottom: 0; }
+    .shop-item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 0.5rem;
+    }
+    .shop-item-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.5rem 0.65rem;
+      display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem;
+      box-sizing: border-box;
+    }
+    .shop-item-name { font-size: 0.85rem; font-weight: 700; color: var(--neon); margin: 0 0 0.2rem 0; }
+    .shop-item-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; margin: 0; }
+    .shop-item-price { font-size: 0.75rem; color: var(--neon); font-weight: 600; margin: 0; }
+    .shop-item-price .heart { color: #ff6b9d; }
+    .shop-item-btn {
+      padding: 0.3rem 0.5rem; border-radius: 5px; font-size: 0.75rem; font-weight: 500; cursor: pointer;
+      background: var(--neon); color: var(--bg-dark); border: none; transition: background 0.2s, opacity 0.2s;
+    }
+    .shop-item-btn:hover:not(:disabled) { background: var(--neon-dim); }
+    .shop-item-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .shop-login-msg { text-align: center; padding: 2rem; color: var(--text-muted); }
+    .shop-login-msg a { color: var(--neon); text-decoration: none; }
+    .shop-items-wrap {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem;
+      padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+      background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); border-radius: 10px;
+      font-size: 0.9rem;
+    }
+    .shop-items-label { color: var(--text-muted); font-weight: 500; }
+    .shop-items-list { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; color: var(--text); }
+    .shop-items-list .shop-item-badge { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .shop-items-empty { color: var(--text-muted); font-size: 0.85rem; }
+    .shop-buy-modal { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
+    .shop-buy-modal.is-open { display: flex; }
+    .shop-buy-modal__box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; min-width: 280px; max-width: 90vw; }
+    .shop-buy-modal__title { font-size: 1rem; font-weight: 600; color: var(--text); margin: 0 0 1rem 0; }
+    .shop-buy-modal__row { margin-bottom: 1rem; }
+    .shop-buy-modal__row label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem; }
+    .shop-buy-modal__input { width: 100%; box-sizing: border-box; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-dark); color: var(--text); font-size: 1rem; }
+    .shop-buy-modal__input:focus { outline: none; border-color: var(--neon); }
+    .shop-buy-modal__actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+    .shop-buy-modal__btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; }
+    .shop-buy-modal__btn--cancel { background: var(--border); color: var(--text); }
+    .shop-buy-modal__btn--confirm { background: var(--neon); color: var(--bg-dark); }
+    .shop-buy-modal__btn--confirm:hover:not(:disabled) { background: var(--neon-dim); }
+    .shop-buy-modal__btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .shop-toast-modal { position: fixed; inset: 0; z-index: 110; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
+    .shop-toast-modal.is-open { display: flex; }
+    .shop-toast-modal__box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; min-width: 260px; max-width: 90vw; }
+    .shop-toast-modal__text { font-size: 0.95rem; color: var(--text); margin: 0 0 1.25rem 0; line-height: 1.45; }
+    .shop-toast-modal__actions { display: flex; justify-content: flex-end; }
+    .shop-toast-modal__btn { padding: 0.5rem 1.25rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; background: var(--neon); color: var(--bg-dark); }
+    .shop-toast-modal__btn:hover { background: var(--neon-dim); }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
+        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
+        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
+        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
+          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
+          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="shop-page">
+    <a href="/" class="back-link">← 홈으로</a>
+    <div class="shop-hero">
+      <h1>상점</h1>
+      <p>모은 하트로 채팅·게시판 등 다양한 아이템을 구매하세요.</p>
+    </div>
+
+    <div id="shopBalanceWrap" class="shop-balance" style="display:none;">
+      <span class="heart" aria-hidden="true">❤️</span>
+      <span>보유 하트: <strong id="shopMyHearts">0</strong>개</span>
+    </div>
+    <div id="shopItemsWrap" class="shop-items-wrap" style="display:none;">
+      <span class="shop-items-label">보유 아이템</span>
+      <span id="shopItemsList" class="shop-items-list"></span>
+    </div>
+    <p id="shopLoginMsg" class="shop-login-msg" style="display:none;">
+      로그인하면 보유 하트를 확인하고 아이템을 구매할 수 있습니다. <a href="/login.html">로그인</a>
+    </p>
+
+    <section class="shop-category" aria-labelledby="shop-category-chat">
+      <h2 id="shop-category-chat" class="shop-section-title">채팅</h2>
+      <div id="shopItemList" class="shop-item-grid">
+        <div class="shop-item-card" data-item-id="pinMessage" data-cost="15">
+          <p class="shop-item-name">상단 고정 메시지</p>
+          <p class="shop-item-desc">채팅방 상단에 고정 메시지를 남깁니다. 스크롤해도 상단 고정, 1시간 후 자동 해제</p>
+          <p class="shop-item-price"><span class="heart">❤️</span> 15 → 📌 1</p>
+          <button type="button" class="shop-item-btn" data-exchange="pinMessage">구매</button>
+        </div>
+        <div class="shop-item-card" data-item-id="rewardParty" data-cost="1">
+          <p class="shop-item-name">리워드 파티</p>
+          <p class="shop-item-desc">배당 축하 축전. 채팅방에 헬기가 토네이도를 뿌리는 애니메이션이 재생됩니다.</p>
+          <p class="shop-item-price"><span class="heart">❤️</span> 1 → 🚁 1</p>
+          <button type="button" class="shop-item-btn" data-exchange="rewardParty">구매</button>
+        </div>
+        <div class="shop-item-card" data-item-id="risePrayer" data-cost="1">
+          <p class="shop-item-name">떡상 기원</p>
+          <p class="shop-item-desc">상승을 기원하는 아이템. TORN 토큰 가격 상승을 기원하는 애니메이션이 채팅방에 재생됩니다.</p>
+          <p class="shop-item-price"><span class="heart">❤️</span> 1 → 🙏 1</p>
+          <button type="button" class="shop-item-btn" data-exchange="risePrayer">구매</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="shopBuyModal" class="shop-buy-modal" role="dialog" aria-labelledby="shopBuyModalTitle" aria-modal="true">
+    <div class="shop-buy-modal__box">
+      <p id="shopBuyModalTitle" class="shop-buy-modal__title">몇 개 구매하시겠습니까?</p>
+      <div class="shop-buy-modal__row">
+        <label for="shopBuyQuantity">수량 (1~5)</label>
+        <input type="number" id="shopBuyQuantity" class="shop-buy-modal__input" min="1" max="5" value="1" step="1" aria-label="구매 수량">
+      </div>
+      <div class="shop-buy-modal__actions">
+        <button type="button" id="shopBuyCancel" class="shop-buy-modal__btn shop-buy-modal__btn--cancel">취소</button>
+        <button type="button" id="shopBuyConfirm" class="shop-buy-modal__btn shop-buy-modal__btn--confirm">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="shopToastModal" class="shop-toast-modal" role="alertdialog" aria-live="polite" aria-modal="true">
+    <div class="shop-toast-modal__box">
+      <p id="shopToastText" class="shop-toast-modal__text"></p>
+      <div class="shop-toast-modal__actions">
+        <button type="button" id="shopToastOk" class="shop-toast-modal__btn">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var shopBalanceWrap = document.getElementById('shopBalanceWrap');
+      var shopMyHearts = document.getElementById('shopMyHearts');
+      var shopItemsWrap = document.getElementById('shopItemsWrap');
+      var shopItemsList = document.getElementById('shopItemsList');
+      var shopLoginMsg = document.getElementById('shopLoginMsg');
+      var user = window.TornFiAuth && window.TornFiAuth.getUser();
+
+      var shopToastModal = document.getElementById('shopToastModal');
+      var shopToastText = document.getElementById('shopToastText');
+      var shopToastOk = document.getElementById('shopToastOk');
+      function showShopToast(message) {
+        if (shopToastText) shopToastText.textContent = message || '';
+        if (shopToastModal) shopToastModal.classList.add('is-open');
+      }
+      function closeShopToast() {
+        if (shopToastModal) shopToastModal.classList.remove('is-open');
+      }
+      if (shopToastOk) shopToastOk.addEventListener('click', closeShopToast);
+      if (shopToastModal && shopToastModal.querySelector('.shop-toast-modal__box')) {
+        shopToastModal.addEventListener('click', function (e) {
+          if (e.target === shopToastModal) closeShopToast();
+        });
+      }
+
+      var lastShopItems = {};
+      function renderShopItems(shopItems) {
+        if (!shopItemsList) return;
+        lastShopItems = shopItems && typeof shopItems === 'object' ? shopItems : {};
+        var items = [];
+        var pinMessage = (lastShopItems.pinMessage != null && typeof lastShopItems.pinMessage === 'number') ? lastShopItems.pinMessage : 0;
+        if (pinMessage > 0) items.push('<span class="shop-item-badge">📌 상단 고정 메시지 <strong>' + pinMessage + '</strong>개</span>');
+        var rewardParty = (lastShopItems.rewardParty != null && typeof lastShopItems.rewardParty === 'number') ? lastShopItems.rewardParty : 0;
+        if (rewardParty > 0) items.push('<span class="shop-item-badge">🚁 리워드 파티 <strong>' + rewardParty + '</strong>개</span>');
+        var risePrayer = (lastShopItems.risePrayer != null && typeof lastShopItems.risePrayer === 'number') ? lastShopItems.risePrayer : 0;
+        if (risePrayer > 0) items.push('<span class="shop-item-badge">🙏 떡상 기원 <strong>' + risePrayer + '</strong>개</span>');
+        shopItemsList.innerHTML = items.length ? items.join('') : '<span class="shop-items-empty">보유한 아이템이 없습니다.</span>';
+        if (shopItemsWrap) shopItemsWrap.style.display = 'flex';
+      }
+
+      function loadBalance() {
+        if (!user) {
+          if (shopBalanceWrap) shopBalanceWrap.style.display = 'none';
+          if (shopItemsWrap) shopItemsWrap.style.display = 'none';
+          shopLoginMsg.style.display = 'block';
+          return;
+        }
+        shopLoginMsg.style.display = 'none';
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var hearts = (data.ok && data.user && typeof data.user.points === 'number') ? data.user.points : 0;
+            shopMyHearts.textContent = hearts;
+            if (shopBalanceWrap) shopBalanceWrap.style.display = 'flex';
+            if (data.ok && data.user) renderShopItems(data.user.shopItems || {});
+            updateExchangeButtons(hearts, lastShopItems);
+          })
+          .catch(function () {
+            shopMyHearts.textContent = '—';
+            if (shopBalanceWrap) shopBalanceWrap.style.display = 'flex';
+          });
+      }
+
+      function updateExchangeButtons(myHearts, shopItems) {
+        shopItems = shopItems || lastShopItems || {};
+        document.querySelectorAll('.shop-item-card[data-cost]').forEach(function (card) {
+          var itemId = card.getAttribute('data-item-id');
+          var cost = parseInt(card.getAttribute('data-cost'), 10);
+          var owned = (shopItems[itemId] != null && typeof shopItems[itemId] === 'number') ? shopItems[itemId] : 0;
+          var btn = card.querySelector('.shop-item-btn[data-exchange]');
+          if (btn) btn.disabled = myHearts < cost || owned >= 5;
+        });
+      }
+
+      var shopBuyModal = document.getElementById('shopBuyModal');
+      var shopBuyQuantity = document.getElementById('shopBuyQuantity');
+      var shopBuyCancel = document.getElementById('shopBuyCancel');
+      var shopBuyConfirm = document.getElementById('shopBuyConfirm');
+      var pendingBuy = { card: null, btn: null, itemId: null, cost: 0 };
+
+      function openBuyModal(card, btn, itemId, cost) {
+        var owned = (lastShopItems[itemId] != null && typeof lastShopItems[itemId] === 'number') ? lastShopItems[itemId] : 0;
+        var maxBuy = Math.max(0, 5 - owned);
+        if (maxBuy <= 0) {
+          showShopToast('이 아이템은 종류당 최대 5개까지 보유할 수 있습니다.');
+          return;
+        }
+        pendingBuy = { card: card, btn: btn, itemId: itemId, cost: cost };
+        if (shopBuyQuantity) {
+          shopBuyQuantity.value = '1';
+          shopBuyQuantity.min = '1';
+          shopBuyQuantity.max = String(maxBuy);
+        }
+        var label = document.querySelector('.shop-buy-modal__row label[for="shopBuyQuantity"]');
+        if (label) label.textContent = maxBuy === 1 ? '수량 (1개)' : '수량 (1~' + maxBuy + '개)';
+        if (shopBuyModal) shopBuyModal.classList.add('is-open');
+        if (shopBuyQuantity) shopBuyQuantity.focus();
+      }
+      function closeBuyModal() {
+        pendingBuy = { card: null, btn: null, itemId: null, cost: 0 };
+        if (shopBuyModal) shopBuyModal.classList.remove('is-open');
+      }
+      if (shopBuyQuantity) {
+        shopBuyQuantity.addEventListener('input', function () {
+          var max = parseInt(shopBuyQuantity.getAttribute('max'), 10) || 5;
+          var n = parseInt(shopBuyQuantity.value, 10);
+          if (isNaN(n) || n < 1) shopBuyQuantity.value = '1';
+          else if (n > max) shopBuyQuantity.value = String(max);
+        });
+      }
+      if (shopBuyCancel) shopBuyCancel.addEventListener('click', closeBuyModal);
+      if (shopBuyModal && shopBuyModal.querySelector('.shop-buy-modal__box')) {
+        shopBuyModal.addEventListener('click', function (e) {
+          if (e.target === shopBuyModal) closeBuyModal();
+        });
+      }
+      if (shopBuyConfirm) shopBuyConfirm.addEventListener('click', function () {
+        var itemId = pendingBuy.itemId;
+        var cost = pendingBuy.cost;
+        var btn = pendingBuy.btn;
+        if (!itemId || !cost) return;
+        var maxQty = parseInt(shopBuyQuantity.getAttribute('max'), 10) || 5;
+        var qty = parseInt(shopBuyQuantity.value, 10) || 1;
+        qty = Math.min(maxQty, Math.max(1, qty));
+        var myHearts = parseInt(shopMyHearts.textContent, 10) || 0;
+        if (myHearts < cost * qty) {
+          showShopToast('보유 하트가 부족합니다.');
+          return;
+        }
+        closeBuyModal();
+        btn.disabled = true;
+        shopBuyConfirm.disabled = true;
+        fetch('/api/shop/exchange', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: itemId, quantity: qty }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              if (typeof data.myHearts === 'number') {
+                shopMyHearts.textContent = data.myHearts;
+              }
+              if (data.myShopItems && typeof data.myShopItems === 'object') {
+                renderShopItems(data.myShopItems);
+                updateExchangeButtons(data.myHearts, data.myShopItems);
+              } else {
+                updateExchangeButtons(parseInt(shopMyHearts.textContent, 10) || 0, lastShopItems);
+              }
+              showShopToast(data.message || '구매되었습니다.');
+            } else {
+              showShopToast(data.message || '구매에 실패했습니다.');
+            }
+          })
+          .catch(function () { showShopToast('구매 요청 중 오류가 발생했습니다.'); })
+          .finally(function () { btn.disabled = false; shopBuyConfirm.disabled = false; });
+      });
+
+      document.getElementById('shopItemList').addEventListener('click', function (e) {
+        var btn = e.target.closest('.shop-item-btn[data-exchange]');
+        if (!btn) return;
+        var card = btn.closest('.shop-item-card');
+        var itemId = card && card.getAttribute('data-item-id');
+        var cost = card ? parseInt(card.getAttribute('data-cost'), 10) : 0;
+        var myHearts = parseInt(shopMyHearts.textContent, 10) || 0;
+        if (myHearts < cost) {
+          showShopToast('보유 하트가 부족합니다.');
+          return;
+        }
+        openBuyModal(card, btn, itemId, cost);
+      });
+
+      if (window.TornFiAuth && window.TornFiAuth.onUser) {
+        window.TornFiAuth.onUser(function (u) { user = u; loadBalance(); });
+      }
+      loadBalance();
+
+      var navLogin = document.getElementById('navLogin');
+      var navRegister = document.getElementById('navRegister');
+      var navProfile = document.getElementById('navProfile');
+      var navMenuUser = document.getElementById('navMenuUser');
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      function updateNav(u) {
+        if (u) {
+          if (navLogin) navLogin.style.display = 'none';
+          if (navRegister) navRegister.style.display = 'none';
+          if (navMenuUser) navMenuUser.style.display = 'block';
+          if (navProfile) navProfile.style.display = 'block';
+          if (navAdminCenter) navAdminCenter.style.display = u.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (navLogin) navLogin.style.display = 'block';
+          if (navRegister) navRegister.style.display = 'block';
+          if (navMenuUser) navMenuUser.style.display = 'none';
+          if (navProfile) navProfile.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+        }
+      }
+      if (window.TornFiAuth && window.TornFiAuth.getUser()) updateNav(window.TornFiAuth.getUser());
+      if (window.TornFiAuth && window.TornFiAuth.onUser) window.TornFiAuth.onUser(updateNav);
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      var navLogout = document.getElementById('navLogout');
+      if (navLogout) navLogout.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!confirm('로그아웃 하시겠습니까?')) return;
+        if (window.TornFiAuth && window.TornFiAuth.logout) window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
+      });
+    })();
+  </script>
+</body>
+</html>

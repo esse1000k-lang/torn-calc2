@@ -1,0 +1,20 @@
+{
+  "name": "TornFi 커뮤니티",
+  "short_name": "TornFi",
+  "description": "TornFi 커뮤니티 - 실시간 채팅, 계산기, 상점, 게시판",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ]
+}
