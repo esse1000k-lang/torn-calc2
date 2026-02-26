@@ -79,6 +79,9 @@ node scripts/create-admin-account.js
 - **데이터가 안 남음 / 매번 초기화됨**  
   - `MONGODB_URI` 가 제대로 들어갔는지 확인.  
   - MongoDB Atlas에서 IP 제한(Network Access)에 **0.0.0.0/0** 허용돼 있는지 확인.
+- **"bad auth : authentication failed"**  
+  - Atlas 사용자명·비밀번호가 연결 문자열과 일치하는지 확인. 비밀번호에 특수문자 있으면 URL 인코딩 필요.  
+  - 자세한 점검 순서는 [docs/mongodb-setup.md](./mongodb-setup.md) 맨 아래 "bad auth" 섹션 참고.
 - **빌드 실패**  
   - Render 대시보드 **Logs** 탭에서 빨간 에러 메시지 확인.  
   - `npm install` 이 되는지 로컬에서 `npm install` 한 번 해보기.
