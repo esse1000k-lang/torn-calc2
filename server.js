@@ -1,4 +1,5 @@
-/**
+/**const dns = require('node:dns');
+dns.setDefaultResultOrder('ipv4first');
  * TornFi 커뮤니티 서버 — 투자자 의견 공유 커뮤니티 (포인트·송금·환전 없음)
  */
 require('dotenv').config();
