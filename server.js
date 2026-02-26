@@ -713,11 +713,12 @@ const sessions = new Map();
 // 세션 만료: 메모리(Map)에 세션이 무한히 쌓이지 않도록 일정 시간 후 자동 삭제. 쿠키 maxAge와 맞춤.
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // 만료된 세션 주기 정리 → Map 크기 줄여서 메모리 사용 완화
-setInterval(() => {
+setInterval(async () => {
   const now = Date.now();
   for (const [token, sess] of sessions.entries()) {
     if (sess && sess.expiresAt && sess.expiresAt < now) sessions.delete(token);
   }
+  if (typeof db.deleteExpiredSessions === 'function') await db.deleteExpiredSessions();
 }, 60 * 60 * 1000);
 
 // 관리자 PIN 연속 실패: IP별 5회 실패 시 15분 잠금
@@ -778,25 +779,32 @@ function adminPinRecordSuccess(ip) {
 async function authMiddleware(req, res, next) {
   try {
     const token = req.signedCookies?.session;
-    if (token && sessions.has(token)) {
-      const sess = sessions.get(token);
-      const expired = sess && sess.expiresAt && sess.expiresAt < Date.now();
-      if (expired) {
-        sessions.delete(token);
-        req.user = null;
-        return next();
+    let sess = null;
+    if (token) {
+      if (typeof db.getSession === 'function') {
+        sess = await db.getSession(token);
       }
+      if (!sess && sessions.has(token)) sess = sessions.get(token);
+      if (sess && sess.expiresAt && sess.expiresAt < Date.now()) {
+        if (typeof db.deleteSession === 'function') await db.deleteSession(token);
+        else sessions.delete(token);
+        sess = null;
+      }
+    }
+    if (sess) {
+      sessions.set(token, sess);
       req.user = sess;
       req.sessionToken = token;
       const users = await db.readUsers();
       const dbUser = users.find((u) => u.id === req.user.id);
       if (dbUser && dbUser.withdrawn === true) {
-        sessions.delete(token);
+        if (typeof db.deleteSession === 'function') await db.deleteSession(token);
+        else sessions.delete(token);
         req.user = null;
       }
-      return next();
+    } else {
+      req.user = null;
     }
-    req.user = null;
     next();
   } catch (e) {
     next(e);
@@ -1118,13 +1126,15 @@ app.post('/api/login', async (req, res) => {
   const isAdminByWallet = user.walletAddress && ADMIN_WALLET_ADDRESSES.includes(user.walletAddress.toLowerCase());
   const isAdmin = isAdminByWallet || user.boardAdmin === true;
   const token = createSessionToken();
-  sessions.set(token, {
+  const sessData = {
     id: user.id,
     displayName: user.displayName,
     walletAddress: user.walletAddress || null,
     isAdmin: !!isAdmin,
     expiresAt: Date.now() + SESSION_MAX_AGE_MS,
-  });
+  };
+  sessions.set(token, sessData);
+  if (typeof db.setSession === 'function') await db.setSession(token, sessData);
 
   res.cookie('session', token, {
     httpOnly: true,
@@ -1147,9 +1157,12 @@ app.post('/api/login', async (req, res) => {
 });
 
 // 로그아웃
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', async (req, res) => {
   const token = req.signedCookies?.session;
-  if (token) sessions.delete(token);
+  if (token) {
+    if (typeof db.deleteSession === 'function') await db.deleteSession(token);
+    sessions.delete(token);
+  }
   res.clearCookie('session', { path: '/' }).json({ ok: true });
 });
 
@@ -1170,7 +1183,10 @@ app.post('/api/withdraw', async (req, res) => {
   users[idx].withdrawnAt = new Date().toISOString();
   await db.writeUsers(users);
   const token = req.signedCookies?.session;
-  if (token) sessions.delete(token);
+  if (token) {
+    if (typeof db.deleteSession === 'function') await db.deleteSession(token);
+    sessions.delete(token);
+  }
   res.clearCookie('session', { path: '/' }).json({ ok: true, message: '회원탈퇴가 완료되었습니다.' });
 });
 
@@ -1924,6 +1940,7 @@ app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
   }
   users.splice(idx, 1);
   await db.writeUsers(users);
+  if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
     if (sess && sess.id === userId) sessions.delete(token);
   }
@@ -2357,6 +2374,7 @@ app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req,
   });
   users.splice(idx, 1);
   await db.writeUsers(users);
+  if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
     if (sess && sess.id === userId) sessions.delete(token);
   }
