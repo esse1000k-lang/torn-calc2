@@ -373,14 +373,7 @@
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
     <div class="nav-menu-wrap">
       <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
-        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
-        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
-        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
-          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
-          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
-        </div>
-      </div>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
   </nav>
 
@@ -470,11 +463,11 @@
             <tbody>
               <tr><td><span class="level-icon" aria-hidden="true">🐚</span> 조개</td><td>Lv.1</td><td>1개 미만</td></tr>
               <tr><td><span class="level-icon" aria-hidden="true">🦐</span> 새우</td><td>Lv.2</td><td>1,000개 미만</td></tr>
-              <tr><td><span class="level-icon" aria-hidden="true">🐡</span> 광어</td><td>Lv.3</td><td>2,000개 미만</td></tr>
+              <tr><td><span class="level-icon" aria-hidden="true">🐙</span> 문어</td><td>Lv.3</td><td>2,000개 미만</td></tr>
               <tr><td><span class="level-icon" aria-hidden="true">🦭</span> 물개</td><td>Lv.4</td><td>3,000개 미만</td></tr>
               <tr><td><span class="level-icon" aria-hidden="true">🦈</span> 상어</td><td>Lv.5</td><td>4,000개 미만</td></tr>
               <tr><td><span class="level-icon" aria-hidden="true">🐋</span> 고래</td><td>Lv.6</td><td>4,000개 이상</td></tr>
-              <tr class="admin-level-table--admin"><td><span class="level-icon" aria-hidden="true">👤</span> 관리자</td><td>—</td><td>회원 관리에서 지정 (등급 동기화·등급 지정 권한)</td></tr>
+              <tr class="admin-level-table--admin"><td><span class="level-icon" aria-hidden="true">🛠️</span> 관리자</td><td>—</td><td>회원 관리에서 지정</td></tr>
             </tbody>
           </table>
         </div>
@@ -524,7 +517,7 @@
               <select id="createUserLevel" name="x-level" title="등급">
                 <option value="1">Lv.1 조개</option>
                 <option value="2">Lv.2 새우</option>
-                <option value="3">Lv.3 광어</option>
+                <option value="3">Lv.3 문어</option>
                 <option value="4">Lv.4 물개</option>
                 <option value="5">Lv.5 상어</option>
                 <option value="6">Lv.6 고래</option>
@@ -823,7 +816,7 @@
         attachUserPointsHandlers(usersBody);
       }
 
-      var LEVEL_NAMES = { 1: '조개', 2: '새우', 3: '광어', 4: '물개', 5: '상어', 6: '고래' };
+      var LEVEL_NAMES = { 1: '조개', 2: '새우', 3: '문어', 4: '물개', 5: '상어', 6: '고래' };
       var LEVEL_BADGES = { 1: '🐚', 2: '🦐', 3: '🐡', 4: '🦭', 5: '🦈', 6: '🐋' };
       function levelBadge(lv) {
         var n = Math.min(6, Math.max(1, parseInt(lv, 10) || 1));
@@ -1875,22 +1868,38 @@
         errEl.style.display = 'none';
         loadingEl.style.display = 'block';
         fetch('/api/me', { credentials: 'same-origin' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, status: r.status, data: data };
+            }).catch(function () {
+              return { ok: false, status: r.status, data: null };
+            });
+          })
+          .then(function (res) {
             loadingEl.style.display = 'none';
-            if (data.ok && data.user) {
-              var u = data.user;
-              document.getElementById('adminAccountDisplayName').textContent = u.displayName || '—';
-              document.getElementById('adminAccountWallet').textContent = u.walletAddress || '—';
+            if (res.ok && res.data && res.data.user) {
+              var u = res.data.user;
+              var nameEl = document.getElementById('adminAccountDisplayName');
+              var walletEl = document.getElementById('adminAccountWallet');
+              if (nameEl) nameEl.textContent = u.displayName || '—';
+              if (walletEl) walletEl.textContent = u.walletAddress || '—';
               infoEl.style.display = 'block';
             } else {
-              errEl.textContent = data.message || '계정 정보를 불러올 수 없습니다.';
+              if (res.status === 401) {
+                errEl.textContent = '로그인 세션이 만료되었거나 로그인이 필요합니다. 다시 로그인해 주세요.';
+              } else if (res.data && res.data.message) {
+                errEl.textContent = res.data.message;
+              } else if (res.data === null) {
+                errEl.textContent = '서버 응답 형식이 올바르지 않습니다. (서버 점검 중일 수 있습니다.)';
+              } else {
+                errEl.textContent = '계정 정보를 불러올 수 없습니다.';
+              }
               errEl.style.display = 'block';
             }
           })
-          .catch(function () {
+          .catch(function (e) {
             loadingEl.style.display = 'none';
-            errEl.textContent = '계정 정보를 불러오는데 실패했습니다.';
+            errEl.textContent = '네트워크 오류로 불러오지 못했습니다. 서버가 실행 중인지, 인터넷 연결을 확인해 주세요.';
             errEl.style.display = 'block';
           });
       }
@@ -2037,29 +2046,16 @@
         if (user && user.isAdmin) {
           adminDenied.style.display = 'none';
           adminPage.style.display = 'block';
-          var navLogin = document.getElementById('navLogin');
-          var navRegister = document.getElementById('navRegister');
-          var navProfile = document.getElementById('navProfile');
-          var navMenuUser = document.getElementById('navMenuUser');
           var nac = document.getElementById('navAdminCenter');
-          if (navLogin) navLogin.style.display = 'none';
-          if (navRegister) navRegister.style.display = 'none';
-          if (navProfile) navProfile.style.display = 'block';
-          if (navMenuUser) navMenuUser.style.display = 'block';
-          if (nac) nac.style.display = 'inline-flex';
           var navMenuBtn = document.getElementById('navMenuBtn');
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (nac) nac.style.display = 'inline-flex';
           var navMenuDropdown = document.getElementById('navMenuDropdown');
           if (navMenuBtn && navMenuDropdown) {
             navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
             navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
             document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
           }
-          var navLogout = document.getElementById('navLogout');
-          if (navLogout) navLogout.addEventListener('click', function (e) {
-            e.preventDefault();
-            if (!confirm('로그아웃 하시겠습니까?')) return;
-            window.TornFiAuth.logout().then(function () { window.location.href = '/'; });
-          });
           fetch('/api/admin/status', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -2077,13 +2073,9 @@
         } else {
           adminDenied.style.display = 'block';
           adminPage.style.display = 'none';
-          var navLogin = document.getElementById('navLogin');
-          var navRegister = document.getElementById('navRegister');
-          var navMenuUser = document.getElementById('navMenuUser');
+          var navMenuBtn = document.getElementById('navMenuBtn');
           var nac = document.getElementById('navAdminCenter');
-          if (navLogin) navLogin.style.display = 'block';
-          if (navRegister) navRegister.style.display = 'block';
-          if (navMenuUser) navMenuUser.style.display = 'none';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (nac) nac.style.display = 'none';
         }
       }

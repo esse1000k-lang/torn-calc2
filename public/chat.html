@@ -25,25 +25,16 @@
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
     <div class="nav-menu-wrap">
       <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
-        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
-        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
-        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
-          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
-          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
-        </div>
-      </div>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
   </nav>
 
   <main class="site-main chat-page-main">
-    <p class="chat-page-back"><a href="/" class="chat-page-back-link">← 홈으로</a></p>
     <section id="chat" class="section chat-section">
-      <h2 class="section-title">실시간 채팅</h2>
-      <p class="chat-shop-link-wrap"><a href="/shop.html" class="chat-shop-link">❤️ 상점 →</a></p>
       <div id="chatWrap" class="chat-wrap">
         <div id="chatPanel" class="chat-panel">
           <div id="chatMsgDropdown" class="chat-msg-dropdown" style="display:none;">
+            <button type="button" class="chat-msg-dropdown__item" data-action="sendHeart"><span class="chat-msg-dropdown__icon">❤️</span> 보내기</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="reply"><span class="chat-msg-dropdown__icon">↩</span> 답장</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="copy"><span class="chat-msg-dropdown__icon">📄</span> 복사</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="edit"><span class="chat-msg-dropdown__icon">✏</span> 수정</button>
@@ -69,6 +60,12 @@
               <span class="rise-prayer-up" aria-hidden="true">🚀</span>
             </div>
           </div>
+          <div id="chatBroomOverlay" class="broom-overlay" aria-hidden="true" style="display:none;">
+            <div class="broom-overlay__dust" aria-hidden="true">
+              <span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span>
+            </div>
+            <div class="broom-overlay__broom" aria-hidden="true">🧹</div>
+          </div>
           <div id="chatPinnedWrap" class="chat-pinned-wrap" style="display:none;">
             <div class="chat-pinned-inner">
               <span class="chat-pinned-icon" aria-hidden="true">📌</span>
@@ -76,8 +73,10 @@
               <span id="chatPinnedMeta" class="chat-pinned-meta"></span>
             </div>
           </div>
-          <div id="chatGuestNotice" class="chat-guest-notice" style="display:none;" aria-live="polite"></div>
-          <div id="chatMessages" class="chat-messages"></div>
+          <div class="chat-messages-area">
+            <div id="chatGuestNotice" class="chat-guest-notice" style="display:none;" aria-live="polite"></div>
+            <div id="chatMessages" class="chat-messages"></div>
+          </div>
           <div id="chatReplyBar" class="chat-reply-bar" style="display:none;">
             <span id="chatReplyText" class="chat-reply-bar__text"></span>
             <button type="button" id="chatReplyCancel" class="chat-reply-bar__cancel">취소</button>
@@ -109,7 +108,7 @@
             <div class="chat-pin-modal__backdrop"></div>
             <div class="chat-pin-modal__box">
               <p id="chatPinModalTitle" class="chat-pin-modal__emoji" aria-label="상단 고정 메시지">📌</p>
-              <textarea id="chatPinModalInput" class="chat-pin-modal__input" placeholder="고정할 메시지 입력 (최대 20자)" maxlength="20" rows="3"></textarea>
+              <textarea id="chatPinModalInput" class="chat-pin-modal__input" placeholder="고정할 메시지 입력 (최대 25자)" maxlength="25" rows="3"></textarea>
               <div class="chat-pin-modal__actions">
                 <button type="button" id="chatPinModalCancel" class="chat-pin-modal__btn chat-pin-modal__btn--cancel">취소</button>
                 <button type="button" id="chatPinModalConfirm" class="chat-pin-modal__btn chat-pin-modal__btn--confirm">확인</button>
@@ -137,23 +136,14 @@
   <script src="js/nav-logo.js"></script>
   <script>
     (function () {
-      var navLogin = document.getElementById('navLogin');
-      var navRegister = document.getElementById('navRegister');
-      var navProfile = document.getElementById('navProfile');
-      var navMenuUser = document.getElementById('navMenuUser');
       var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
       function updateNav(user) {
         if (user) {
-          if (navLogin) navLogin.style.display = 'none';
-          if (navRegister) navRegister.style.display = 'none';
-          if (navMenuUser) navMenuUser.style.display = 'block';
-          if (navProfile) navProfile.style.display = 'block';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
         } else {
-          if (navLogin) navLogin.style.display = 'block';
-          if (navRegister) navRegister.style.display = 'block';
-          if (navMenuUser) navMenuUser.style.display = 'none';
-          if (navProfile) navProfile.style.display = 'none';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = 'none';
         }
       }
@@ -173,14 +163,6 @@
         document.addEventListener('click', function () {
           navMenuDropdown.classList.remove('is-open');
           navMenuBtn.setAttribute('aria-expanded', 'false');
-        });
-      }
-      var navLogout = document.getElementById('navLogout');
-      if (navLogout) {
-        navLogout.addEventListener('click', function (e) {
-          e.preventDefault();
-          if (!confirm('로그아웃 하시겠습니까?')) return;
-          window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
         });
       }
     })();

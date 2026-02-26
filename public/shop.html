@@ -40,18 +40,19 @@
     .shop-category:last-child { margin-bottom: 0; }
     .shop-item-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
-      gap: 0.5rem;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
     }
     .shop-item-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
-      padding: 0.5rem 0.65rem;
-      display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.75rem;
+      min-height: 140px;
+      display: flex; flex-direction: column; align-items: stretch; gap: 0.4rem;
       box-sizing: border-box;
     }
-    .shop-item-name { font-size: 0.85rem; font-weight: 700; color: var(--neon); margin: 0 0 0.2rem 0; }
-    .shop-item-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; margin: 0; }
-    .shop-item-price { font-size: 0.75rem; color: var(--neon); font-weight: 600; margin: 0; }
+    .shop-item-name { font-size: 0.85rem; font-weight: 700; color: var(--neon); margin: 0; line-height: 1.25; }
+    .shop-item-desc { font-size: 0.72rem; color: var(--text-muted); line-height: 1.35; margin: 0; min-height: 2.7em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .shop-item-price { font-size: 0.75rem; color: var(--neon); font-weight: 600; margin: 0; margin-top: auto; }
     .shop-item-price .heart { color: #ff6b9d; }
     .shop-item-btn {
       padding: 0.3rem 0.5rem; border-radius: 5px; font-size: 0.75rem; font-weight: 500; cursor: pointer;
@@ -102,14 +103,7 @@
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
     <div class="nav-menu-wrap">
       <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
-        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
-        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
-        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
-          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
-          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
-        </div>
-      </div>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
   </nav>
 
@@ -137,21 +131,27 @@
       <div id="shopItemList" class="shop-item-grid">
         <div class="shop-item-card" data-item-id="pinMessage" data-cost="15">
           <p class="shop-item-name">상단 고정 메시지</p>
-          <p class="shop-item-desc">채팅방 상단에 고정 메시지를 남깁니다. 스크롤해도 상단 고정, 1시간 후 자동 해제</p>
+          <p class="shop-item-desc">채팅 상단에 1시간 동안 고정</p>
           <p class="shop-item-price"><span class="heart">❤️</span> 15 → 📌 1</p>
           <button type="button" class="shop-item-btn" data-exchange="pinMessage">구매</button>
         </div>
         <div class="shop-item-card" data-item-id="rewardParty" data-cost="1">
           <p class="shop-item-name">리워드 파티</p>
-          <p class="shop-item-desc">배당 축하 축전. 채팅방에 헬기가 토네이도를 뿌리는 애니메이션이 재생됩니다.</p>
+          <p class="shop-item-desc">배당 축하 애니메이션</p>
           <p class="shop-item-price"><span class="heart">❤️</span> 1 → 🚁 1</p>
           <button type="button" class="shop-item-btn" data-exchange="rewardParty">구매</button>
         </div>
         <div class="shop-item-card" data-item-id="risePrayer" data-cost="1">
           <p class="shop-item-name">떡상 기원</p>
-          <p class="shop-item-desc">상승을 기원하는 아이템. TORN 토큰 가격 상승을 기원하는 애니메이션이 채팅방에 재생됩니다.</p>
+          <p class="shop-item-desc">TORN 상승 기원 애니</p>
           <p class="shop-item-price"><span class="heart">❤️</span> 1 → 🙏 1</p>
           <button type="button" class="shop-item-btn" data-exchange="risePrayer">구매</button>
+        </div>
+        <div class="shop-item-card" data-item-id="broom" data-cost="10">
+          <p class="shop-item-name">빗자루</p>
+          <p class="shop-item-desc">채팅 전체 삭제 (고정 제외)</p>
+          <p class="shop-item-price"><span class="heart">❤️</span> 10 → 🧹 1</p>
+          <button type="button" class="shop-item-btn" data-exchange="broom">구매</button>
         </div>
       </div>
     </section>
@@ -219,6 +219,8 @@
         if (rewardParty > 0) items.push('<span class="shop-item-badge">🚁 리워드 파티 <strong>' + rewardParty + '</strong>개</span>');
         var risePrayer = (lastShopItems.risePrayer != null && typeof lastShopItems.risePrayer === 'number') ? lastShopItems.risePrayer : 0;
         if (risePrayer > 0) items.push('<span class="shop-item-badge">🙏 떡상 기원 <strong>' + risePrayer + '</strong>개</span>');
+        var broom = (lastShopItems.broom != null && typeof lastShopItems.broom === 'number') ? lastShopItems.broom : 0;
+        if (broom > 0) items.push('<span class="shop-item-badge">🧹 빗자루 <strong>' + broom + '</strong>개</span>');
         shopItemsList.innerHTML = items.length ? items.join('') : '<span class="shop-items-empty">보유한 아이템이 없습니다.</span>';
         if (shopItemsWrap) shopItemsWrap.style.display = 'flex';
       }
@@ -361,41 +363,25 @@
       }
       loadBalance();
 
-      var navLogin = document.getElementById('navLogin');
-      var navRegister = document.getElementById('navRegister');
-      var navProfile = document.getElementById('navProfile');
-      var navMenuUser = document.getElementById('navMenuUser');
       var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
       function updateNav(u) {
         if (u) {
-          if (navLogin) navLogin.style.display = 'none';
-          if (navRegister) navRegister.style.display = 'none';
-          if (navMenuUser) navMenuUser.style.display = 'block';
-          if (navProfile) navProfile.style.display = 'block';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = u.isAdmin ? 'inline-flex' : 'none';
         } else {
-          if (navLogin) navLogin.style.display = 'block';
-          if (navRegister) navRegister.style.display = 'block';
-          if (navMenuUser) navMenuUser.style.display = 'none';
-          if (navProfile) navProfile.style.display = 'none';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = 'none';
         }
       }
       if (window.TornFiAuth && window.TornFiAuth.getUser()) updateNav(window.TornFiAuth.getUser());
       if (window.TornFiAuth && window.TornFiAuth.onUser) window.TornFiAuth.onUser(updateNav);
-      var navMenuBtn = document.getElementById('navMenuBtn');
       var navMenuDropdown = document.getElementById('navMenuDropdown');
       if (navMenuBtn && navMenuDropdown) {
         navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
         navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
         document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
       }
-      var navLogout = document.getElementById('navLogout');
-      if (navLogout) navLogout.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (!confirm('로그아웃 하시겠습니까?')) return;
-        if (window.TornFiAuth && window.TornFiAuth.logout) window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
-      });
     })();
   </script>
 </body>

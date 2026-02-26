@@ -182,14 +182,7 @@
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
     <div class="nav-menu-wrap">
       <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
-        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
-        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
-        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
-          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
-          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
-        </div>
-      </div>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
   </nav>
 
@@ -197,7 +190,7 @@
     <a href="/" class="back-link">← 홈으로</a>
     <div class="ranking-hero">
       <h1>🏆 랭킹</h1>
-      <p>하트와 스테이킹으로 경쟁하세요. 1등에 도전하세요.</p>
+      <p>하트·스테이킹 순위를 한눈에 확인해 보세요.</p>
     </div>
 
     <section class="ranking-section" aria-labelledby="hearts-title">
@@ -348,23 +341,14 @@
           document.getElementById('stakingError').textContent = '스테이킹 랭킹을 불러오지 못했습니다. (네트워크 지연 시 잠시 후 다시 시도해 주세요.)';
         });
 
-      var navLogin = document.getElementById('navLogin');
-      var navRegister = document.getElementById('navRegister');
-      var navProfile = document.getElementById('navProfile');
-      var navMenuUser = document.getElementById('navMenuUser');
       var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
       function updateNav(user) {
         if (user) {
-          if (navLogin) navLogin.style.display = 'none';
-          if (navRegister) navRegister.style.display = 'none';
-          if (navMenuUser) navMenuUser.style.display = 'block';
-          if (navProfile) navProfile.style.display = 'block';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
         } else {
-          if (navLogin) navLogin.style.display = 'block';
-          if (navRegister) navRegister.style.display = 'block';
-          if (navMenuUser) navMenuUser.style.display = 'none';
-          if (navProfile) navProfile.style.display = 'none';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = 'none';
         }
       }
@@ -377,12 +361,6 @@
         navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
         document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
       }
-      var navLogout = document.getElementById('navLogout');
-      if (navLogout) navLogout.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (!confirm('로그아웃 하시겠습니까?')) return;
-        if (window.TornFiAuth && window.TornFiAuth.logout) window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
-      });
     })();
   </script>
 </body>

@@ -52,16 +52,16 @@
           return Promise.reject(data);
         });
     },
-    register: function (walletAddress, password, displayName, referrer) {
+    register: function (displayName, password, referrer, walletAddress) {
       return fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          walletAddress: walletAddress || undefined,
-          password: password,
           displayName: displayName || undefined,
+          password: password,
           referrer: referrer || undefined,
+          walletAddress: (walletAddress && walletAddress.trim()) ? walletAddress.trim() : undefined,
         }),
       })
         .then(function (res) { return res.json(); })

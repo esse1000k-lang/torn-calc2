@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>피드 글 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .feed-post-page { max-width: 600px; margin: 0 auto; padding: 1rem 1rem 2rem; }
+    .feed-post-back { display: inline-block; margin-bottom: 0.75rem; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; }
+    .feed-post-back:hover { color: var(--neon); }
+    .feed-post-page .feed-card__body-full { white-space: pre-wrap; word-break: break-word; }
+    .feed-post-page .feed-card__link { padding: 0.875rem 1rem; }
+    .feed-post-page .feed-card__body { margin-top: 0.5rem; }
+    .feed-post-page .feed-card__actions { margin-top: 0.5rem; padding-top: 0.5rem; gap: 0.5rem 1rem; }
+    .feed-post-page .feed-card__comments {
+      margin-top: 0.75rem; padding-top: 0.75rem;
+      padding-left: 1rem; padding-right: 1rem;
+    }
+    .feed-post-page .feed-card__comments-title { margin-bottom: 0.5rem; }
+    .feed-post-page .feed-card__comment-form { margin-top: 0.5rem; gap: 0.4rem; }
+    .feed-post-page .feed-card { border-radius: 12px; overflow: hidden; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <main class="site-main">
+    <div class="feed-post-page">
+      <a href="/" class="feed-post-back">← 피드로</a>
+      <div id="feedPostRoot"></div>
+    </div>
+    <div id="feedAuthorPopover" class="feed-author-popover" role="tooltip" aria-hidden="true" style="display:none;">
+      <div class="feed-author-popover__inner">
+        <div class="feed-author-popover__avatar-wrap"></div>
+        <div class="feed-author-popover__name"></div>
+        <div class="feed-author-popover__level"></div>
+        <div class="feed-author-popover__hearts"></div>
+        <p class="feed-author-popover__bio"></p>
+      </div>
+    </div>
+    <div id="feedSendHeartLayer" class="feed-send-heart-layer" style="display:none;">
+      <div class="feed-send-heart-box">
+        <h3 class="feed-send-heart-title">❤️ 하트 보내기</h3>
+        <p id="feedSendHeartMessage" class="feed-send-heart-message"></p>
+        <p id="feedSendHeartMyHearts" class="feed-send-heart-myhearts"></p>
+        <div class="feed-send-heart-actions">
+          <button type="button" id="feedSendHeartCancel" class="feed-send-heart-btn feed-send-heart-btn--cancel">취소</button>
+          <button type="button" id="feedSendHeartOk" class="feed-send-heart-btn feed-send-heart-btn--ok">보내기</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/pwa-env.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script src="js/feed-post.js"></script>
+</body>
+</html>

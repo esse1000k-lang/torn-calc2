@@ -33,10 +33,6 @@ alwaysApply: false
     <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
       <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
       <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
-      <div class="nav-menu-user" id="navMenuUser" style="display:none;">
-        <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
-        <button type="button" id="navLogout" role="menuitem">로그아웃</button>
-      </div>
     </div>
   </div>
 </nav>
@@ -45,10 +41,15 @@ alwaysApply: false
 ## 3. 스크립트 및 네비 갱신
 
 - `js/auth.js`를 로드하고, 로그인/관리자 상태에 따라 네비를 갱신하는 로직을 넣는다.
-- 참고: `public/board.html`, `public/shop.html`, `public/tornado-news.html` 등에서 `updateNav`, `navAdminCenter` 표시/숨김, 로그아웃 클릭 처리 방식을 그대로 따라가면 된다.
+- 참고: `public/board.html`, `public/shop.html`, `public/tornado-news.html` 등에서 `updateNav`, `navAdminCenter`·`navMenuBtn` 표시/숨김 방식을 그대로 따라가면 된다. 로그인 시 `navMenuBtn`은 숨기고(내 정보·로그아웃은 네비에 두지 않으며 홈 화면 `index.html`에만 둠), 비로그인 시 로그인/회원가입만 드롭다운에 노출.
 - 상세 스니펫은 `docs/new-page-guide.md` 참고.
+
+## 4. "홈으로" 백 링크 금지
+
+- 페이지에 "← 홈으로" 같은 홈 복귀 링크를 넣지 않는다. 홈 이동은 네비의 로고(`.nav-logo`, TornFi) 클릭으로 한다.
 
 ## 요약
 
 - **모든 새 페이지**: `css/site.css` + 위 네비 마크업 포함 → 고정 네비·본문 여백 자동 적용.
 - **로그인/관리자 노출이 필요한 페이지**: `js/auth.js` + updateNav/onUser/navAdminCenter 처리 추가.
+- **홈으로 링크**: 사용하지 않음. 네비 로고로 홈 이동.

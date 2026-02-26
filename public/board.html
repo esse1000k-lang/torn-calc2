@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0a0a0b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>게시판 | TornFi</title>
+  <title>가이드 | TornFi</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="/manifest.json">
   <script src="js/pwa-env.js"></script>
@@ -67,21 +67,12 @@
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
     <div class="nav-menu-wrap">
       <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu">
-        <a href="/login.html" id="navLogin" role="menuitem" style="display:none;">로그인</a>
-        <a href="/register.html" id="navRegister" role="menuitem" style="display:none;">회원가입</a>
-        <div class="nav-menu-user" id="navMenuUser" style="display:none;">
-          <a href="/profile.html" id="navProfile" role="menuitem">내 정보</a>
-          <button type="button" id="navLogout" role="menuitem">로그아웃</button>
-        </div>
-      </div>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
   </nav>
 
   <div class="board-page">
-    <a href="/" class="back-link">← 홈으로</a>
-    <a href="/tornado-news.html" class="back-link" style="margin-left:1rem;">토네이도 뉴스</a>
-    <h1 style="font-size:1.25rem; margin-bottom:1.5rem;">게시판</h1>
+    <h1 style="font-size:1.25rem; margin-bottom:1.5rem;">가이드</h1>
 
     <div id="boardDetail" class="board-detail" style="display:none;">
       <h2 id="detailTitle"></h2>
@@ -143,11 +134,8 @@
       var writeMsg = document.getElementById('writeMsg');
       var writeSubmit = document.getElementById('writeSubmit');
       var btnWrite = document.getElementById('btnWrite');
-      var navLogin = document.getElementById('navLogin');
-      var navRegister = document.getElementById('navRegister');
-      var navProfile = document.getElementById('navProfile');
-      var navMenuUser = document.getElementById('navMenuUser');
       var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
       var boardVote = document.getElementById('boardVote');
       var btnEdit = document.getElementById('btnEdit');
       var boardEditForm = document.getElementById('boardEditForm');
@@ -161,35 +149,22 @@
 
       function updateNav(user) {
         if (user) {
-          if (navLogin) navLogin.style.display = 'none';
-          if (navRegister) navRegister.style.display = 'none';
-          if (navMenuUser) navMenuUser.style.display = 'block';
-          if (navProfile) navProfile.style.display = 'block';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
           if (btnWrite) btnWrite.style.display = 'inline-block';
         } else {
-          if (navLogin) navLogin.style.display = 'block';
-          if (navRegister) navRegister.style.display = 'block';
-          if (navMenuUser) navMenuUser.style.display = 'none';
-          if (navProfile) navProfile.style.display = 'none';
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = 'none';
           if (btnWrite) btnWrite.style.display = 'none';
         }
       }
       window.TornFiAuth.onUser(updateNav);
-      var navMenuBtn = document.getElementById('navMenuBtn');
       var navMenuDropdown = document.getElementById('navMenuDropdown');
       if (navMenuBtn && navMenuDropdown) {
         navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
         navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
         document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
       }
-      var navLogout = document.getElementById('navLogout');
-      if (navLogout) navLogout.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (!confirm('로그아웃 하시겠습니까?')) return;
-        window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
-      });
 
       function showList() {
         boardDetail.style.display = 'none';
@@ -424,13 +399,18 @@
 
       window.addEventListener('hashchange', applyHash);
 
+      function maybeOpenWriteFromQuery() {
+        if (new URLSearchParams(window.location.search).get('write') === '1') showWriteForm();
+      }
       if (window.TornFiAuth.getUser()) {
         updateNav(window.TornFiAuth.getUser());
         applyHash();
+        maybeOpenWriteFromQuery();
       } else {
         window.TornFiAuth.init().then(function () {
           updateNav(window.TornFiAuth.getUser());
           applyHash();
+          maybeOpenWriteFromQuery();
         });
       }
     })();
