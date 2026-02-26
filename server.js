@@ -4,6 +4,18 @@ dns.setDefaultResultOrder('ipv4first');
  */
 require('dotenv').config();
 
+// 로컬/배포 같은 DB 쓰는지 확인용 — 서버 시작 시 한 번만 출력 (URI 값은 노출 안 함)
+(function logDbMode() {
+  const path = require('path');
+  const fs = require('fs');
+  const envPath = path.join(process.cwd(), '.env');
+  const uri = (process.env.MONGODB_URI || '').trim();
+  const useMongo = !!uri;
+  const uriHash = useMongo ? require('crypto').createHash('sha256').update(uri).digest('hex').slice(0, 16) : null;
+  console.log('.env 경로:', envPath, '| 파일 있음:', fs.existsSync(envPath), '| MONGODB_URI 로드됨:', useMongo);
+  console.log('DB mode:', useMongo ? 'MongoDB (uriHash ' + uriHash + ')' : 'file (data/*.json)');
+})();
+
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
