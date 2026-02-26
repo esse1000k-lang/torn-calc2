@@ -4,7 +4,6 @@
  *
  * 계정: admin109 / 111111
  * - boardAdmin: true 로 관리자 권한 부여
- * - TornFi 닉네임 계정은 서버에서 자동 관리자 제거되어 일반 회원으로만 활동
  */
 
 const crypto = require('crypto');

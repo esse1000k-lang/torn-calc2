@@ -1,6 +1,8 @@
 /**
  * TornFi 커뮤니티 서버 — 투자자 의견 공유 커뮤니티 (포인트·송금·환전 없음)
  */
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -932,7 +934,6 @@ function isPasswordStrong(pwd) {
 }
 const MEMBER_LEVEL_MIN = 1;
 const MEMBER_LEVEL_MAX = 6;
-const FOUNDER_DISPLAY_NAME = 'TornFi';
 
 // TORN 스테이킹 수량(개) 기준 회원 등급: 조개(<1), 새우(<1000), 문어(<2000), 물개(<3000), 상어(<4000), 고래(>=4000)
 function stakedAmountToLevel(stakedNum) {
@@ -2542,9 +2543,6 @@ app.post('/api/admin/users/:userId/level', adminMiddleware, async (req, res) => 
   const users = await db.readUsers();
   const idx = users.findIndex((u) => u.id === userId);
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
-  if (users[idx].displayName === FOUNDER_DISPLAY_NAME) {
-    return res.status(400).json({ ok: false, message: '창시자(TornFi) 계정의 등급은 변경할 수 없습니다.' });
-  }
   users[idx].level = level;
   await db.writeUsers(users);
   res.json({ ok: true, level: getMemberLevel(users[idx]) });
@@ -2557,9 +2555,6 @@ app.post('/api/admin/users/:userId/level-admin', adminMiddleware, async (req, re
   const users = await db.readUsers();
   const idx = users.findIndex((u) => u.id === userId);
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
-  if (users[idx].displayName === FOUNDER_DISPLAY_NAME) {
-    return res.status(400).json({ ok: false, message: '창시자 계정은 별도 설정이 필요 없습니다.' });
-  }
   users[idx].levelAdmin = !!levelAdmin;
   await db.writeUsers(users);
   res.json({ ok: true, levelAdmin: users[idx].levelAdmin });
@@ -2572,9 +2567,6 @@ app.post('/api/admin/users/:userId/board-admin', adminMiddleware, async (req, re
   const users = await db.readUsers();
   const idx = users.findIndex((u) => u.id === userId);
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
-  if (users[idx].displayName === FOUNDER_DISPLAY_NAME) {
-    return res.status(400).json({ ok: false, message: '창시자 계정은 별도 설정이 필요 없습니다.' });
-  }
   users[idx].boardAdmin = !!boardAdmin;
   await db.writeUsers(users);
   res.json({ ok: true, boardAdmin: users[idx].boardAdmin });
@@ -2810,6 +2802,102 @@ app.post('/api/feed', rateLimitWrites, async (req, res, next) => {
   posts.unshift(newPost);
   await db.writeFeedPosts(posts);
   res.status(201).json({ ok: true, post: newPost });
+});
+
+// 관리자: 피드 글 삭제
+app.delete('/api/feed/:postId', adminMiddleware, async (req, res) => {
+  const postId = String(req.params.postId || '').trim();
+  if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
+  const posts = await db.readFeedPosts();
+  const idx = posts.findIndex((p) => p.id === postId);
+  if (idx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const post = posts[idx];
+  const deletedEntry = {
+    ...post,
+    deletedAt: new Date().toISOString(),
+    deletedBy: req.user.id,
+    deletedByDisplayName: req.user.displayName || '—',
+  };
+  await db.appendDeletedFeedPost(deletedEntry);
+  posts.splice(idx, 1);
+  await db.writeFeedPosts(posts);
+  res.json({ ok: true, message: '피드 글이 삭제되었습니다.' });
+});
+
+// 관리자: 삭제된 피드 목록
+app.get('/api/admin/deleted-feed', adminMiddleware, async (req, res) => {
+  const posts = await db.readDeletedFeedPosts();
+  res.json({ ok: true, posts });
+});
+
+// 관리자: 삭제된 피드 글 복구
+app.post('/api/admin/deleted-feed/:postId/restore', adminMiddleware, async (req, res) => {
+  const postId = String(req.params.postId || '').trim();
+  if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
+  const deletedList = await db.readDeletedFeedPosts();
+  const entry = deletedList.find((p) => p.id === postId);
+  if (!entry) return res.status(404).json({ ok: false, message: '삭제된 글을 찾을 수 없습니다.' });
+  const { deletedAt, deletedBy, deletedByDisplayName, ...post } = entry;
+  const posts = await db.readFeedPosts();
+  if (posts.some((p) => p.id === postId)) return res.status(400).json({ ok: false, message: '이미 피드에 존재합니다.' });
+  posts.unshift(post);
+  await db.writeFeedPosts(posts);
+  await db.removeDeletedFeedPost(postId);
+  res.json({ ok: true, message: '피드 글이 복구되었습니다.' });
+});
+
+// 관리자: 피드 댓글 삭제 (삭제된 댓글 목록으로 이동)
+app.delete('/api/feed/:postId/comments/:commentId', adminMiddleware, async (req, res) => {
+  const postId = String(req.params.postId || '').trim();
+  const commentId = String(req.params.commentId || '').trim();
+  if (!postId || !commentId) return res.status(400).json({ ok: false, message: '글 ID와 댓글 ID가 필요합니다.' });
+  const posts = await db.readFeedPosts();
+  const postIdx = posts.findIndex((p) => p.id === postId);
+  if (postIdx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const post = posts[postIdx];
+  const comments = post.comments || [];
+  const commentIdx = comments.findIndex((c) => c.id === commentId);
+  if (commentIdx === -1) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
+  const comment = comments[commentIdx];
+  const deletedEntry = {
+    ...comment,
+    postId,
+    postBodyPreview: (post.body || '').slice(0, 80),
+    deletedAt: new Date().toISOString(),
+    deletedBy: req.user.id,
+    deletedByDisplayName: req.user.displayName || '—',
+  };
+  await db.appendDeletedFeedComment(deletedEntry);
+  comments.splice(commentIdx, 1);
+  await db.writeFeedPosts(posts);
+  res.json({ ok: true, message: '댓글이 삭제되었습니다.' });
+});
+
+// 관리자: 삭제된 댓글 목록
+app.get('/api/admin/deleted-feed-comments', adminMiddleware, async (req, res) => {
+  const comments = await db.readDeletedFeedComments();
+  res.json({ ok: true, comments });
+});
+
+// 관리자: 삭제된 댓글 복구
+app.post('/api/admin/deleted-feed-comments/:commentId/restore', adminMiddleware, async (req, res) => {
+  const commentId = String(req.params.commentId || '').trim();
+  if (!commentId) return res.status(400).json({ ok: false, message: '댓글 ID가 필요합니다.' });
+  const deletedList = await db.readDeletedFeedComments();
+  const entry = deletedList.find((c) => c.id === commentId);
+  if (!entry) return res.status(404).json({ ok: false, message: '삭제된 댓글을 찾을 수 없습니다.' });
+  const postId = entry.postId;
+  if (!postId) return res.status(400).json({ ok: false, message: '원글이 없습니다.' });
+  const posts = await db.readFeedPosts();
+  const postIdx = posts.findIndex((p) => p.id === postId);
+  if (postIdx === -1) return res.status(404).json({ ok: false, message: '원 글이 없어 복구할 수 없습니다.' });
+  const { deletedAt, deletedBy, deletedByDisplayName, postId: _p, postBodyPreview, ...comment } = entry;
+  if (!posts[postIdx].comments) posts[postIdx].comments = [];
+  if (posts[postIdx].comments.some((c) => c.id === commentId)) return res.status(400).json({ ok: false, message: '이미 댓글이 있습니다.' });
+  posts[postIdx].comments.push(comment);
+  await db.writeFeedPosts(posts);
+  await db.removeDeletedFeedComment(commentId);
+  res.json({ ok: true, message: '댓글이 복구되었습니다.' });
 });
 
 // 피드 글에 댓글 작성 — 로그인 필요

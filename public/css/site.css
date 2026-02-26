@@ -787,6 +787,35 @@ body::before {
 .feed-card__top-actions {
   flex-shrink: 0;
 }
+.feed-card-wrap {
+  position: relative;
+}
+.feed-card-admin-outer {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.75rem;
+  z-index: 1;
+  pointer-events: none;
+}
+.feed-card-admin-outer .feed-card__admin-delete {
+  pointer-events: auto;
+}
+.feed-card__admin-delete {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+  color: var(--text-muted, #888);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.feed-card__admin-delete:hover {
+  color: #e57373;
+}
+.feed-card__admin-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .feed-card__avatar {
   width: 40px;
   height: 40px;
@@ -1008,9 +1037,20 @@ body::before {
   gap: 0.5rem;
   margin-bottom: 0.75rem;
   align-items: flex-start;
+  position: relative;
 }
 .feed-comment:last-child {
   margin-bottom: 0;
+}
+.feed-comment-admin-outer {
+  position: absolute;
+  bottom: 0.35rem;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.feed-comment-admin-outer .feed-card__admin-delete {
+  pointer-events: auto;
 }
 .feed-comment__avatar {
   width: 28px;
@@ -1429,6 +1469,121 @@ body::before {
 
 .site-footer-withdraw button:hover {
   color: var(--danger);
+}
+
+/* 피드 삭제 확인 모달 */
+.feed-delete-confirm-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+.feed-delete-confirm-box {
+  background: var(--bg-card);
+  border: 1px solid rgba(0,255,136,0.35);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 0 24px rgba(0,255,136,0.08), 0 8px 32px rgba(0,0,0,0.4);
+}
+.feed-delete-confirm-title {
+  font-size: 1.05rem;
+  color: var(--text);
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.feed-delete-confirm-msg {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0 0 1.25rem 0;
+  line-height: 1.5;
+}
+.feed-delete-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+.feed-delete-confirm-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+}
+.feed-delete-confirm-btn--cancel {
+  background: var(--bg-dark);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.feed-delete-confirm-btn--cancel:hover {
+  background: var(--border);
+}
+.feed-delete-confirm-btn--ok {
+  background: var(--danger);
+  color: #fff;
+}
+.feed-delete-confirm-btn--ok:hover {
+  background: #dc2626;
+}
+
+.feed-admin-pin-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 201;
+  padding: 1rem;
+}
+.feed-admin-pin-box {
+  background: var(--bg-card);
+  border: 1px solid rgba(0,255,136,0.35);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 0 24px rgba(0,255,136,0.08), 0 8px 32px rgba(0,0,0,0.4);
+}
+.feed-admin-pin-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+.feed-admin-pin-err {
+  font-size: 0.85rem;
+  color: var(--danger, #ef4444);
+  margin: 0 0 0.5rem 0;
+}
+.feed-admin-pin-input {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 1rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 1rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.feed-admin-pin-input:focus {
+  outline: none;
+  border-color: var(--neon);
 }
 
 /* 회원탈퇴 확인 레이어 */

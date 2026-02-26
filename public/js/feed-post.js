@@ -26,7 +26,7 @@
     return d.toLocaleDateString('ko-KR');
   }
 
-  function renderComment(c, myId, pid) {
+  function renderComment(c, myId, pid, isAdmin) {
     var name = (c && c.authorDisplayName) ? c.authorDisplayName : '—';
     var isMine = !!(myId && c && c.authorId === myId);
     var hearts = (c && (c.heartsReceived || 0) > 0) ? c.heartsReceived : 0;
@@ -44,18 +44,21 @@
     if (!isMine && myId && pid) heartRow += '<button type="button" class="feed-comment-heart-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '">❤️ 보내기</button>';
     if (myId && pid) heartRow += '<button type="button" class="feed-comment-reply-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '">답글</button>';
     if (heartRow) heartRow = '<div class="feed-comment__footer">' + heartRow + '</div>';
+    var adminDeleteHtml = (isAdmin && pid && c && c.id) ? '<div class="feed-comment-admin-outer"><button type="button" class="feed-card__admin-delete feed-comment-admin-delete" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" aria-label="댓글 삭제">🗑 삭제</button></div>' : '';
     return '<li class="feed-comment" data-comment-id="' + escapeHtml(c.id) + '">' + avatar +
       '<div class="feed-comment__body">' + replyToLine +
       '<span class="feed-comment__author">' + escapeHtml(name) + '</span>' +
       (levelEmoji ? ' <span class="feed-card__level" aria-hidden="true">' + levelEmoji + '</span>' : '') +
       ' <span class="feed-comment__date">' + dateStr + '</span>' +
-      '<p class="feed-comment__text">' + escapeHtml((c && c.body) ? c.body : '') + '</p>' + heartRow + '</div></li>';
+      '<p class="feed-comment__text">' + escapeHtml((c && c.body) ? c.body : '') + '</p>' + heartRow + '</div>' + adminDeleteHtml + '</li>';
   }
 
   function renderPost(p) {
     if (!root || !p || !p.id) return;
     var author = (p.authorDisplayName != null && p.authorDisplayName !== '') ? p.authorDisplayName : '—';
-    var myId = (window.TornFiAuth && window.TornFiAuth.getUser()) ? (window.TornFiAuth.getUser().id || null) : null;
+    var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+    var myId = me ? (me.id || null) : null;
+    var isAdmin = !!(me && me.isAdmin);
     var comments = Array.isArray(p.comments) ? p.comments : [];
     var postLv = (p.authorLevel >= 1 && p.authorLevel <= 6) ? p.authorLevel : 0;
     var postLevelEmoji = LEVEL_EMOJI[postLv] || '';
@@ -72,13 +75,14 @@
     footer += '</div>';
     var topActionsHtml = (!isMine && myId) ? '<div class="feed-card__top-actions"><button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '">❤️ 보내기</button></div>' : '';
     var commentsHtml = '<div class="feed-card__comments-title">댓글 ' + comments.length + '</div>' +
-      '<ul class="feed-card__comments-list">' + comments.map(function (c) { return renderComment(c, myId, p.id); }).join('') + '</ul>';
+      '<ul class="feed-card__comments-list">' + comments.map(function (c) { return renderComment(c, myId, p.id, isAdmin); }).join('') + '</ul>';
     if (myId) commentsHtml += '<div class="feed-card__comment-form" data-post-id="' + escapeHtml(p.id) + '">' +
       '<div class="feed-card__reply-to-chip" style="display:none;">답글: <span class="feed-card__reply-to-name"></span> <button type="button" class="feed-card__reply-to-cancel">취소</button></div>' +
       '<input type="text" class="feed-card__comment-input" placeholder="댓글을 입력하세요..." maxlength="1000" data-post-id="' + escapeHtml(p.id) + '">' +
       '<button type="button" class="feed-card__comment-submit">댓글</button></div>';
+    var adminDeleteBtn = isAdmin ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑 삭제</button></div>' : '';
     currentPost = p;
-    root.innerHTML = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
+    var cardInner = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
       '<div class="feed-card__link">' +
         '<div class="feed-card__top">' + avatarHtml +
           '<div class="feed-card__content">' +
@@ -95,6 +99,7 @@
             '<div class="feed-card__actions">' + footer + '</div>' +
           '</div></div></div>' +
       '<div class="feed-card__comments">' + commentsHtml + '</div></article>';
+    root.innerHTML = isAdmin ? '<div class="feed-card-wrap">' + cardInner + adminDeleteBtn + '</div>' : cardInner;
   }
 
   function attachHandlers() {
@@ -167,6 +172,165 @@
     });
     if (feedSendHeartLayer && feedSendHeartLayer.querySelector('.feed-send-heart-box')) {
       feedSendHeartLayer.addEventListener('click', function (e) { if (e.target === feedSendHeartLayer) closeHeartModal(); });
+    }
+
+    if (root) {
+      var feedDeleteLayer = document.getElementById('feedDeleteConfirmLayer');
+      var feedDeleteCancel = document.getElementById('feedDeleteConfirmCancel');
+      var feedDeleteOk = document.getElementById('feedDeleteConfirmOk');
+      var feedDeleteConfirmTitle = document.getElementById('feedDeleteConfirmTitlePost');
+      var feedDeleteConfirmMsg = document.querySelector('#feedDeleteConfirmLayer .feed-delete-confirm-msg');
+      var feedAdminPinLayer = document.getElementById('feedAdminPinLayer');
+      var feedAdminPinInput = document.getElementById('feedAdminPinInput');
+      var feedAdminPinErr = document.getElementById('feedAdminPinErr');
+      var feedAdminPinCancel = document.getElementById('feedAdminPinCancel');
+      var feedAdminPinOk = document.getElementById('feedAdminPinOk');
+      var pendingDeletePostId = null;
+      var pendingDeleteBtn = null;
+      var pendingCommentDelete = null;
+
+      function closeFeedDeleteModal() {
+        pendingDeletePostId = null;
+        pendingDeleteBtn = null;
+        pendingCommentDelete = null;
+        if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+      }
+
+      function closeFeedAdminPinModal() {
+        if (feedAdminPinLayer) feedAdminPinLayer.style.display = 'none';
+        if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+        if (feedAdminPinInput) feedAdminPinInput.value = '';
+        if (pendingDeleteBtn) pendingDeleteBtn.disabled = false;
+        pendingDeletePostId = null;
+        pendingDeleteBtn = null;
+        pendingCommentDelete = null;
+      }
+
+      function doCommentDelete() {
+        if (!pendingCommentDelete) return;
+        if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+        var postId = pendingCommentDelete.postId;
+        var commentId = pendingCommentDelete.commentId;
+        var li = pendingCommentDelete.li;
+        fetch('/api/feed/' + encodeURIComponent(postId) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              if (li && li.parentNode) li.parentNode.removeChild(li);
+              var titleEl = root.querySelector('.feed-card__comments-title');
+              if (titleEl) titleEl.textContent = '댓글 ' + root.querySelectorAll('.feed-comment').length;
+              pendingCommentDelete = null;
+            } else if (data.needPin && feedAdminPinLayer) {
+              feedAdminPinLayer.style.display = 'flex';
+              if (feedAdminPinInput) { feedAdminPinInput.value = ''; feedAdminPinInput.focus(); }
+              if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+            } else {
+              alert(data.message || '댓글 삭제에 실패했습니다.');
+              pendingCommentDelete = null;
+            }
+          })
+          .catch(function () { alert('댓글 삭제 요청에 실패했습니다.'); pendingCommentDelete = null; });
+      }
+
+      function doFeedDelete() {
+        if (!pendingDeletePostId || !pendingDeleteBtn) return;
+        var postId = pendingDeletePostId;
+        var btn = pendingDeleteBtn;
+        if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+        btn.disabled = true;
+        fetch('/api/feed/' + encodeURIComponent(postId), { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              window.location.href = '/';
+            } else if (data.needPin && feedAdminPinLayer) {
+              feedAdminPinLayer.style.display = 'flex';
+              if (feedAdminPinInput) { feedAdminPinInput.value = ''; feedAdminPinInput.focus(); }
+              if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+            } else {
+              alert(data.message || '삭제에 실패했습니다.');
+              btn.disabled = false;
+              pendingDeletePostId = null;
+              pendingDeleteBtn = null;
+            }
+          })
+          .catch(function () {
+            alert('삭제 요청에 실패했습니다.');
+            btn.disabled = false;
+            pendingDeletePostId = null;
+            pendingDeleteBtn = null;
+          });
+      }
+
+      function submitFeedAdminPin() {
+        var pin = (feedAdminPinInput && feedAdminPinInput.value) ? feedAdminPinInput.value.trim() : '';
+        if (pin.length !== 6 || !/^[0-9]+$/.test(pin)) {
+          if (feedAdminPinErr) { feedAdminPinErr.textContent = '숫자 6자리를 입력해 주세요.'; feedAdminPinErr.style.display = 'block'; }
+          return;
+        }
+        if (feedAdminPinErr) feedAdminPinErr.style.display = 'none';
+        fetch('/api/admin/verify-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ pin: pin }) })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              if (feedAdminPinLayer) feedAdminPinLayer.style.display = 'none';
+              if (feedAdminPinInput) feedAdminPinInput.value = '';
+              if (feedAdminPinErr) feedAdminPinErr.style.display = 'none';
+              if (pendingCommentDelete) { doCommentDelete(); } else { doFeedDelete(); }
+            } else {
+              if (feedAdminPinErr) { feedAdminPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.'; feedAdminPinErr.style.display = 'block'; }
+            }
+          })
+          .catch(function () {
+            if (feedAdminPinErr) { feedAdminPinErr.textContent = '요청에 실패했습니다.'; feedAdminPinErr.style.display = 'block'; }
+          });
+      }
+
+      function onFeedDeleteConfirmOk() {
+        if (pendingCommentDelete) doCommentDelete();
+        else doFeedDelete();
+      }
+      if (feedDeleteCancel) feedDeleteCancel.addEventListener('click', closeFeedDeleteModal);
+      if (feedDeleteOk) feedDeleteOk.addEventListener('click', onFeedDeleteConfirmOk);
+      if (feedDeleteLayer) {
+        feedDeleteLayer.addEventListener('click', function (e) { if (e.target === feedDeleteLayer) closeFeedDeleteModal(); });
+      }
+      if (feedAdminPinCancel) feedAdminPinCancel.addEventListener('click', closeFeedAdminPinModal);
+      if (feedAdminPinOk) feedAdminPinOk.addEventListener('click', submitFeedAdminPin);
+      if (feedAdminPinLayer) {
+        feedAdminPinLayer.addEventListener('click', function (e) { if (e.target === feedAdminPinLayer) closeFeedAdminPinModal(); });
+      }
+      if (feedAdminPinInput) {
+        feedAdminPinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitFeedAdminPin(); } });
+      }
+      root.addEventListener('click', function (e) {
+        var commentDeleteBtn = e.target && e.target.closest && e.target.closest('.feed-comment-admin-delete');
+        if (commentDeleteBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var postId = commentDeleteBtn.getAttribute('data-post-id');
+          var commentId = commentDeleteBtn.getAttribute('data-comment-id');
+          var li = commentDeleteBtn.closest('.feed-comment');
+          if (!postId || !commentId || !li) return;
+          pendingCommentDelete = { postId: postId, commentId: commentId, li: li };
+          if (feedDeleteConfirmTitle) feedDeleteConfirmTitle.textContent = '댓글 삭제';
+          if (feedDeleteConfirmMsg) feedDeleteConfirmMsg.textContent = '이 댓글을 삭제하시겠습니까? 삭제된 댓글은 관리자 페이지에서 복구할 수 있습니다.';
+          if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
+          return;
+        }
+        var btn = e.target && e.target.closest && e.target.closest('.feed-card__admin-delete');
+        if (btn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var postId = btn.getAttribute('data-post-id');
+          if (!postId) return;
+          pendingDeletePostId = postId;
+          pendingDeleteBtn = btn;
+          if (feedDeleteConfirmTitle) feedDeleteConfirmTitle.textContent = '피드 삭제';
+          if (feedDeleteConfirmMsg) feedDeleteConfirmMsg.textContent = '이 피드 글을 삭제하시겠습니까?';
+          if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
+        }
+      });
     }
 
     var feedAuthorPopover = document.getElementById('feedAuthorPopover');

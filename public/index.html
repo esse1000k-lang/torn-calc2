@@ -129,6 +129,30 @@
     </div>
   </footer>
 
+  <div id="feedDeleteConfirmLayer" class="feed-delete-confirm-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedDeleteConfirmTitle">
+    <div class="feed-delete-confirm-box">
+      <h3 id="feedDeleteConfirmTitle" class="feed-delete-confirm-title">피드 삭제</h3>
+      <p class="feed-delete-confirm-msg">이 피드 글을 삭제하시겠습니까?</p>
+      <div class="feed-delete-confirm-actions">
+        <button type="button" id="feedDeleteConfirmCancel" class="feed-delete-confirm-btn feed-delete-confirm-btn--cancel">취소</button>
+        <button type="button" id="feedDeleteConfirmOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedAdminPinLayer" class="feed-admin-pin-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedAdminPinTitle">
+    <div class="feed-admin-pin-box">
+      <h3 id="feedAdminPinTitle" class="feed-delete-confirm-title">관리자 비밀번호</h3>
+      <p class="feed-admin-pin-desc">피드 삭제를 위해 6자리 숫자를 입력하세요.</p>
+      <p id="feedAdminPinErr" class="feed-admin-pin-err" style="display:none;"></p>
+      <input type="password" id="feedAdminPinInput" class="feed-admin-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="******" autocomplete="off" aria-label="관리자 비밀번호">
+      <div class="feed-delete-confirm-actions">
+        <button type="button" id="feedAdminPinCancel" class="feed-delete-confirm-btn feed-delete-confirm-btn--cancel">취소</button>
+        <button type="button" id="feedAdminPinOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">확인</button>
+      </div>
+    </div>
+  </div>
+
   <div id="withdrawConfirmLayer" class="withdraw-confirm-layer" style="display:none;">
     <div class="withdraw-confirm-box">
       <h3>회원탈퇴</h3>
@@ -311,7 +335,7 @@
         }
         var LEVEL_EMOJI = { 1: '🐚', 2: '🦐', 3: '🐡', 4: '🦭', 5: '🦈', 6: '🐋' };
         var LEVEL_NAMES = { 1: '조개', 2: '새우', 3: '문어', 4: '물개', 5: '상어', 6: '고래' };
-        function renderCard(p, myId) {
+        function renderCard(p, myId, isAdmin) {
           var author = p.authorDisplayName || '—';
           var isMine = !!(myId && p.authorId === myId);
           var heartsReceived = (p.heartsReceived || 0) > 0 ? (p.heartsReceived || 0) : 0;
@@ -328,8 +352,9 @@
           if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
           footer += '</div>';
           var topActionsHtml = (!isMine && myId) ? '<div class="feed-card__top-actions"><button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '">❤️ 보내기</button></div>' : '';
+          var adminDeleteBtn = isAdmin ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑 삭제</button></div>' : '';
           var commentsHtml = '<div class="feed-card__comments">댓글 ' + comments.length + '개</div>';
-          return (
+          var cardInner =
             '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '" data-author-id="' + escapeHtml(p.authorId || '') + '">' +
               '<a href="feed-post.html?id=' + encodeURIComponent(p.id) + '" class="feed-card__link">' +
                 '<div class="feed-card__top">' +
@@ -352,8 +377,8 @@
                   '</div>' +
                 '</div>' +
               '</a>' +
-            '</article>'
-          );
+            '</article>';
+          return isAdmin ? '<div class="feed-card-wrap">' + cardInner + adminDeleteBtn + '</div>' : cardInner;
         }
         function loadFeed(append) {
           if (!append) { currentOffset = 0; totalLoaded = 0; }
@@ -372,8 +397,10 @@
               }
               if (feedEmpty) feedEmpty.style.display = 'none';
               posts.forEach(function (p) { if (p && p.id) feedPostsById[p.id] = p; });
-              var myId = (window.TornFiAuth && window.TornFiAuth.getUser()) ? (window.TornFiAuth.getUser().id || null) : null;
-              var html = posts.map(function (p) { return renderCard(p, myId); }).join('');
+              var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+              var myId = me ? (me.id || null) : null;
+              var isAdmin = !!(me && me.isAdmin);
+              var html = posts.map(function (p) { return renderCard(p, myId, isAdmin); }).join('');
               if (append && feedList) {
                 var wrap = document.createElement('div');
                 wrap.className = 'feed-list__page';
@@ -394,6 +421,115 @@
             });
         }
         loadFeed(false);
+
+        if (feedList) {
+          var feedDeleteLayer = document.getElementById('feedDeleteConfirmLayer');
+          var feedDeleteCancel = document.getElementById('feedDeleteConfirmCancel');
+          var feedDeleteOk = document.getElementById('feedDeleteConfirmOk');
+          var pendingDeletePostId = null;
+          var pendingDeleteBtn = null;
+          function closeFeedDeleteModal() {
+            pendingDeletePostId = null;
+            pendingDeleteBtn = null;
+            if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+          }
+          var feedAdminPinLayer = document.getElementById('feedAdminPinLayer');
+          var feedAdminPinInput = document.getElementById('feedAdminPinInput');
+          var feedAdminPinErr = document.getElementById('feedAdminPinErr');
+          var feedAdminPinCancel = document.getElementById('feedAdminPinCancel');
+          var feedAdminPinOk = document.getElementById('feedAdminPinOk');
+
+          function closeFeedAdminPinModal() {
+            if (feedAdminPinLayer) feedAdminPinLayer.style.display = 'none';
+            if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+            if (feedAdminPinInput) feedAdminPinInput.value = '';
+            if (pendingDeleteBtn) pendingDeleteBtn.disabled = false;
+            pendingDeletePostId = null;
+            pendingDeleteBtn = null;
+          }
+
+          function doFeedDelete() {
+            if (!pendingDeletePostId || !pendingDeleteBtn) return;
+            var postId = pendingDeletePostId;
+            var btn = pendingDeleteBtn;
+            if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+            btn.disabled = true;
+            fetch('/api/feed/' + encodeURIComponent(postId), { method: 'DELETE', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  var wrap = btn.closest && btn.closest('.feed-card-wrap');
+                  var art = wrap || (btn.closest && btn.closest('.feed-card'));
+                  if (art && art.parentNode) art.parentNode.removeChild(art);
+                  pendingDeletePostId = null;
+                  pendingDeleteBtn = null;
+                } else if (data.needPin && feedAdminPinLayer) {
+                  if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+                  feedAdminPinLayer.style.display = 'flex';
+                  if (feedAdminPinInput) { feedAdminPinInput.value = ''; feedAdminPinInput.focus(); }
+                  if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+                } else {
+                  alert(data.message || '삭제에 실패했습니다.');
+                  btn.disabled = false;
+                  pendingDeletePostId = null;
+                  pendingDeleteBtn = null;
+                }
+              })
+              .catch(function () {
+                alert('삭제 요청에 실패했습니다.');
+                btn.disabled = false;
+                pendingDeletePostId = null;
+                pendingDeleteBtn = null;
+              });
+          }
+
+          function submitFeedAdminPin() {
+            var pin = (feedAdminPinInput && feedAdminPinInput.value) ? feedAdminPinInput.value.trim() : '';
+            if (pin.length !== 6 || !/^[0-9]+$/.test(pin)) {
+              if (feedAdminPinErr) { feedAdminPinErr.textContent = '숫자 6자리를 입력해 주세요.'; feedAdminPinErr.style.display = 'block'; }
+              return;
+            }
+            if (feedAdminPinErr) feedAdminPinErr.style.display = 'none';
+            fetch('/api/admin/verify-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ pin: pin }) })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  closeFeedAdminPinModal();
+                  doFeedDelete();
+                } else {
+                  if (feedAdminPinErr) { feedAdminPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.'; feedAdminPinErr.style.display = 'block'; }
+                }
+              })
+              .catch(function () {
+                if (feedAdminPinErr) { feedAdminPinErr.textContent = '요청에 실패했습니다.'; feedAdminPinErr.style.display = 'block'; }
+              });
+          }
+
+          if (feedDeleteCancel) feedDeleteCancel.addEventListener('click', closeFeedDeleteModal);
+          if (feedDeleteOk) feedDeleteOk.addEventListener('click', doFeedDelete);
+          if (feedDeleteLayer) {
+            feedDeleteLayer.addEventListener('click', function (e) { if (e.target === feedDeleteLayer) closeFeedDeleteModal(); });
+          }
+          if (feedAdminPinCancel) feedAdminPinCancel.addEventListener('click', closeFeedAdminPinModal);
+          if (feedAdminPinOk) feedAdminPinOk.addEventListener('click', submitFeedAdminPin);
+          if (feedAdminPinLayer) {
+            feedAdminPinLayer.addEventListener('click', function (e) { if (e.target === feedAdminPinLayer) closeFeedAdminPinModal(); });
+          }
+          if (feedAdminPinInput) {
+            feedAdminPinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitFeedAdminPin(); } });
+          }
+          feedList.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest && e.target.closest('.feed-card__admin-delete');
+            if (!btn) return;
+            var postId = btn.getAttribute('data-post-id');
+            if (!postId) return;
+            e.preventDefault();
+            e.stopPropagation();
+            pendingDeletePostId = postId;
+            pendingDeleteBtn = btn;
+            if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
+          });
+        }
 
         var feedAuthorPopover = document.getElementById('feedAuthorPopover');
         var popoverHideTimeout = null;
