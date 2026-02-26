@@ -1102,13 +1102,25 @@
         fetch('/api/admin/users?includeStaking=1', { credentials: 'same-origin' })
           .then(function (r) { return r.json(); })
           .then(function (data) {
-            if (!data.ok) return;
+            if (!data.ok) {
+              if (data.needPin && adminPinGate && adminContent) {
+                adminPinGate.style.display = 'block';
+                adminContent.style.display = 'none';
+              }
+              return;
+            }
             var list = data.users || [];
             var regularUsers = list.filter(function (u) { return !u.managementAccount; });
             lastRegularUsers = regularUsers;
             var countEl = document.getElementById('usersSummaryCount');
             if (countEl) countEl.textContent = regularUsers.length;
             applyUsersFilter();
+          })
+          .catch(function () {
+            if (adminPinGate && adminContent) {
+              adminPinGate.style.display = 'block';
+              adminContent.style.display = 'none';
+            }
           });
       }
 

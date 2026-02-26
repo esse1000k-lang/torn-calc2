@@ -188,13 +188,13 @@
           return out || escapeHtml(s);
         }
 
-        function renderMessages(messages) {
+        function renderMessages(messages, effectiveMyIdFromServer) {
           if (!Array.isArray(messages) || messages.length === 0) {
             chatMessages.innerHTML = '<p class="chat-empty">메시지가 없습니다.</p>';
             return;
           }
           var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
-          var myId = me.id;
+          var myId = effectiveMyIdFromServer != null ? effectiveMyIdFromServer : me.id;
           var existingRows = chatMessages.querySelectorAll('.chat-msg');
           if (messages.length === lastMessageCount && existingRows.length > 0) return;
           lastMessageCount = messages.length;
@@ -339,18 +339,18 @@
           fetch('/api/chat', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
+                var effectiveMyId = (data.me && data.me.id) || myId;
                 if (data.ok && data.messages) {
-                if (myId && data.messages.length) {
+                if (effectiveMyId && data.messages.length) {
                   var hadNewHeart = false;
                   data.messages.forEach(function (m) {
-                    if (m.userId !== myId) return;
+                    if (m.userId !== effectiveMyId) return;
                     var prev = oldHeartsByMsg[m.id] || 0;
                     var cur = m.heartsReceived || 0;
                     if (cur > prev) hadNewHeart = true;
                   });
                   if (hadNewHeart) playHeartReceivedSound();
                 }
-                renderMessages(data.messages);
                 if (data.lastItemUse && data.lastItemUse.at && data.lastItemUse.at !== lastShownItemUseAt) {
                   lastShownItemUseAt = data.lastItemUse.at;
                   itemUsedToastQueue.push({ displayName: data.lastItemUse.displayName, item: data.lastItemUse.itemId });
@@ -360,25 +360,54 @@
                 }
                 processItemUsedToastQueue();
               }
+              if (data.ok && data.messages) renderMessages(data.messages, effectiveMyId);
               if (data.ok && typeof data.myHearts === 'number') { myHearts = data.myHearts; updateChatItemMenu(lastMyShopItems); }
-              if (chatGuestNotice) {
-                if (myId) { chatGuestNotice.style.display = 'none'; chatGuestNotice.textContent = ''; }
-                else {
-                  chatGuestNotice.style.display = 'block';
-                  chatGuestNotice.textContent = '회원가입 또는 로그인 후 이용 가능합니다.';
+              function applyGuestOrLoggedIn(resolvedId) {
+                if (chatGuestNotice) {
+                  if (resolvedId) { chatGuestNotice.style.display = 'none'; chatGuestNotice.textContent = ''; }
+                  else {
+                    chatGuestNotice.style.display = 'block';
+                    chatGuestNotice.textContent = '회원가입 또는 로그인 후 이용 가능합니다.';
+                  }
+                }
+                if (chatMessages) {
+                  if (resolvedId) chatMessages.classList.remove('chat-messages--guest');
+                  else chatMessages.classList.add('chat-messages--guest');
+                }
+                if (chatPanel) {
+                  if (resolvedId) chatPanel.classList.remove('chat-panel--guest');
+                  else chatPanel.classList.add('chat-panel--guest');
+                }
+                if (chatPinnedWrap) {
+                  if (resolvedId) chatPinnedWrap.classList.remove('chat-pinned-wrap--guest');
+                  else chatPinnedWrap.classList.add('chat-pinned-wrap--guest');
+                }
+                if (chatItemSelectWrap) {
+                  if ((resolvedId || me) && data.ok) {
+                    chatItemSelectWrap.style.display = 'inline-block';
+                    if (data.myShopItems) {
+                      lastMyShopItems = data.myShopItems;
+                      updateChatItemMenu(lastMyShopItems);
+                    }
+                  } else {
+                    chatItemSelectWrap.style.display = 'none';
+                  }
                 }
               }
-              if (chatMessages) {
-                if (myId) chatMessages.classList.remove('chat-messages--guest');
-                else chatMessages.classList.add('chat-messages--guest');
-              }
-              if (chatPanel) {
-                if (myId) chatPanel.classList.remove('chat-panel--guest');
-                else chatPanel.classList.add('chat-panel--guest');
-              }
-              if (chatPinnedWrap) {
-                if (myId) chatPinnedWrap.classList.remove('chat-pinned-wrap--guest');
-                else chatPinnedWrap.classList.add('chat-pinned-wrap--guest');
+              if (effectiveMyId) {
+                applyGuestOrLoggedIn(effectiveMyId);
+              } else {
+                fetch('/api/me', { credentials: 'same-origin' })
+                  .then(function (r) { return r.json(); })
+                  .then(function (meData) {
+                    var id = (meData && meData.ok && meData.user && meData.user.id) ? meData.user.id : null;
+                    if (meData && meData.ok && meData.user && window.TornFiAuth && window.TornFiAuth.setUser) {
+                      window.TornFiAuth.setUser(meData.user);
+                    }
+                    if (id && data.ok && data.messages) renderMessages(data.messages, id);
+                    applyGuestOrLoggedIn(id);
+                  })
+                  .catch(function () { applyGuestOrLoggedIn(null); });
               }
               if (data.pinned && chatPinnedWrap && pinnedTextEl) {
                 pinnedTextEl.textContent = data.pinned.text;
@@ -392,17 +421,6 @@
                 chatPinnedWrap.style.display = 'block';
               } else if (chatPinnedWrap) {
                 chatPinnedWrap.style.display = 'none';
-              }
-              if (chatItemSelectWrap) {
-                if (me && data.ok) {
-                  chatItemSelectWrap.style.display = 'inline-block';
-                  if (data.myShopItems) {
-                    lastMyShopItems = data.myShopItems;
-                    updateChatItemMenu(lastMyShopItems);
-                  }
-                } else {
-                  chatItemSelectWrap.style.display = 'none';
-                }
               }
             })
             .catch(function () {});
@@ -467,8 +485,15 @@
           if (window._chatPollTimer) clearInterval(window._chatPollTimer);
           window._chatPollTimer = setInterval(fetchChat, chatPollIntervalMs);
         }
-        fetchChat();
-        startChatPoll();
+        function runFirstFetch() {
+          fetchChat();
+          startChatPoll();
+        }
+        if (window.TornFiAuth && window.TornFiAuth.init) {
+          window.TornFiAuth.init().then(runFirstFetch).catch(runFirstFetch);
+        } else {
+          runFirstFetch();
+        }
 
         if (chatItemSelectWrap) {
           chatItemSelectWrap.addEventListener('click', function (e) {

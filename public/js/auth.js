@@ -12,6 +12,11 @@
       .then(function (res) {
         return res.json().then(function (data) {
           if (res.ok && data.ok && data.user) {
+            if (data.sessionInvalid || data.user.sessionInvalid) {
+              notify(null);
+              fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }).catch(function () {});
+              return null;
+            }
             notify(data.user);
             return data.user;
           }
@@ -33,6 +38,9 @@
       if (currentUser !== undefined) fn(currentUser);
     },
     getUser: function () { return currentUser; },
+    setUser: function (user) {
+      notify(user || null);
+    },
     init: function () {
       return fetchMe();
     },
@@ -85,4 +93,11 @@
   setInterval(function () {
     fetchMe();
   }, SESSION_CHECK_INTERVAL_MS);
+
+  // 탭으로 돌아올 때 한 번 더 확인 (서버 끊겼을 때 빨리 로그아웃 반영)
+  if (typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') fetchMe();
+    });
+  }
 })();

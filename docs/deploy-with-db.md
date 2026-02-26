@@ -25,7 +25,7 @@
 |------|------|------|
 | `NODE_ENV` | ✅ | `production` 으로 설정 |
 | `SESSION_SECRET` | ✅ | **32자 이상** 랜덤 문자열 (미설정 시 프로덕션에서 서버가 종료됨) |
-| `MONGODB_URI` | ✅ (DB 사용 시) | MongoDB 연결 문자열 (Atlas 등). **비밀번호에 특수문자 있으면 URL 인코딩** |
+| `MONGODB_URI` | ✅ (DB 사용 시) | MongoDB 연결 문자열 (Atlas 등). **비밀번호에 특수문자 있으면 URL 인코딩**. 서버에서는 **localhost/127.0.0.1 금지** — DB의 공인 주소·계정 사용 |
 
 - `SESSION_SECRET` 예: `openssl rand -hex 32` 로 생성한 값 사용 권장.
 - `MONGODB_URI` 설정 시 **파일이 아닌 MongoDB**에 저장됩니다. 미설정 시 `data/*.json` 사용(서버 재배포 시 데이터 덮어쓰기 주의).
