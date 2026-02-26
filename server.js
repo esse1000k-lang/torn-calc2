@@ -905,6 +905,47 @@ const NICKNAME_REGEX = /^[a-zA-Z0-9]{5,12}$/;
 function isNicknameValid(name) {
   return name && NICKNAME_REGEX.test(name) && /[a-zA-Z]/.test(name);
 }
+// 로컬에서 Atlas 접속 안 될 때: Render 서버에서 admin109 생성 (1회만 호출, 끝나면 Render에서 SEED_ADMIN_KEY 삭제 권장)
+app.get('/api/debug/seed-admin', async (req, res) => {
+  const key = String(req.query.key || '').trim();
+  const expected = String(process.env.SEED_ADMIN_KEY || '').trim();
+  if (!expected || key !== expected) {
+    return res.status(403).json({ ok: false, message: 'key 불일치 또는 SEED_ADMIN_KEY 미설정' });
+  }
+  try {
+    const users = await db.readUsers();
+    const ADMIN_NAME = 'admin109';
+    const ADMIN_PW = '111111';
+    const PLACEHOLDER = '0x0000000000000000000000000000000000000008';
+    let admin = users.find((u) => u.displayName && u.displayName.toLowerCase() === ADMIN_NAME.toLowerCase());
+    if (admin) {
+      admin.passwordHash = bcrypt.hashSync(ADMIN_PW, 10);
+      admin.approved = true;
+      admin.boardAdmin = true;
+    } else {
+      admin = {
+        id: crypto.randomBytes(12).toString('hex'),
+        passwordHash: bcrypt.hashSync(ADMIN_PW, 10),
+        displayName: ADMIN_NAME,
+        walletAddress: PLACEHOLDER,
+        referrer: null,
+        approved: true,
+        approvedAt: new Date().toISOString(),
+        approvedBy: 'seed-admin',
+        points: 0,
+        level: 1,
+        boardAdmin: true,
+        createdAt: new Date().toISOString(),
+      };
+      users.push(admin);
+    }
+    await db.writeUsers(users);
+    res.json({ ok: true, message: 'admin109 생성/비밀번호 초기화 완료. 로그인 후 SEED_ADMIN_KEY 삭제 권장.' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message) });
+  }
+});
+
 // 로그인 문제 확인용: 이 서버가 보는 DB에 admin109가 있는지 (배포 후 브라우저에서 열어보기)
 app.get('/api/debug/check-admin', async (req, res) => {
   try {
