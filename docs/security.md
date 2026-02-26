@@ -12,7 +12,8 @@
 ## 2. 프로덕션 환경 변수
 
 - [ ] `NODE_ENV=production` 설정
-- [ ] `SESSION_SECRET` **32자 이상** 랜덤 문자열로 설정 (프로덕션에서 미설정 시 서버가 종료됨)
+- [ ] `SESSION_SECRET` **32자 이상** 랜덤 문자열로 설정 (프로덕션에서 미설정 또는 32자 미만이면 서버가 종료됨)
+- [ ] `/api/debug/check-admin` 사용 시 `DEBUG_VIEW_KEY` 또는 `SEED_ADMIN_KEY`를 쿼리 `key`로 전달해야 조회 가능 (미설정 시 403)
 - [ ] 관리자 지갑은 `ADMIN_WALLET_ADDRESSES` 환경 변수로 설정 (코드에 하드코딩하지 않기)
 - [ ] DeepL·Etherscan 등 API 키는 환경 변수로만 사용
 

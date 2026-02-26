@@ -18,8 +18,8 @@ const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SESSION_SECRET || 'tornfi-community-secret-change-in-production';
 
 if (process.env.NODE_ENV === 'production') {
-  if (!process.env.SESSION_SECRET || String(process.env.SESSION_SECRET).length < 16) {
-    console.error('Production requires SESSION_SECRET (min 16 chars). Set env and restart.');
+  if (!process.env.SESSION_SECRET || String(process.env.SESSION_SECRET).length < 32) {
+    console.error('Production requires SESSION_SECRET (min 32 chars). Set env and restart.');
     process.exit(1);
   }
 }
@@ -92,6 +92,31 @@ const PROFILE_AVATAR_MAX_SIZE = 1 * 1024 * 1024; // 1MB (프로필 사진)
 const PROFILE_AVATAR_MAX_DIM = 400; // 프로필 사진 권장 최대 변 400px, 정사각형
 const IMAGE_MAX_COUNT = 5;
 const ALLOWED_MIMES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp' };
+
+// 업로드 파일이 실제 이미지인지 매직 바이트로 검사 (MIME 스푸핑 방지)
+const IMAGE_MAGIC = {
+  '.jpg': [0xff, 0xd8, 0xff],
+  '.png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  '.gif': [0x47, 0x49, 0x46, 0x38], // 37 61 or 39 61
+  '.webp': [0x52, 0x49, 0x46, 0x46], // then 4 byte size, then 57 45 42 50
+};
+function validateImageMagic(filePath, expectedExt) {
+  try {
+    const buf = Buffer.alloc(12);
+    const fd = fs.openSync(filePath, 'r');
+    const n = fs.readSync(fd, buf, 0, 12, 0);
+    fs.closeSync(fd);
+    if (n < 4) return false;
+    const magic = IMAGE_MAGIC[expectedExt];
+    if (!magic) return false;
+    if (expectedExt === '.gif') return buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38 && (buf[4] === 0x37 || buf[4] === 0x39) && buf[5] === 0x61;
+    if (expectedExt === '.webp') return buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
+    for (let i = 0; i < magic.length; i++) if (buf[i] !== magic[i]) return false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
 function ensureUploadsDir() {
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -753,6 +778,25 @@ function checkAuthRateLimit(req, res) {
   return false;
 }
 
+// 중요 쓰기 API rate limit: IP당 1분에 60회 (채팅·업로드·글 작성 등)
+const WRITE_RATE_WINDOW_MS = 60 * 1000;
+const WRITE_RATE_MAX = 60;
+const writeRateByIp = new Map();
+function rateLimitWrites(req, res, next) {
+  const ip = getClientIp(req) || '0.0.0.0';
+  const now = Date.now();
+  let rec = writeRateByIp.get(ip);
+  if (!rec || now >= rec.resetAt) {
+    rec = { count: 0, resetAt: now + WRITE_RATE_WINDOW_MS };
+    writeRateByIp.set(ip, rec);
+  }
+  rec.count += 1;
+  if (rec.count > WRITE_RATE_MAX) {
+    return res.status(429).json({ ok: false, message: '요청이 너무 많습니다. 1분 후 다시 시도해 주세요.' });
+  }
+  next();
+}
+
 function adminPinLocked(ip) {
   const rec = adminPinFailedAttempts.get(ip);
   if (!rec || !rec.lockedUntil) return false;
@@ -954,8 +998,13 @@ app.get('/api/debug/seed-admin', async (req, res) => {
   }
 });
 
-// 로그인 문제 확인용: 이 서버가 보는 DB에 admin109가 있는지 (배포 후 브라우저에서 열어보기)
+// 로그인 문제 확인용: 이 서버가 보는 DB에 admin109가 있는지 (key 필요, 프로덕션 정보 노출 방지)
 app.get('/api/debug/check-admin', async (req, res) => {
+  const key = String(req.query.key || '').trim();
+  const expected = String(process.env.SEED_ADMIN_KEY || process.env.DEBUG_VIEW_KEY || '').trim();
+  if (!expected || key !== expected) {
+    return res.status(403).json({ ok: false, message: 'key 불일치 또는 DEBUG_VIEW_KEY/SEED_ADMIN_KEY 미설정' });
+  }
   try {
     const uri = (process.env.MONGODB_URI || '').trim();
     const uriHash = crypto.createHash('sha256').update(uri).digest('hex').slice(0, 16);
@@ -1217,7 +1266,7 @@ async function handleGetMe(req, res) {
 app.get('/api/me', handleGetMe);
 
 // 프로필 사진 업로드
-app.post('/api/me/avatar', authMiddleware, async (req, res) => {
+app.post('/api/me/avatar', rateLimitWrites, authMiddleware, async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   uploadProfileAvatar(req, res, async (err) => {
     if (err) {
@@ -1225,6 +1274,11 @@ app.post('/api/me/avatar', authMiddleware, async (req, res) => {
       return res.status(400).json({ ok: false, message: msg });
     }
     if (!req.file || !req.file.filename) return res.status(400).json({ ok: false, message: '사진을 선택해 주세요.' });
+    const ext = path.extname(req.file.filename).toLowerCase();
+    if (req.file.path && !validateImageMagic(req.file.path, ext)) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({ ok: false, message: '이미지 파일이 올바르지 않습니다. (허용: JPG, PNG, GIF, WEBP)' });
+    }
     const profileImageUrl = '/uploads/profile/' + req.file.filename;
     const users = await db.readUsers();
     const idx = users.findIndex((u) => u.id === req.user.id);
@@ -1327,12 +1381,19 @@ app.get('/api/chat', async (req, res) => {
   res.json(payload);
 });
 
-app.post('/api/chat', authMiddleware, function (req, res) {
+app.post('/api/chat', rateLimitWrites, authMiddleware, function (req, res) {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 채팅할 수 있습니다.' });
   uploadChatImage(req, res, async function (err) {
     if (err) return res.status(400).json({ ok: false, message: err.message || '이미지 업로드에 실패했습니다.' });
     const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
     const hasImage = req.file && req.file.filename;
+    if (hasImage && req.file.path) {
+      const ext = path.extname(req.file.filename).toLowerCase();
+      if (!validateImageMagic(req.file.path, ext)) {
+        try { fs.unlinkSync(req.file.path); } catch (_) {}
+        return res.status(400).json({ ok: false, message: '이미지 파일이 올바르지 않습니다. (허용: JPG, PNG, GIF, WEBP)' });
+      }
+    }
     if (!text && !hasImage) return res.status(400).json({ ok: false, message: '메시지 또는 사진을 입력해 주세요.' });
     if (text.length > 500) return res.status(400).json({ ok: false, message: '메시지는 500자 이내로 입력해 주세요.' });
     const imageUrl = hasImage ? '/uploads/chat/' + req.file.filename : undefined;
@@ -1462,7 +1523,7 @@ app.post('/api/chat/use-broom', async (req, res) => {
 });
 
 // 채팅 메시지 수정 — 본인만 수정 가능
-app.patch('/api/chat/:messageId', async (req, res) => {
+app.patch('/api/chat/:messageId', rateLimitWrites, async (req, res) => {
     if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   const messageId = String(req.params.messageId || '').trim();
   const text = typeof req.body?.text === 'string' ? req.body.text.trim().slice(0, 500) : '';
@@ -1473,7 +1534,7 @@ app.patch('/api/chat/:messageId', async (req, res) => {
 });
 
 // 채팅 메시지 삭제 — 본인만 삭제 가능
-app.delete('/api/chat/:messageId', async (req, res) => {
+app.delete('/api/chat/:messageId', rateLimitWrites, async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   const messageId = String(req.params.messageId || '').trim();
   if (!messageId) return res.status(400).json({ ok: false, message: '메시지 ID가 필요합니다.' });
@@ -2553,7 +2614,7 @@ app.get('/api/posts/:postId', async (req, res) => {
 });
 
 // 작성 (로그인 필요, 이미지 선택 첨부 가능)
-app.post('/api/posts', async (req, res, next) => {
+app.post('/api/posts', rateLimitWrites, async (req, res, next) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   uploadPostImages(req, res, function (err) {
     if (err) {
@@ -2564,6 +2625,16 @@ app.post('/api/posts', async (req, res, next) => {
     next();
   });
 }, async (req, res) => {
+  const files = req.files || [];
+  for (const f of files) {
+    if (f.path) {
+      const ext = path.extname(f.filename || f.originalname || '').toLowerCase();
+      if (!validateImageMagic(f.path, ext)) {
+        files.forEach((x) => { try { if (x.path) fs.unlinkSync(x.path); } catch (_) {} });
+        return res.status(400).json({ ok: false, message: '이미지 파일이 올바르지 않습니다. (허용: JPG, PNG, GIF, WEBP)' });
+      }
+    }
+  }
   const title = String(req.body?.title || '').trim();
   const body = String(req.body?.body || '').trim();
   if (!title || title.length > 200) {
@@ -2572,7 +2643,7 @@ app.post('/api/posts', async (req, res, next) => {
   if (!body || body.length > 10000) {
     return res.status(400).json({ ok: false, message: '내용을 1~10000자로 입력해 주세요.' });
   }
-  const imagePaths = (req.files || []).map((f) => '/uploads/' + f.filename);
+  const imagePaths = files.map((f) => '/uploads/' + f.filename);
   const posts = await db.readPosts();
   const newPost = {
     id: crypto.randomBytes(8).toString('hex'),
@@ -2700,7 +2771,7 @@ app.get('/api/feed/:postId', async (req, res) => {
   res.json({ ok: true, post });
 });
 
-app.post('/api/feed', async (req, res, next) => {
+app.post('/api/feed', rateLimitWrites, async (req, res, next) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   uploadPostImages(req, res, function (err) {
     if (err) {
@@ -2711,11 +2782,21 @@ app.post('/api/feed', async (req, res, next) => {
     next();
   });
 }, async (req, res) => {
+  const files = req.files || [];
+  for (const f of files) {
+    if (f.path) {
+      const ext = path.extname(f.filename || f.originalname || '').toLowerCase();
+      if (!validateImageMagic(f.path, ext)) {
+        files.forEach((x) => { try { if (x.path) fs.unlinkSync(x.path); } catch (_) {} });
+        return res.status(400).json({ ok: false, message: '이미지 파일이 올바르지 않습니다. (허용: JPG, PNG, GIF, WEBP)' });
+      }
+    }
+  }
   const body = String(req.body?.body || '').trim();
   if (!body || body.length > 10000) {
     return res.status(400).json({ ok: false, message: '내용을 1~10000자로 입력해 주세요.' });
   }
-  const imagePaths = (req.files || []).map((f) => '/uploads/' + f.filename);
+  const imagePaths = files.map((f) => '/uploads/' + f.filename);
   const posts = await db.readFeedPosts();
   const newPost = {
     id: crypto.randomBytes(8).toString('hex'),
@@ -2734,7 +2815,7 @@ app.post('/api/feed', async (req, res, next) => {
 // 피드 글에 댓글 작성 — 로그인 필요
 const FEED_COMMENT_BODY_MAX = 1000;
 const FEED_COMMENTS_MAX = 200;
-app.post('/api/feed/:postId/comments', async (req, res) => {
+app.post('/api/feed/:postId/comments', rateLimitWrites, async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 댓글을 남길 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   const body = String(req.body?.body || '').trim();
