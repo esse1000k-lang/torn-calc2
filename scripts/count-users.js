@@ -5,6 +5,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const envPath = path.join(__dirname, '..', '.env');
 if (fs.existsSync(envPath)) {
@@ -19,13 +20,14 @@ const db = require(path.join(__dirname, '..', 'lib', 'db'));
 
 async function main() {
   const uri = (process.env.MONGODB_URI || '').trim();
-  // mongodb+srv://user:pass@host/DB이름?options 에서 DB이름만 추출 (마지막 / 뒤, .이 없으면 DB이름)
+  const uriHash = uri ? crypto.createHash('sha256').update(uri).digest('hex').slice(0, 16) : '(없음)';
   const pathPart = uri.split('?')[0].trim();
   const lastSlash = pathPart.lastIndexOf('/');
   const afterSlash = pathPart.slice(lastSlash + 1).trim();
   const dbName =
     afterSlash && !afterSlash.includes('.') ? afterSlash : '(URI에 DB 이름 없음)';
   console.log('연결 DB 이름:', dbName);
+  console.log('URI 해시(앞 16자):', uriHash, '<-- Render /api/debug/check-admin 의 uriHash 와 같아야 같은 DB');
   console.log('DB 연결 중...');
   await db.connect?.();
   const users = await db.readUsers();

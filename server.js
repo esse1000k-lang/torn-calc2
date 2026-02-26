@@ -909,6 +909,7 @@ function isNicknameValid(name) {
 app.get('/api/debug/check-admin', async (req, res) => {
   try {
     const uri = (process.env.MONGODB_URI || '').trim();
+    const uriHash = crypto.createHash('sha256').update(uri).digest('hex').slice(0, 16);
     const pathPart = uri.split('?')[0].trim();
     const lastSlash = pathPart.lastIndexOf('/');
     const afterSlash = pathPart.slice(lastSlash + 1).trim();
@@ -918,6 +919,7 @@ app.get('/api/debug/check-admin', async (req, res) => {
     const admin = users.find((u) => u.displayName && u.displayName.toLowerCase() === 'admin109');
     res.json({
       dbName,
+      uriHash,
       userCount: users.length,
       admin109Exists: !!admin,
       hasPassword: !!(admin && admin.passwordHash),
