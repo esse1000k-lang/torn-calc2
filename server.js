@@ -908,9 +908,17 @@ function isNicknameValid(name) {
 // 로그인 문제 확인용: 이 서버가 보는 DB에 admin109가 있는지 (배포 후 브라우저에서 열어보기)
 app.get('/api/debug/check-admin', async (req, res) => {
   try {
+    const uri = (process.env.MONGODB_URI || '').trim();
+    const pathPart = uri.split('?')[0].trim();
+    const lastSlash = pathPart.lastIndexOf('/');
+    const afterSlash = pathPart.slice(lastSlash + 1).trim();
+    const dbName = afterSlash && !afterSlash.includes('.') ? afterSlash : '(없음)';
+
     const users = await db.readUsers();
     const admin = users.find((u) => u.displayName && u.displayName.toLowerCase() === 'admin109');
     res.json({
+      dbName,
+      userCount: users.length,
       admin109Exists: !!admin,
       hasPassword: !!(admin && admin.passwordHash),
       approved: admin ? admin.approved !== false : null,
