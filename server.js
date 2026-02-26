@@ -891,6 +891,14 @@ async function checkTornStaking(ethAddress) {
   return { staking: false, lockedBalance: '0', error: lastError?.message || 'RPC failed' };
 }
 
+// DB 모드 확인 (로컬 vs 배포가 같은 DB 쓰는지 비교용 — URI 자체는 노출하지 않음)
+app.get('/api/db-mode', (req, res) => {
+  const uri = (process.env.MONGODB_URI || '').trim();
+  const useMongo = !!uri;
+  const uriHash = useMongo ? crypto.createHash('sha256').update(uri).digest('hex').slice(0, 16) : '';
+  res.json({ useMongo, uriHash: uriHash || null });
+});
+
 // 스테이킹 확인 API (회원가입 폼에서 지갑 유효성과 함께 사용)
 app.get('/api/check-staking', async (req, res) => {
   const walletAddress = String(req.query.walletAddress || '').trim();
