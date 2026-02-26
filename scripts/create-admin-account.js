@@ -10,6 +10,17 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const fs = require('fs');
+
+// .env 파일 로드 (터미널에서 실행할 때 MONGODB_URI를 쓰려면 필요)
+const envPath = path.join(__dirname, '..', '.env');
+if (fs.existsSync(envPath)) {
+  const content = fs.readFileSync(envPath, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (m) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
+  }
+}
 
 const db = require(path.join(__dirname, '..', 'lib', 'db'));
 
@@ -18,6 +29,7 @@ const ADMIN_PASSWORD = '111111';
 const PLACEHOLDER_WALLET = '0x0000000000000000000000000000000000000008';
 
 async function main() {
+  console.log('DB 연결 중...');
   await db.connect?.();
   const users = await db.readUsers();
   const existing = users.find((u) => u.displayName && u.displayName.toLowerCase() === ADMIN_DISPLAY_NAME.toLowerCase());
