@@ -45,8 +45,8 @@ const { getAddress, JsonRpcProvider, Contract, formatUnits } = require('ethers')
 const db = require('./lib/db');
 const app = express();
 
-// 로컬에서 쿠키 미전송 시 의심되면 일단 주석 처리 (배포 시 프록시 뒤면 다시 1로)
-// app.set('trust proxy', 1);
+// Render 등 프록시 뒤에서 동작 시 필수 — X-Forwarded-* 헤더 신뢰
+app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SESSION_SECRET || 'tornfi-community-secret-change-in-production';
@@ -221,50 +221,50 @@ const uploadProfileAvatar = multer({
   fileFilter: fileFilterImages,
 }).single('avatar');
 
-// 세션: 모든 라우터보다 먼저 적용 (미들웨어 맨 위). MongoDB sessions 컬렉션에 저장 (MONGO_URI 또는 MONGODB_URI).
-// 쿠키 만료: 공용 PC 등에서 탈취 방지를 위해 과도하게 길지 않게 24시간으로 제한.
-const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간
-const sessionMongoUrl = (process.env.MONGO_URI || process.env.MONGODB_URI || '').trim();
+// 세션: [임시 테스트] proxy/secure/sameSite 완화 — 안 튕기면 보안 설정 문제, 튕기면 로직 문제
+const SESSION_COOKIE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12시간
 app.use(
   session({
     name: 'connect.sid',
-    secret: SECRET,
+    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    rolling: false,
     proxy: false,
-    store: sessionMongoUrl ? MongoStore.create({ mongoUrl: sessionMongoUrl }) : undefined,
-    unset: 'destroy',
     cookie: {
+      secure: false,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       maxAge: SESSION_COOKIE_MAX_AGE_MS,
     },
   })
 );
 
-// Passport: 세션에 유저 ID 저장/복원
+// Passport: 세션에는 반드시 문자열 ID만 저장 (객체/ObjectId 저장 시 deserializeUser에서 매칭 실패)
 passport.serializeUser((user, done) => {
-  const toStore = user.id != null ? user.id : (user._id != null ? String(user._id) : null);
+  const raw = user.id != null ? user.id : (user._id != null ? user._id : null);
+  const toStore = raw != null ? String(raw) : null;
   done(null, toStore);
 });
-// ID로 유저 조회: id / _id / walletAddress / displayName fallback
+// ID로 유저 조회: 세션 ID(문자열)와 DB id/_id 문자열 비교로 통일
 passport.deserializeUser((id, done) => {
+  const idStr = id != null ? String(id) : '';
   db.readUsers()
     .then((users) => {
-      const idStr = String(id);
       let u = users.find((x) => String(x.id ?? x._id ?? '') === idStr);
       if (!u) u = users.find((x) => x.walletAddress && String(x.walletAddress).toLowerCase() === idStr.toLowerCase());
       if (!u) u = users.find((x) => x.displayName && String(x.displayName).toLowerCase() === idStr.toLowerCase());
-      if (!u) return done(null, null);
+      if (!u) {
+        console.log('[Deserialize] 유저 없음 — 세션 id=', idStr, 'typeof=', typeof id, 'DB 유저 수=', users.length, '첫 3명 id=', users.slice(0, 3).map((x) => String(x.id ?? x._id ?? '')));
+        return done(null, null);
+      }
       const isAdminByWallet = u.walletAddress && ADMIN_WALLET_ADDRESSES.includes(u.walletAddress.toLowerCase());
       const isAdmin = isAdminByWallet || u.boardAdmin === true;
-      const resolvedId = u.id != null ? u.id : (u._id != null ? String(u._id) : null) || idStr;
+      const resolvedId = (u.id != null ? String(u.id) : (u._id != null ? String(u._id) : null)) || idStr;
       done(null, { id: resolvedId, displayName: u.displayName, walletAddress: u.walletAddress || null, isAdmin: !!isAdmin });
     })
     .catch((err) => {
-      console.error('[Deserialize] ERROR', err);
+      console.error('[Deserialize] ERROR', err?.message || err, err?.stack);
       done(err);
     });
 });
@@ -1361,8 +1361,8 @@ app.post('/api/login', async (req, res) => {
       const sidSigned = 's:' + cookieSignature.sign(req.sessionID, SECRET);
       res.cookie('connect.sid', sidSigned, {
         path: '/',
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        secure: true,
         httpOnly: true,
         maxAge: SESSION_COOKIE_MAX_AGE_MS,
       });
@@ -1381,12 +1381,10 @@ app.post('/api/login', async (req, res) => {
   });
 });
 
-// 로그아웃 (Set-Cookie 시 사용한 path/domain/sameSite/secure 와 동일하게 제거)
+// 로그아웃 (Set-Cookie 시 사용한 path/domain/sameSite/secure 와 동일하게 제거 — Render: sameSite none + secure 필수)
 function getClearCookieOpts(req) {
-  const opts = { path: '/' };
+  const opts = { path: '/', sameSite: 'none', secure: true };
   if (process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN) opts.domain = process.env.COOKIE_DOMAIN.trim();
-  opts.secure = process.env.NODE_ENV === 'production' && req && (req.secure || req.get('x-forwarded-proto') === 'https');
-  if ((process.env.COOKIE_SAMESITE || '').toLowerCase() === 'none') opts.sameSite = 'none';
   return opts;
 }
 
@@ -1660,7 +1658,13 @@ app.post('/api/chat/use-reward-party', async (req, res) => {
   };
   await db.writePinned(pinned);
   const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  res.json({ ok: true, message: '리워드 파티를 사용했습니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
+  req.session.save((err) => {
+    if (err) {
+      console.error('[chat/use-reward-party] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({ ok: true, message: '리워드 파티를 사용했습니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
+  });
 });
 
 // 떡상 기원 아이템 사용 — 하트 1 + risePrayer 1개 소모, lastItemUse 브로드캐스트(채팅 애니메이션)
@@ -1687,7 +1691,13 @@ app.post('/api/chat/use-rise-prayer', async (req, res) => {
   };
   await db.writePinned(pinned);
   const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  res.json({ ok: true, message: '떡상 기원을 사용했습니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
+  req.session.save((err) => {
+    if (err) {
+      console.error('[chat/use-rise-prayer] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({ ok: true, message: '떡상 기원을 사용했습니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
+  });
 });
 
 // 빗자루 아이템 사용 — broom 1개 소모, lastItemUse 브로드캐스트 후 5초 뒤 채팅 메시지 전체 삭제(고정 메시지는 유지)
@@ -1715,7 +1725,13 @@ app.post('/api/chat/use-broom', async (req, res) => {
     db.clearChatMessages().catch(() => {});
   }, BROOM_CLEAR_DELAY_MS);
   const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  res.json({ ok: true, message: '빗자루를 사용했습니다. 잠시 후 채팅이 비워집니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
+  req.session.save((err) => {
+    if (err) {
+      console.error('[chat/use-broom] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({ ok: true, message: '빗자루를 사용했습니다. 잠시 후 채팅이 비워집니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
+  });
 });
 
 // 채팅 메시지 수정 — 본인만 수정 가능
@@ -1755,10 +1771,10 @@ app.post('/api/chat/:messageId/send-heart', async (req, res) => {
   const messages = await db.readChatMessages();
   const msg = messages.find((m) => m.id === messageId);
   if (!msg || !msg.userId) return res.status(404).json({ ok: false, message: '메시지를 찾을 수 없습니다.' });
-  if (msg.userId === req.user.id) return res.status(400).json({ ok: false, message: '본인 메시지에는 하트를 보낼 수 없습니다.' });
+  if (String(msg.userId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 메시지에는 하트를 보낼 수 없습니다.' });
   const users = await db.readUsers();
   const senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  const recipientIdx = users.findIndex((u) => u.id === msg.userId);
+  const recipientIdx = users.findIndex((u) => String(u.id) === String(msg.userId));
   if (senderIdx === -1 || recipientIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
   const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
   if (senderPoints < amount) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
@@ -1767,7 +1783,13 @@ app.post('/api/chat/:messageId/send-heart', async (req, res) => {
   users[recipientIdx].points = recipientPoints + amount;
   await db.writeUsers(users);
   await db.incrementMessageHearts(messageId);
-  res.json({ ok: true, myHearts: users[senderIdx].points, message: '하트를 보냈습니다.' });
+  req.session.save((err) => {
+    if (err) {
+      console.error('[chat/send-heart] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({ ok: true, myHearts: users[senderIdx].points, message: '하트를 보냈습니다.' });
+  });
 });
 
 // 상점: 하트로 채팅 아이템 교환
@@ -1794,8 +1816,17 @@ app.post('/api/shop/exchange', async (req, res) => {
   users[idx].points = currentPoints - totalCost;
   if (!users[idx].shopItems) users[idx].shopItems = {};
   users[idx].shopItems[itemId] = currentOwned + quantity;
+
   await db.writeUsers(users);
-  res.json({ ok: true, message: item.name + ' ' + quantity + '개를 구매했습니다.', myHearts: users[idx].points, myShopItems: users[idx].shopItems });
+
+  // 세션에 뭔가 추가 정보를 넣지 말고, 그냥 저장만 확실히 함 (req.login 호출 없음 — 다음 요청 시 deserializeUser가 DB에서 최신 정보 읽음)
+  req.session.save((err) => {
+    if (err) {
+      console.error('세션 저장 에러:', err);
+      return res.status(500).json({ ok: false, message: '세션 저장 실패' });
+    }
+    return res.json({ ok: true, message: item.name + ' ' + quantity + '개를 구매했습니다.', myHearts: users[idx].points, myShopItems: users[idx].shopItems });
+  });
 });
 
 // 랭킹: 하트(포인트) 많은 순 (공개, 승인된 회원만)
@@ -1940,13 +1971,19 @@ app.post('/api/attendance', async (req, res) => {
     if (lastMonthFull && lastMonthFullBonusGiven !== lastMonthKey) message = `출석 완료! 한 달 연속 보너스 포함 하트 ${granted}개 지급되었습니다.`;
     else message = `출석 완료! 연속 ${streak}일 보너스로 하트 ${granted}개 지급되었습니다.`;
   }
-  res.json({
-    ok: true,
-    message,
-    granted,
-    streak,
-    myHearts: users[idx].points,
-    bonus: bonus > 0 ? bonus : undefined,
+  req.session.save((err) => {
+    if (err) {
+      console.error('[attendance] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({
+      ok: true,
+      message,
+      granted,
+      streak,
+      myHearts: users[idx].points,
+      bonus: bonus > 0 ? bonus : undefined,
+    });
   });
 });
 
@@ -3144,10 +3181,10 @@ app.post('/api/feed/:postId/send-heart', async (req, res) => {
   const idx = posts.findIndex((p) => p.id === postId);
   if (idx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
   const post = posts[idx];
-  if (post.authorId === req.user.id) return res.status(400).json({ ok: false, message: '본인 글에는 하트를 보낼 수 없습니다.' });
+  if (String(post.authorId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 글에는 하트를 보낼 수 없습니다.' });
   const users = await db.readUsers();
   const senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  const authorIdx = users.findIndex((u) => u.id === post.authorId);
+  const authorIdx = users.findIndex((u) => String(u.id) === String(post.authorId));
   if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
   const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
   if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
@@ -3157,7 +3194,13 @@ app.post('/api/feed/:postId/send-heart', async (req, res) => {
   await db.writeUsers(users);
   posts[idx].heartsReceived = (posts[idx].heartsReceived || 0) + 1;
   await db.writeFeedPosts(posts);
-  res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived: posts[idx].heartsReceived, message: '하트를 보냈습니다.' });
+  req.session.save((err) => {
+    if (err) {
+      console.error('[feed/send-heart] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived: posts[idx].heartsReceived, message: '하트를 보냈습니다.' });
+  });
 });
 
 // 피드 댓글에 하트 보내기 — 로그인 필요, 본인 댓글에는 불가
@@ -3174,10 +3217,10 @@ app.post('/api/feed/:postId/comments/:commentId/send-heart', async (req, res) =>
   const commentIdx = comments.findIndex((c) => c.id === commentId);
   if (commentIdx === -1) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
   const comment = comments[commentIdx];
-  if (comment.authorId === req.user.id) return res.status(400).json({ ok: false, message: '본인 댓글에는 하트를 보낼 수 없습니다.' });
+  if (String(comment.authorId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 댓글에는 하트를 보낼 수 없습니다.' });
   const users = await db.readUsers();
   const senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  const authorIdx = users.findIndex((u) => u.id === comment.authorId);
+  const authorIdx = users.findIndex((u) => String(u.id) === String(comment.authorId));
   if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
   const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
   if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
@@ -3187,7 +3230,13 @@ app.post('/api/feed/:postId/comments/:commentId/send-heart', async (req, res) =>
   await db.writeUsers(users);
   comments[commentIdx].heartsReceived = (comments[commentIdx].heartsReceived || 0) + 1;
   await db.writeFeedPosts(posts);
-  res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived: comments[commentIdx].heartsReceived, message: '하트를 보냈습니다.' });
+  req.session.save((err) => {
+    if (err) {
+      console.error('[feed/comment/send-heart] session.save err', err);
+      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
+    }
+    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived: comments[commentIdx].heartsReceived, message: '하트를 보냈습니다.' });
+  });
 });
 
 // ——— 토네이도 뉴스 ———
