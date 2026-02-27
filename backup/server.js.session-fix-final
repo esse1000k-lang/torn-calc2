@@ -50,6 +50,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SESSION_SECRET || 'tornfi-community-secret-change-in-production';
+const IS_DEV = process.env.NODE_ENV === 'development';
 
 if (process.env.NODE_ENV === 'production') {
   if (!process.env.SESSION_SECRET || String(process.env.SESSION_SECRET).length < 32) {
@@ -222,8 +223,6 @@ const uploadProfileAvatar = multer({
 }).single('avatar');
 
 // 세션: 모든 라우터보다 먼저 적용 (미들웨어 맨 위). MongoDB sessions 컬렉션에 저장 (MONGO_URI 또는 MONGODB_URI).
-// 쿠키 만료: 공용 PC 등에서 탈취 방지를 위해 과도하게 길지 않게 24시간으로 제한.
-const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간
 const sessionMongoUrl = (process.env.MONGO_URI || process.env.MONGODB_URI || '').trim();
 app.use(
   session({
@@ -237,9 +236,9 @@ app.use(
     unset: 'destroy',
     cookie: {
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       httpOnly: true,
-      maxAge: SESSION_COOKIE_MAX_AGE_MS,
+      maxAge: 24 * 60 * 60 * 1000,
     },
   })
 );
@@ -247,21 +246,29 @@ app.use(
 // Passport: 세션에 유저 ID 저장/복원
 passport.serializeUser((user, done) => {
   const toStore = user.id != null ? user.id : (user._id != null ? String(user._id) : null);
+  if (IS_DEV) console.log('[Serialize] ID:', toStore != null ? String(toStore) : '(없음)');
   done(null, toStore);
 });
 // ID로 유저 조회: id / _id / walletAddress / displayName fallback
 passport.deserializeUser((id, done) => {
+  if (IS_DEV) console.log('[Deserialize] 수신 ID:', id != null ? String(id) : '(없음)');
   db.readUsers()
     .then((users) => {
+      if (IS_DEV && users.length > 0) console.log('DB 유저 키 목록:', Object.keys(users[0]));
       const idStr = String(id);
       let u = users.find((x) => String(x.id ?? x._id ?? '') === idStr);
       if (!u) u = users.find((x) => x.walletAddress && String(x.walletAddress).toLowerCase() === idStr.toLowerCase());
       if (!u) u = users.find((x) => x.displayName && String(x.displayName).toLowerCase() === idStr.toLowerCase());
-      if (!u) return done(null, null);
+      if (!u) {
+        if (IS_DEV) console.log('[Deserialize] 유저 없음 id:', idStr, '| DB 유저 수:', users.length);
+        return done(null, null);
+      }
       const isAdminByWallet = u.walletAddress && ADMIN_WALLET_ADDRESSES.includes(u.walletAddress.toLowerCase());
       const isAdmin = isAdminByWallet || u.boardAdmin === true;
       const resolvedId = u.id != null ? u.id : (u._id != null ? String(u._id) : null) || idStr;
-      done(null, { id: resolvedId, displayName: u.displayName, walletAddress: u.walletAddress || null, isAdmin: !!isAdmin });
+      const userObj = { id: resolvedId, displayName: u.displayName, walletAddress: u.walletAddress || null, isAdmin: !!isAdmin };
+      if (IS_DEV) console.log('[Deserialize] 유저 찾음 id:', userObj.id);
+      done(null, userObj);
     })
     .catch((err) => {
       console.error('[Deserialize] ERROR', err);
@@ -272,6 +279,15 @@ passport.deserializeUser((id, done) => {
 // 미들웨어 순서: session → passport.initialize → passport.session 반드시 모든 /api 라우터보다 위
 app.use(passport.initialize());
 app.use(passport.session());
+
+if (IS_DEV) {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api') && req.session) {
+      console.log('[세션로드]', req.path, '| passport:', req.session.passport);
+    }
+    next();
+  });
+}
 
 app.use(express.json());
 // express-session이 자체적으로 쿠키 서명을 처리하므로, cookieParser와 이중 처리 시 서명 검증 실패(서명OK: 없음) 방지를 위해 비활성화
@@ -1362,10 +1378,11 @@ app.post('/api/login', async (req, res) => {
       res.cookie('connect.sid', sidSigned, {
         path: '/',
         sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         httpOnly: true,
-        maxAge: SESSION_COOKIE_MAX_AGE_MS,
+        maxAge: 24 * 60 * 60 * 1000,
       });
+      if (IS_DEV) console.log('로그인 응답 Set-Cookie:', res.getHeader('Set-Cookie'));
       res.json({
         ok: true,
         user: {
@@ -1396,7 +1413,8 @@ app.post('/api/logout', (req, res) => {
     if (typeof db.deleteSession === 'function') db.deleteSession(token).catch(() => {});
     sessions.delete(token);
   }
-  req.logout(() => {
+  req.logout((err) => {
+    if (err && IS_DEV) console.error('logout err', err);
     res.clearCookie('session', getClearCookieOpts(req)).json({ ok: true });
   });
 });
@@ -1429,7 +1447,24 @@ const NICKNAME_CHANGE_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 14일
 
 // 현재 사용자 정보 (커뮤니티용). 세션 id가 DB에 없어도 200으로 세션 기준 반환(기능 꼬임 방지), sessionInvalid 플래그로 재로그인 유도
 async function handleGetMe(req, res) {
-  if (!req.user) return res.status(401).json({ ok: false, user: null });
+  if (!req.user) {
+    // [기존 로그 비활성화] cookieParser 미사용 시 req.signedCookies 기반 로그는 실제 세션 상태를 왜곡함
+    // if (process.env.NODE_ENV !== 'production') {
+    //   const hasCookieHeader = !!(req.headers && req.headers.cookie);
+    //   const d = req.authDebug || {};
+    //   const signed = !!d.hadSignedSession;
+    //   const rawSession = !!d.hadAnySessionCookie;
+    //   if (hasCookieHeader || signed || rawSession) {
+    //     console.log(
+    //       'GET /api/me 401 | Cookie헤더:', hasCookieHeader ? '있음' : '없음',
+    //       '| 서명OK(session):', signed ? '있음' : '없음',
+    //       '| raw session쿠키:', rawSession ? '있음' : '없음'
+    //     );
+    //   }
+    // }
+    if (IS_DEV) console.log('GET /api/me 401 | session:', !!req.session, 'passport:', req.session && req.session.passport);
+    return res.status(401).json({ ok: false, user: null });
+  }
   const users = await db.readUsers();
   const dbUser = users.find((u) => String(u.id) === String(req.user.id));
   if (!dbUser) {
