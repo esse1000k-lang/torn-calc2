@@ -1,7 +1,15 @@
 /**
  * TornFi 커뮤니티 서버 — 투자자 의견 공유 커뮤니티 (포인트·송금·환전 없음)
  */
+
+// 1. 환경 변수 로드
 require('dotenv').config();
+
+// 2. MongoStore 안전하게 가져오기 (connect-mongo v6 CJS)
+const MongoStore = require('connect-mongo').default || require('connect-mongo').MongoStore;
+
+// 3. 세션
+const session = require('express-session');
 
 // mongodb+srv는 DNS SRV 조회 필요. PC/공유기 DNS가 SRV를 막으면 ECONNREFUSED → 앱 시작 직후 Google DNS 사용
 const dns = require('dns');
@@ -21,9 +29,6 @@ dns.setDefaultResultOrder('ipv4first');
 })();
 
 const express = require('express');
-const session = require('express-session');
-// connect-mongo v6: CJS는 { MongoStore } 또는 .default로 가져와야 .create() 사용 가능
-const MongoStore = require('connect-mongo').default || require('connect-mongo').MongoStore;
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
