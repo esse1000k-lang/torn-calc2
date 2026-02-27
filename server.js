@@ -22,7 +22,8 @@ dns.setDefaultResultOrder('ipv4first');
 
 const express = require('express');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+// connect-mongo v6: CJS는 { MongoStore } 또는 .default로 가져와야 .create() 사용 가능
+const MongoStore = require('connect-mongo').default || require('connect-mongo').MongoStore;
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -217,13 +218,14 @@ const uploadProfileAvatar = multer({
 app.use(express.json());
 app.use(cookieParser(SECRET));
 
-// 세션: MongoDB sessions 컬렉션에 저장 (MONGO_URI). Render 배포 시 trust proxy + secure/sameSite 필수
+// 세션: MongoDB sessions 컬렉션에 저장 (MONGO_URI 또는 MONGODB_URI). Render 배포 시 trust proxy + secure/sameSite 필수
+const sessionMongoUrl = (process.env.MONGO_URI || process.env.MONGODB_URI || '').trim();
 app.use(
   session({
     secret: SECRET,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+    store: sessionMongoUrl ? MongoStore.create({ mongoUrl: sessionMongoUrl }) : undefined,
     cookie: {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
