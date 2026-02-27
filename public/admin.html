@@ -929,16 +929,26 @@
             headers: { 'Content-Type': 'application/json' },
             body: '{}',
           })
-            .then(function (r) { return r.json(); })
-            .then(function (res) {
-              if (res.ok) {
+            .then(function (r) {
+              return r.json().then(function (res) {
+                console.log('[admin/force-withdraw] status=', r.status, r.statusText, 'body=', res);
+                return { status: r.status, res: res };
+              });
+            })
+            .then(function (out) {
+              var res = out.res;
+              if (out.status === 200 && res && res.ok) {
                 if (typeof loadUsers === 'function') loadUsers();
                 if (res.message) alert(res.message);
-              } else if (res.message) {
+                location.reload();
+              } else if (res && res.message) {
                 alert(res.message);
               }
             })
-            .catch(function () { alert('강제 탈퇴 처리 중 오류가 발생했습니다.'); })
+            .catch(function (err) {
+              console.error('[admin/force-withdraw] request failed', err);
+              alert('강제 탈퇴 처리 중 오류가 발생했습니다.');
+            })
             .finally(function () { okBtn.disabled = false; });
         });
       })();
@@ -965,14 +975,24 @@
             if (!confirm('테스트 회원 "' + displayName + '"을(를) 삭제하시겠습니까?')) return;
             btn.disabled = true;
             fetch('/api/admin/users/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' })
-              .then(function (r) { return r.json(); })
-              .then(function (res) {
-                if (res.ok) {
+              .then(function (r) {
+                return r.json().then(function (res) {
+                  console.log('[admin/delete-user] status=', r.status, r.statusText, 'body=', res);
+                  return { status: r.status, res: res };
+                });
+              })
+              .then(function (out) {
+                var res = out.res;
+                if (out.status === 200 && res && res.ok) {
                   if (typeof loadUsers === 'function') loadUsers();
                   if (res.message) alert(res.message);
-                } else if (res.message) alert(res.message);
+                  location.reload();
+                } else if (res && res.message) alert(res.message);
               })
-              .catch(function () { alert('삭제 처리 중 오류가 발생했습니다.'); })
+              .catch(function (err) {
+                console.error('[admin/delete-user] request failed', err);
+                alert('삭제 처리 중 오류가 발생했습니다.');
+              })
               .finally(function () { btn.disabled = false; });
           });
         });

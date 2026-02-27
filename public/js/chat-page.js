@@ -312,7 +312,7 @@
             .then(function (data) {
               if (data.ok) {
                 if (typeof data.myHearts === 'number') myHearts = data.myHearts;
-                if (data.myShopItems) lastMyShopItems = data.myShopItems;
+                if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
                 startChatItemCooldown();
               } else if (data.message) alert(data.message);
             })
@@ -361,7 +361,11 @@
                 processItemUsedToastQueue();
               }
               if (data.ok && data.messages) renderMessages(data.messages, effectiveMyId);
-              if (data.ok && typeof data.myHearts === 'number') { myHearts = data.myHearts; updateChatItemMenu(lastMyShopItems); }
+              if (data.ok) {
+                if (typeof data.myHearts === 'number') myHearts = data.myHearts;
+                if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
+                updateChatItemMenu(lastMyShopItems);
+              }
               function applyGuestOrLoggedIn(resolvedId) {
                 if (chatGuestNotice) {
                   if (resolvedId) { chatGuestNotice.style.display = 'none'; chatGuestNotice.textContent = ''; }
@@ -385,10 +389,7 @@
                 if (chatItemSelectWrap) {
                   if ((resolvedId || me) && data.ok) {
                     chatItemSelectWrap.style.display = 'inline-block';
-                    if (data.myShopItems) {
-                      lastMyShopItems = data.myShopItems;
-                      updateChatItemMenu(lastMyShopItems);
-                    }
+                    updateChatItemMenu(lastMyShopItems);
                   } else {
                     chatItemSelectWrap.style.display = 'none';
                   }
@@ -581,7 +582,7 @@
                   chatPinModalConfirm.disabled = false;
                   closePinModal();
                   if (data.ok) {
-                    if (data.myShopItems) lastMyShopItems = data.myShopItems;
+                    if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
                     startChatItemCooldown();
                     if (data.pinned && chatPinnedWrap && pinnedTextEl) {
                       pinnedTextEl.textContent = data.pinned.text;
@@ -774,7 +775,9 @@
               chatSendHeartOk.disabled = false;
               closeSendHeartModal();
               if (data.ok) {
-                if (typeof data.myHearts === 'number') { myHearts = data.myHearts; updateChatItemMenu(lastMyShopItems); }
+                if (typeof data.myHearts === 'number') myHearts = data.myHearts;
+                if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
+                updateChatItemMenu(lastMyShopItems);
                 lastMessageCount = 0;
                 fetchChat();
                 if (data.message) alert(data.message);

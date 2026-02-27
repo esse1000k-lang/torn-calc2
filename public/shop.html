@@ -188,6 +188,7 @@
       var shopMyHearts = document.getElementById('shopMyHearts');
       var shopItemsWrap = document.getElementById('shopItemsWrap');
       var shopItemsList = document.getElementById('shopItemsList');
+      // 아이템 정보는 서버(DB) 전용 — localStorage 사용 안 함
       var shopLoginMsg = document.getElementById('shopLoginMsg');
       var user = window.TornFiAuth && window.TornFiAuth.getUser();
 
@@ -326,14 +327,12 @@
           .then(function (r) { return r.json(); })
           .then(function (data) {
             if (data.ok) {
-              if (typeof data.myHearts === 'number') {
-                shopMyHearts.textContent = data.myHearts;
-              }
-              if (data.myShopItems && typeof data.myShopItems === 'object') {
+              if (typeof data.myHearts === 'number') shopMyHearts.textContent = data.myHearts;
+              if (data.myShopItems != null && typeof data.myShopItems === 'object') {
                 renderShopItems(data.myShopItems);
                 updateExchangeButtons(data.myHearts, data.myShopItems);
               } else {
-                updateExchangeButtons(parseInt(shopMyHearts.textContent, 10) || 0, lastShopItems);
+                loadBalance();
               }
               showShopToast(data.message || '구매되었습니다.');
             } else {

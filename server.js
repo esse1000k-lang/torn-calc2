@@ -232,7 +232,7 @@ app.use(
     saveUninitialized: false,
     proxy: false,
     cookie: {
-      secure: false,
+      secure: false, // Localhost에서는 true면 세션이 안 구워질 수 있음
       sameSite: 'lax',
       httpOnly: true,
       maxAge: SESSION_COOKIE_MAX_AGE_MS,
@@ -933,6 +933,11 @@ async function authMiddleware(req, res, next) {
     // 1) Passport가 세션에서 복원한 사용자 우선 (deserializeUser → req.user)
     if (req.user) {
       req.sessionToken = null;
+      // express-session에 저장된 관리자 플래그 반영 (비번 인증 후 유지)
+      if (req.session) {
+        if (req.session.isAdmin === true) req.user.isAdmin = true;
+        if (req.session.adminPinVerified === true) req.user.adminPinVerified = true;
+      }
       return next();
     }
     // 2) 구 호환: express-session에 수동 저장된 user
@@ -1216,11 +1221,8 @@ app.post('/api/register', async (req, res) => {
 
   const referrerTrim = String(referrer || '').trim() || null;
   const clientIp = getClientIp(req);
-  const users = await db.readUsers();
+  let users = await db.readUsers();
   const displayNameLower = name.toLowerCase();
-  if (users.some(u => u.displayName && u.displayName.toLowerCase() === displayNameLower)) {
-    return res.status(409).json({ ok: false, message: '이미 사용 중인 닉네임입니다.' });
-  }
 
   const ipCheck = checkDuplicateIp(clientIp, users);
   if (ipCheck.block) {
@@ -1238,9 +1240,6 @@ app.post('/api/register', async (req, res) => {
     const normalized = validateAndNormalizeEthAddress(walletRaw);
     if (!normalized) {
       return res.status(400).json({ ok: false, message: '유효한 이더리움 지갑 주소가 아닙니다.' });
-    }
-    if (users.some(u => u.walletAddress && u.walletAddress.toLowerCase() === normalized.toLowerCase())) {
-      return res.status(409).json({ ok: false, message: '이미 사용 중인 지갑 주소입니다.' });
     }
     const forceWithdraws = await db.readForceWithdraws();
     if (forceWithdraws.some(e => e.walletAddress && e.walletAddress.toLowerCase() === normalized.toLowerCase())) {
@@ -1267,6 +1266,11 @@ app.post('/api/register', async (req, res) => {
       return res.status(403).json({ ok: false, message: 'TORN 스테이킹이 있는 지갑만 가입할 수 있습니다. 홈 화면 배당 조회에서 지갑 주소 입력 시 숫자가 표시되어야 합니다.' });
     }
     walletAddress = normalized;
+    const existingByWallet = users.find((u) => u.walletAddress && u.walletAddress.toLowerCase() === walletAddress.toLowerCase());
+    const existingByName = users.find((u) => u.displayName && u.displayName.toLowerCase() === displayNameLower);
+    if (existingByName && existingByName !== existingByWallet) {
+      return res.status(409).json({ ok: false, message: '이미 사용 중인 닉네임입니다.' });
+    }
   }
 
   const settings = await db.readSettings();
@@ -1281,20 +1285,54 @@ app.post('/api/register', async (req, res) => {
     approved: autoApproveNewUsers,
     createdAt: new Date().toISOString(),
     level: MEMBER_LEVEL_MIN,
-    points: 3, // 가입 축하 하트 3개
+    points: 3,
     signupIp: clientIp || undefined,
   };
   if (autoApproveNewUsers) {
     user.approvedAt = new Date().toISOString();
     user.approvedBy = 'auto';
   }
-  users.push(user);
+
+  const byWalletIdx = users.findIndex((u) => u.walletAddress && u.walletAddress.toLowerCase() === (walletAddress || '').toLowerCase());
+  const byNameIdx = users.findIndex((u) => u.displayName && u.displayName.toLowerCase() === displayNameLower);
+  const upsertIdx = byWalletIdx >= 0 ? byWalletIdx : byNameIdx >= 0 ? byNameIdx : -1;
+
+  if (upsertIdx >= 0) {
+    const existing = users[upsertIdx];
+    const merged = {
+      ...existing,
+      id: existing.id || user.id,
+      passwordHash: user.passwordHash,
+      displayName: user.displayName,
+      walletAddress: user.walletAddress ?? existing.walletAddress,
+      referrer: user.referrer ?? existing.referrer,
+      approved: user.approved,
+      approvedAt: user.approved ? new Date().toISOString() : existing.approvedAt,
+      approvedBy: user.approved ? 'auto' : existing.approvedBy,
+      createdAt: existing.createdAt || user.createdAt,
+      level: typeof existing.level === 'number' ? existing.level : user.level,
+      points: typeof existing.points === 'number' ? existing.points : user.points,
+      shopItems: existing.shopItems && typeof existing.shopItems === 'object' ? existing.shopItems : {},
+      signupIp: clientIp || existing.signupIp,
+    };
+    users[upsertIdx] = merged;
+    const kill = new Set();
+    users.forEach((u, i) => {
+      if (i === upsertIdx) return;
+      if (u.walletAddress && (merged.walletAddress || '').toLowerCase() === u.walletAddress.toLowerCase()) kill.add(i);
+      if (u.displayName && u.displayName.toLowerCase() === displayNameLower) kill.add(i);
+    });
+    users = users.filter((_, i) => !kill.has(i));
+  } else {
+    users.push(user);
+  }
   await db.writeUsers(users);
 
+  const outUser = upsertIdx >= 0 ? users[upsertIdx] : user;
   res.status(201).json({
     ok: true,
     message: autoApproveNewUsers ? '가입이 완료되었습니다. 로그인하여 이용해 주세요.' : '가입 신청이 완료되었습니다. 관리자 승인 후 로그인하여 이용해 주세요.',
-    user: { id: user.id, displayName: user.displayName, walletAddress: user.walletAddress, approved: user.approved },
+    user: { id: outUser.id, displayName: outUser.displayName, walletAddress: outUser.walletAddress, approved: outUser.approved },
   });
 });
 
@@ -1540,9 +1578,10 @@ app.patch('/api/me', async (req, res) => {
 });
 
 // 실시간 채팅 — 조회(비로그인 가능, 전체 메시지 실시간 반영), 전송(로그인 필요)
+// 아이템(shopItems)·하트: 세션/로컬 사용 금지. data/users.json(또는 MongoDB) 단일 출처, readUsersFresh로 항상 최신 반영
 app.get('/api/chat', async (req, res) => {
   const messages = await db.readChatMessages();
-  const users = await db.readUsers();
+  const users = await db.readUsersFresh();
   const enriched = messages.map((m) => {
     const u = m.userId ? users.find((u) => u.id === m.userId) : null;
     const profileImageUrl = (u && u.profileImageUrl) ? u.profileImageUrl : null;
@@ -1991,6 +2030,7 @@ app.post('/api/attendance', async (req, res) => {
 
 async function adminOnlyMiddleware(req, res, next) {
   try {
+    console.log('[adminOnlyMiddleware] req.user=', !!req.user, 'req.user?.isAdmin=', req.user?.isAdmin, 'req.session?.isAdmin=', req.session?.isAdmin);
     if (!req.user) {
       return res.status(403).json({ ok: false, message: '관리자만 이용할 수 있습니다.' });
     }
@@ -2009,7 +2049,9 @@ async function adminOnlyMiddleware(req, res, next) {
 
 function adminMiddleware(req, res, next) {
   adminOnlyMiddleware(req, res, function () {
-    if (req.user.adminPinVerified === true) return next();
+    const pinOk = req.user.adminPinVerified === true;
+    console.log('[adminMiddleware] adminPinVerified=', pinOk, 'req.session?.adminPinVerified=', req.session?.adminPinVerified);
+    if (pinOk) return next();
     return res.status(403).json({ ok: false, needPin: true, message: '관리자 비밀번호를 입력해 주세요.' });
   });
 }
@@ -2054,6 +2096,18 @@ app.post('/api/admin/verify-pin', adminOnlyMiddleware, async (req, res) => {
     sessions.set(token, sess);
     if (typeof db.setSession === 'function') await db.setSession(token, sess);
   }
+  // express-session에 강제 반영 (Passport 사용자 등): 즉시 저장 후 응답
+  if (req.session) {
+    req.session.isAdmin = true;
+    req.session.adminPinVerified = true;
+    req.session.save((err) => {
+      if (err) console.error('[admin/verify-pin] session.save err', err);
+      console.log('[admin/verify-pin] 인증 성공, 세션 저장 완료 — isAdmin=true, adminPinVerified=true');
+      res.json({ ok: true });
+    });
+    return;
+  }
+  console.log('[admin/verify-pin] 인증 성공 (세션 없음, 커스텀 토큰만 반영)');
   res.json({ ok: true });
 });
 
@@ -2213,12 +2267,19 @@ app.post('/api/admin/users', adminMiddleware, async (req, res) => {
 
 // 관리자: 회원 삭제 (가짜: DB에서만 제거 / 실제: 강퇴 목록 추가 후 제거)
 app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
+  if (req.session && req.session.isAdmin !== true) {
+    console.log('[admin/delete-user] 권한 거부: req.session.isAdmin=', req.session.isAdmin, 'req.user?.isAdmin=', req.user?.isAdmin);
+    return res.status(403).json({ ok: false, message: '관리자 세션이 유효하지 않습니다.' });
+  }
+  if (!req.user || req.user.isAdmin !== true) {
+    console.log('[admin/delete-user] 권한 거부: req.user=', !!req.user, 'req.user?.isAdmin=', req.user?.isAdmin);
+    return res.status(403).json({ ok: false, message: '관리자만 이용할 수 있습니다.' });
+  }
   const userId = String(req.params.userId || '').trim();
   if (!userId) return res.status(400).json({ ok: false, message: '회원 ID가 없습니다.' });
-      const users = await db.readUsers();
-  const idx = users.findIndex((u) => u.id === userId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
-  const target = users[idx];
+  const users = await db.readUsers();
+  const target = users.find((u) => String(u.id) === userId);
+  if (!target) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
   if (target.managementAccount === true) {
     return res.status(400).json({ ok: false, message: '관리 계정은 삭제할 수 없습니다.' });
   }
@@ -2233,11 +2294,12 @@ app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
       withdrawnByDisplayName: req.user?.displayName ?? null,
     });
   }
-  users.splice(idx, 1);
-  await db.writeUsers(users);
+  const filtered = users.filter((u) => String(u.id) !== userId);
+  await db.writeUsers(filtered);
+  console.log('[admin/delete-user] writeUsers 완료 (filter), 삭제 후 유저 수=', filtered.length, '제거된 ID=', userId);
   if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
-    if (sess && sess.id === userId) sessions.delete(token);
+    if (sess && String(sess.id) === userId) sessions.delete(token);
   }
   res.json({ ok: true, message: isFake ? '테스트 회원이 삭제되었습니다.' : '회원이 삭제되었으며 강퇴 목록에 기록되었습니다.' });
 });
@@ -2649,11 +2711,22 @@ app.get('/api/admin/duplicate-check', adminMiddleware, async (req, res) => {
 
 // 관리자: 강제 탈퇴 (회원 삭제 — 커뮤니티 전용)
 app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req, res) => {
-  const { userId } = req.params;
+  if (req.session && req.session.isAdmin !== true) {
+    console.log('[admin/force-withdraw] 권한 거부: req.session.isAdmin=', req.session.isAdmin, 'req.user?.isAdmin=', req.user?.isAdmin);
+    return res.status(403).json({ ok: false, message: '관리자 세션이 유효하지 않습니다.' });
+  }
+  if (!req.user || req.user.isAdmin !== true) {
+    console.log('[admin/force-withdraw] 권한 거부: req.user=', !!req.user, 'req.user?.isAdmin=', req.user?.isAdmin);
+    return res.status(403).json({ ok: false, message: '관리자만 이용할 수 있습니다.' });
+  }
+  const userId = String((req.params.userId || '').trim());
+  if (!userId) return res.status(400).json({ ok: false, message: '회원 ID가 없습니다.' });
   const users = await db.readUsers();
-  const idx = users.findIndex((u) => u.id === userId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
-  const target = users[idx];
+  const target = users.find((u) => String(u.id) === userId);
+  if (!target) {
+    console.log('[admin/force-withdraw] 회원 없음: userId=', userId, 'DB id 타입 샘플=', users.slice(0, 3).map((u) => ({ id: u.id, type: typeof u.id })));
+    return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
+  }
   if (target.managementAccount === true) {
     return res.status(400).json({ ok: false, message: '관리 계정은 강제 탈퇴할 수 없습니다.' });
   }
@@ -2667,11 +2740,12 @@ app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req,
     withdrawnBy: req.user ? req.user.id : null,
     withdrawnByDisplayName: req.user ? req.user.displayName : null,
   });
-  users.splice(idx, 1);
-  await db.writeUsers(users);
+  const filtered = users.filter((u) => String(u.id) !== userId);
+  await db.writeUsers(filtered);
+  console.log('[admin/force-withdraw] writeUsers 완료 (filter), 삭제 후 유저 수=', filtered.length, '제거된 ID=', userId);
   if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
-    if (sess && sess.id === userId) sessions.delete(token);
+    if (sess && String(sess.id) === userId) sessions.delete(token);
   }
   res.json({ ok: true, message: '강제 탈퇴 처리되었습니다.' });
 });
@@ -3423,6 +3497,7 @@ function tryListen(port, maxTries) {
 }
 
 db.connect()
+  .then(() => db.deduplicateUsers())
   .then(() => tryListen(PORT))
   .catch((err) => {
     console.error('DB connect failed:', err);
