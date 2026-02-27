@@ -1267,12 +1267,14 @@ app.post('/api/login', async (req, res) => {
   sessions.set(token, sessData);
   if (typeof db.setSession === 'function') await db.setSession(token, sessData);
 
+  // 로컬 http에서는 secure=false여야 쿠키 전송됨. Render 등 HTTPS에서는 secure=true
+  const isSecure = process.env.NODE_ENV === 'production' && (req.secure || req.get('x-forwarded-proto') === 'https');
   const cookieOpts = {
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/',
     sameSite: (process.env.COOKIE_SAMESITE || 'lax').toLowerCase() === 'none' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecure,
   };
   if (process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN) {
     cookieOpts.domain = process.env.COOKIE_DOMAIN.trim();
@@ -1294,10 +1296,10 @@ app.post('/api/login', async (req, res) => {
 });
 
 // 로그아웃 (Set-Cookie 시 사용한 path/domain/sameSite/secure 와 동일하게 제거)
-function getClearCookieOpts() {
+function getClearCookieOpts(req) {
   const opts = { path: '/' };
   if (process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN) opts.domain = process.env.COOKIE_DOMAIN.trim();
-  if (process.env.NODE_ENV === 'production') opts.secure = true;
+  opts.secure = process.env.NODE_ENV === 'production' && req && (req.secure || req.get('x-forwarded-proto') === 'https');
   if ((process.env.COOKIE_SAMESITE || '').toLowerCase() === 'none') opts.sameSite = 'none';
   return opts;
 }
@@ -1308,7 +1310,7 @@ app.post('/api/logout', async (req, res) => {
     if (typeof db.deleteSession === 'function') await db.deleteSession(token);
     sessions.delete(token);
   }
-  res.clearCookie('session', getClearCookieOpts()).json({ ok: true });
+  res.clearCookie('session', getClearCookieOpts(req)).json({ ok: true });
 });
 
 // 회원탈퇴 (로그인 필요, 로그인 비밀번호 확인)
@@ -1332,7 +1334,7 @@ app.post('/api/withdraw', async (req, res) => {
     if (typeof db.deleteSession === 'function') await db.deleteSession(token);
     sessions.delete(token);
   }
-  res.clearCookie('session', getClearCookieOpts()).json({ ok: true, message: '회원탈퇴가 완료되었습니다.' });
+  res.clearCookie('session', getClearCookieOpts(req)).json({ ok: true, message: '회원탈퇴가 완료되었습니다.' });
 });
 
 const NICKNAME_CHANGE_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 14일
@@ -1344,7 +1346,7 @@ async function handleGetMe(req, res) {
       const d = req.authDebug;
       if (d.hadSignedSession) console.log('GET /api/me 401: 쿠키·서명 OK, 세션 없음(DB/만료) → 로그인 다시 하세요.');
       else if (d.hadAnySessionCookie) console.log('GET /api/me 401: session 쿠키 있으나 서명 불일치(SESSION_SECRET 변경?)');
-      else console.log('GET /api/me 401: session 쿠키 없음(localhost vs 127.0.0.1 혼용 시 쿠키 안 감)');
+      else console.log('GET /api/me 401: 인증 없음 — 쿠키 없음 (비로그인 상태이거나 localhost/127.0.0.1 혼용 시 발생)');
     }
     return res.status(401).json({ ok: false, user: null });
   }
