@@ -1,8 +1,12 @@
-/**const dns = require('node:dns');
-dns.setDefaultResultOrder('ipv4first');
+/**
  * TornFi 커뮤니티 서버 — 투자자 의견 공유 커뮤니티 (포인트·송금·환전 없음)
  */
 require('dotenv').config();
+
+// mongodb+srv는 DNS SRV 조회 필요. PC/공유기 DNS가 SRV를 막으면 ECONNREFUSED → 앱 시작 직후 Google DNS 사용
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setDefaultResultOrder('ipv4first');
 
 // 로컬/배포 같은 DB 쓰는지 확인용 — 서버 시작 시 한 번만 출력 (URI 값은 노출 안 함)
 (function logDbMode() {
@@ -17,6 +21,8 @@ require('dotenv').config();
 })();
 
 const express = require('express');
+const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -210,6 +216,22 @@ const uploadProfileAvatar = multer({
 
 app.use(express.json());
 app.use(cookieParser(SECRET));
+
+// 세션: MongoDB의 sessions 컬렉션에 저장 (MONGODB_URI 또는 MONGO_URI)
+app.use(
+  session({
+    secret: SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI || process.env.MONGO_URI }),
+    cookie: {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: process.env.COOKIE_SAMESITE === 'none' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production' && (process.env.COOKIE_SECURE === 'true'),
+    },
+  })
+);
 
 // 실제 도메인에서 쿠키 전달: credentials 포함 요청 시 Access-Control-Allow-Credentials: true 반환
 app.use(cors({ origin: true, credentials: true }));
@@ -1342,11 +1364,19 @@ const NICKNAME_CHANGE_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 14일
 // 현재 사용자 정보 (커뮤니티용). 세션 id가 DB에 없어도 200으로 세션 기준 반환(기능 꼬임 방지), sessionInvalid 플래그로 재로그인 유도
 async function handleGetMe(req, res) {
   if (!req.user) {
-    if (req.authDebug && process.env.NODE_ENV !== 'production') {
-      const d = req.authDebug;
-      if (d.hadSignedSession) console.log('GET /api/me 401: 쿠키·서명 OK, 세션 없음(DB/만료) → 로그인 다시 하세요.');
-      else if (d.hadAnySessionCookie) console.log('GET /api/me 401: session 쿠키 있으나 서명 불일치(SESSION_SECRET 변경?)');
-      else console.log('GET /api/me 401: 인증 없음 — 쿠키 없음 (비로그인 상태이거나 localhost/127.0.0.1 혼용 시 발생)');
+    // 개발 시 401 원인 파악: 한 줄로 Cookie 전송 여부·서명·세션 유무 구분
+    if (process.env.NODE_ENV !== 'production') {
+      const hasCookieHeader = !!(req.headers && req.headers.cookie);
+      const d = req.authDebug || {};
+      const signed = !!d.hadSignedSession;
+      const rawSession = !!d.hadAnySessionCookie;
+      if (hasCookieHeader || signed || rawSession) {
+        console.log(
+          'GET /api/me 401 | Cookie헤더:', hasCookieHeader ? '있음' : '없음',
+          '| 서명OK(session):', signed ? '있음' : '없음',
+          '| raw session쿠키:', rawSession ? '있음' : '없음'
+        );
+      }
     }
     return res.status(401).json({ ok: false, user: null });
   }
