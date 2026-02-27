@@ -221,6 +221,17 @@ app.use(function (req, res, next) {
   next();
 });
 
+// CORS: CLIENT_URL 설정 시 프론트(다른 오리진)에서 쿠키/세션 공유 가능
+const CLIENT_URL = (process.env.CLIENT_URL || '').trim();
+if (CLIENT_URL) {
+  app.use(cors({
+    origin: CLIENT_URL,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }));
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 function ensureDataDir() {
