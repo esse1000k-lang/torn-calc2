@@ -886,7 +886,13 @@ function adminPinRecordSuccess(ip) {
 
 async function authMiddleware(req, res, next) {
   try {
-    // 인증은 session 쿠키만 사용. Authorization 헤더/JWT/LocalStorage 미사용.
+    // 1) express-session에 사용자 있으면 우선 사용 (MongoStore에 저장된 세션 → 로그인 유지)
+    if (req.session && req.session.user) {
+      req.user = req.session.user;
+      req.sessionToken = null;
+      return next();
+    }
+    // 2) 기존 방식: session 쿠키 + DB/메모리 세션
     const token = req.signedCookies?.session;
     let sess = null;
     if (token) {
@@ -1296,6 +1302,17 @@ app.post('/api/login', async (req, res) => {
   sessions.set(token, sessData);
   if (typeof db.setSession === 'function') await db.setSession(token, sessData);
 
+  // express-session(MongoStore)에도 저장 → MongoDB sessions 컬렉션에 쌓여 로그인 유지
+  if (req.session) {
+    req.session.user = {
+      id: userId,
+      displayName: user.displayName,
+      walletAddress: user.walletAddress || null,
+      isAdmin: !!isAdmin,
+      expiresAt: sessData.expiresAt,
+    };
+  }
+
   // 로컬 http에서는 secure=false여야 쿠키 전송됨. Render 등 HTTPS에서는 secure=true
   const isSecure = process.env.NODE_ENV === 'production' && (req.secure || req.get('x-forwarded-proto') === 'https');
   const cookieOpts = {
@@ -1339,6 +1356,7 @@ app.post('/api/logout', async (req, res) => {
     if (typeof db.deleteSession === 'function') await db.deleteSession(token);
     sessions.delete(token);
   }
+  if (req.session) req.session.destroy(() => {});
   res.clearCookie('session', getClearCookieOpts(req)).json({ ok: true });
 });
 
