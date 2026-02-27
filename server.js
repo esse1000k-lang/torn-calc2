@@ -31,6 +31,10 @@ const { getAddress, JsonRpcProvider, Contract, formatUnits } = require('ethers')
 
 const db = require('./lib/db');
 const app = express();
+
+// Render 등 프록시 뒤에서 세션 쿠키·req.secure 정상 동작하도록
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SESSION_SECRET || 'tornfi-community-secret-change-in-production';
 
