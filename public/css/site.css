@@ -2567,6 +2567,16 @@ body::before {
   top: 14%;
   transform: translate(-50%, 0);
 }
+/* 뿌리는 동안 헬기가 살짝 좌우로 흔들리며 돌아다니는 느낌 */
+.reward-party-helicopter.reward-party-heli--center.reward-party-heli--drifting {
+  animation: reward-party-heli-drift 3.5s ease-in-out infinite;
+}
+/* 0%·100%를 translateX(0)으로 해서 등장 도착 직후와 이어지도록 (끊김 방지) */
+@keyframes reward-party-heli-drift {
+  0%, 100% { transform: translate(-50%, 0) translateX(0); }
+  33.33% { transform: translate(-50%, 0) translateX(14px); }
+  66.66% { transform: translate(-50%, 0) translateX(-14px); }
+}
 /* 3단계: 좌측 상단으로 이동 */
 .reward-party-helicopter.reward-party-heli--left {
   left: 0;
@@ -3137,6 +3147,31 @@ body::before {
 }
 .chat-msg--other .chat-msg__bubble {
   cursor: pointer;
+}
+.chat-msg__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  align-items: center;
+}
+.chat-msg--mine .chat-msg__actions {
+  justify-content: flex-end;
+}
+.chat-msg__action-btn {
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.chat-msg__action-btn:hover {
+  background: rgba(0, 255, 136, 0.12);
+  color: var(--neon);
 }
 
 /* 하트 보내기 2차 확인 커스텀 모달 */

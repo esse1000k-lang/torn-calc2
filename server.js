@@ -1610,12 +1610,13 @@ app.post('/api/me/verify-wallet', authMiddleware, async (req, res) => {
 app.get('/api/chat', async (req, res) => {
   const messages = await db.readChatMessages();
   const users = await db.readUsersFresh();
-  const enriched = messages.map((m) => {
+  const enriched = messages.map((m, i) => {
     const u = m.userId ? users.find((u) => u.id === m.userId) : null;
     const profileImageUrl = (u && u.profileImageUrl) ? u.profileImageUrl : null;
     const level = u ? getMemberLevel(u) : null;
     const isAdmin = !!(u && (u.levelAdmin || u.boardAdmin));
-    return { ...m, profileImageUrl, level, isAdmin };
+    const id = (m.id != null && m.id !== '') ? m.id : 'idx-' + i;
+    return { ...m, id, profileImageUrl, level, isAdmin };
   });
   const payload = { ok: true, messages: enriched };
   const pinned = await db.readPinned();
@@ -1672,12 +1673,17 @@ app.post('/api/chat', rateLimitWrites, authMiddleware, function (req, res) {
   });
 });
 
-// 상단 고정 메시지 설정 — pinMessage 아이템 1개 소모, 1시간 유효
+// 상단 고정 메시지 설정 — pinMessage 1개 소모, 4시간 유효. 고정이 없을 때만 사용 가능(덮어쓰기 불가). 동시 요청 시 먼저 처리된 쪽만 반영, 늦은 쪽은 아이템 소진 안 함
+const PINNED_DURATION_MS = 4 * 60 * 60 * 1000;
 app.post('/api/chat/set-pinned', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   if (checkChatItemCooldown(req, res)) return;
   const pinnedText = typeof req.body?.pinnedText === 'string' ? req.body.pinnedText.trim().slice(0, 25) : '';
   if (!pinnedText) return res.status(400).json({ ok: false, message: '고정할 메시지를 입력해 주세요.' });
+  const existing = await db.readPinned();
+  if (existing && typeof existing.text === 'string' && existing.expiresAt && new Date(existing.expiresAt).getTime() > Date.now()) {
+    return res.status(400).json({ ok: false, message: '이미 상단 고정이 있습니다. 만료 후 사용해 주세요.' });
+  }
   const users = await db.readUsers();
   const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
@@ -1686,7 +1692,13 @@ app.post('/api/chat/set-pinned', async (req, res) => {
   users[idx].shopItems.pinMessage = current - 1;
   if (!users[idx].shopItems) users[idx].shopItems = {};
   await db.writeUsers(users);
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const again = await db.readPinned();
+  if (again && typeof again.text === 'string' && again.expiresAt && new Date(again.expiresAt).getTime() > Date.now()) {
+    users[idx].shopItems.pinMessage = current;
+    await db.writeUsers(users);
+    return res.status(400).json({ ok: false, message: '이미 다른 회원이 고정했습니다. 아이템은 소진되지 않았습니다.' });
+  }
+  const expiresAt = new Date(Date.now() + PINNED_DURATION_MS).toISOString();
   const setByDisplayName = req.user.displayName || (req.user.walletAddress ? req.user.walletAddress.slice(0, 6) + '...' : '회원');
   setChatItemCooldown(req.user.id);
   await db.writePinned({
@@ -1698,7 +1710,7 @@ app.post('/api/chat/set-pinned', async (req, res) => {
   });
   const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
   const level = me ? getMemberLevel(me) : null;
-  res.json({ ok: true, message: '상단 고정 메시지가 적용되었습니다. (1시간 유효)', myShopItems: me?.shopItems || {}, pinned: { text: pinnedText, setByDisplayName: me?.displayName || null, expiresAt, level } });
+  res.json({ ok: true, message: '상단 고정 메시지가 적용되었습니다. (4시간 유효)', myShopItems: me?.shopItems || {}, pinned: { text: pinnedText, setByDisplayName: me?.displayName || null, expiresAt, level } });
 });
 
 // 리워드 파티 아이템 사용 — 하트 1 + rewardParty 1개 소모, lastItemUse 브로드캐스트(채팅 애니메이션)

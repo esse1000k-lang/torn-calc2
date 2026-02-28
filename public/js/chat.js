@@ -95,32 +95,56 @@
 
           var scatterTimer = null;
           setTimeout(function () {
+            heliEl.classList.add('reward-party-heli--drifting');
             var scatterStart = Date.now();
             function spawnScatter() {
               if (Date.now() - scatterStart >= scatterDurationMs) {
                 if (scatterTimer) clearInterval(scatterTimer);
-                /* 퇴장: 헬기는 중앙 → 좌측 바깥까지 한 번에 사라짐 */
+                /* 퇴장: 드리프트 중인 현재 위치에서 끊김 없이 화면 끝까지 나가며, 막 나갈 때만 페이드 */
+                var oRect = overlay.getBoundingClientRect();
+                var hRect = heliEl.getBoundingClientRect();
+                var centerX = hRect.left - oRect.left + hRect.width / 2;
+                var centerY = hRect.top - oRect.top + hRect.height / 2;
+                heliEl.classList.remove('reward-party-heli--drifting', 'reward-party-heli--center');
+                heliEl.style.left = centerX + 'px';
+                heliEl.style.top = centerY + 'px';
+                heliEl.style.transform = 'translate(-50%, -50%)';
+                heliEl.style.opacity = '1';
+                heliEl.style.transition = 'none';
+                heliEl.offsetHeight;
                 var exitDuration = (flyOutMs + fadeOutMs) / 1000;
-                heliEl.style.transition = 'left ' + exitDuration + 's ease-in, top ' + exitDuration + 's ease-in, transform ' + exitDuration + 's ease-in, opacity ' + exitDuration + 's ease-out';
-                heliEl.classList.remove('reward-party-heli--center');
-                heliEl.classList.add('reward-party-heli--flyoff');
-                /* 헬기 퇴장 완료 + 마지막 토네이도가 바닥에 다 떨어진 뒤에 오버레이 종료 (토네이도 fall 시간 + delay) */
+                var opacityDelay = Math.max(0, exitDuration - 0.5);
+                heliEl.style.transition = 'left ' + exitDuration + 's ease-in, top ' + exitDuration + 's ease-in, opacity 0.4s ease-out ' + opacityDelay + 's';
+                requestAnimationFrame(function () {
+                  requestAnimationFrame(function () {
+                    heliEl.style.left = (-hRect.width * 2) + 'px';
+                    heliEl.style.top = (centerY - 40) + 'px';
+                    heliEl.style.opacity = '0';
+                  });
+                });
                 var scatterFallMs = scatterFallDurationS * 1000 + 300;
                 var closeAfterMs = Math.max(flyOutMs + fadeOutMs, scatterFallMs);
                 setTimeout(function () {
                   overlay.style.display = 'none';
                   scatterEl.innerHTML = '';
                   heliEl.classList.remove('reward-party-heli--center', 'reward-party-heli--flyoff');
+                  heliEl.style.left = '';
+                  heliEl.style.top = '';
+                  heliEl.style.transform = '';
+                  heliEl.style.opacity = '';
+                  heliEl.style.transition = '';
                 }, closeAfterMs);
                 return;
               }
+              var oRect = overlay.getBoundingClientRect();
+              var hRect = heliEl.getBoundingClientRect();
+              var heliCenterX = (hRect.left - oRect.left + hRect.width / 2) / oRect.width * 100;
+              var heliCenterY = (hRect.top - oRect.top + hRect.height / 2) / oRect.height * 100;
               var span = document.createElement('span');
               span.className = 'reward-party-scatter-item';
               span.textContent = scatterEmoji;
-              var centerX = 50;
-              var centerY = 28;
-              span.style.left = (centerX + (Math.random() * 36 - 18)) + '%';
-              span.style.top = centerY + '%';
+              span.style.left = (heliCenterX + (Math.random() * 10 - 5)) + '%';
+              span.style.top = (heliCenterY + (Math.random() * 6 - 3)) + '%';
               span.style.animation = 'reward-party-scatter-fall ' + scatterFallDurationS + 's ease-in forwards';
               span.style.animationDelay = (Math.random() * 0.3) + 's';
               span.style.setProperty('--rx', (Math.random() * 40 - 20) + 'deg');

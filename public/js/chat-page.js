@@ -1,9 +1,13 @@
-
+      console.log('[chat-page] script loaded');
       (function setupChat() {
         var chatMessages = document.getElementById('chatMessages');
         var chatInput = document.getElementById('chatInput');
         var chatSend = document.getElementById('chatSend');
-        if (!chatMessages) return;
+        if (!chatMessages) {
+          console.log('[chat-page] early return: chatMessages 없음');
+          return;
+        }
+        console.log('[chat-page] setupChat 진행 중, chatMessages 있음');
         var chatGuestNotice = document.getElementById('chatGuestNotice');
         var chatPanel = document.getElementById('chatPanel');
         var chatPinnedWrap = document.getElementById('chatPinnedWrap');
@@ -96,32 +100,56 @@
 
           var scatterTimer = null;
           setTimeout(function () {
+            heliEl.classList.add('reward-party-heli--drifting');
             var scatterStart = Date.now();
             function spawnScatter() {
               if (Date.now() - scatterStart >= scatterDurationMs) {
                 if (scatterTimer) clearInterval(scatterTimer);
-                /* 퇴장: 헬기는 중앙 → 좌측 바깥까지 한 번에 사라짐 */
+                /* 퇴장: 드리프트 중인 현재 위치에서 끊김 없이 화면 끝까지 나가며, 막 나갈 때만 페이드 */
+                var oRect = overlay.getBoundingClientRect();
+                var hRect = heliEl.getBoundingClientRect();
+                var centerX = hRect.left - oRect.left + hRect.width / 2;
+                var centerY = hRect.top - oRect.top + hRect.height / 2;
+                heliEl.classList.remove('reward-party-heli--drifting', 'reward-party-heli--center');
+                heliEl.style.left = centerX + 'px';
+                heliEl.style.top = centerY + 'px';
+                heliEl.style.transform = 'translate(-50%, -50%)';
+                heliEl.style.opacity = '1';
+                heliEl.style.transition = 'none';
+                heliEl.offsetHeight;
                 var exitDuration = (flyOutMs + fadeOutMs) / 1000;
-                heliEl.style.transition = 'left ' + exitDuration + 's ease-in, top ' + exitDuration + 's ease-in, transform ' + exitDuration + 's ease-in, opacity ' + exitDuration + 's ease-out';
-                heliEl.classList.remove('reward-party-heli--center');
-                heliEl.classList.add('reward-party-heli--flyoff');
-                /* 헬기 퇴장 완료 + 마지막 토네이도가 바닥에 다 떨어진 뒤에 오버레이 종료 (토네이도 fall 시간 + delay) */
+                var opacityDelay = Math.max(0, exitDuration - 0.5);
+                heliEl.style.transition = 'left ' + exitDuration + 's ease-in, top ' + exitDuration + 's ease-in, opacity 0.4s ease-out ' + opacityDelay + 's';
+                requestAnimationFrame(function () {
+                  requestAnimationFrame(function () {
+                    heliEl.style.left = (-hRect.width * 2) + 'px';
+                    heliEl.style.top = (centerY - 40) + 'px';
+                    heliEl.style.opacity = '0';
+                  });
+                });
                 var scatterFallMs = scatterFallDurationS * 1000 + 300;
                 var closeAfterMs = Math.max(flyOutMs + fadeOutMs, scatterFallMs);
                 setTimeout(function () {
                   overlay.style.display = 'none';
                   scatterEl.innerHTML = '';
                   heliEl.classList.remove('reward-party-heli--center', 'reward-party-heli--flyoff');
+                  heliEl.style.left = '';
+                  heliEl.style.top = '';
+                  heliEl.style.transform = '';
+                  heliEl.style.opacity = '';
+                  heliEl.style.transition = '';
                 }, closeAfterMs);
                 return;
               }
+              var oRect = overlay.getBoundingClientRect();
+              var hRect = heliEl.getBoundingClientRect();
+              var heliCenterX = (hRect.left - oRect.left + hRect.width / 2) / oRect.width * 100;
+              var heliCenterY = (hRect.top - oRect.top + hRect.height / 2) / oRect.height * 100;
               var span = document.createElement('span');
               span.className = 'reward-party-scatter-item';
               span.textContent = scatterEmoji;
-              var centerX = 50;
-              var centerY = 28;
-              span.style.left = (centerX + (Math.random() * 36 - 18)) + '%';
-              span.style.top = centerY + '%';
+              span.style.left = (heliCenterX + (Math.random() * 10 - 5)) + '%';
+              span.style.top = (heliCenterY + (Math.random() * 6 - 3)) + '%';
               span.style.animation = 'reward-party-scatter-fall ' + scatterFallDurationS + 's ease-in forwards';
               span.style.animationDelay = (Math.random() * 0.3) + 's';
               span.style.setProperty('--rx', (Math.random() * 40 - 20) + 'deg');
@@ -216,7 +244,7 @@
           if (messages.length === lastMessageCount && existingRows.length > 0) return;
           lastMessageCount = messages.length;
           var placeholderAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle fill="%231a1a1e" cx="18" cy="18" r="18"/><circle fill="%236b7280" cx="18" cy="14" r="5"/><path fill="%236b7280" d="M6 32c0-8 5.3-14 12-14s12 6 12 14H6z"/></svg>');
-          chatMessages.innerHTML = messages.map(function (m) {
+          chatMessages.innerHTML = messages.map(function (m, idx) {
             var time = m.createdAt ? new Date(m.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
             var name = (m.displayName || '').trim() || '알 수 없음';
             var levelEmoji = LEVEL_EMOJI[(m.level >= 1 && m.level <= 6) ? m.level : 0] || '';
@@ -236,8 +264,16 @@
             var heartsReceived = (m.heartsReceived || 0) > 0 ? (m.heartsReceived || 0) : 0;
             var heartsBelow = heartsReceived > 0 ? ('<div class="chat-msg__hearts-below" aria-label="받은 하트 ' + heartsReceived + '개">❤️ ' + heartsReceived + '</div>') : '';
             var bubble = '<div class="chat-msg__bubble">' + topRow + replyLine + imgLine + textLine + '</div>';
-            var body = '<div class="chat-msg__body">' + bubble + heartsBelow + '</div>';
-            var dataId = ' id="chat-msg-' + escapeHtml(m.id) + '" data-message-id="' + escapeHtml(m.id) + '"';
+            var actions = '<button type="button" class="chat-msg__action-btn" data-action="copy">복사</button><button type="button" class="chat-msg__action-btn" data-action="reply">답장</button>';
+            if (isMine) {
+              actions += '<button type="button" class="chat-msg__action-btn" data-action="edit">수정</button><button type="button" class="chat-msg__action-btn" data-action="delete">삭제</button>';
+            } else {
+              actions += '<button type="button" class="chat-msg__action-btn" data-action="sendHeart" title="하트 보내기">❤️</button>';
+            }
+            var actionsRow = '<div class="chat-msg__actions">' + actions + '</div>';
+            var body = '<div class="chat-msg__body">' + bubble + heartsBelow + actionsRow + '</div>';
+            var msgIdVal = (m.id != null && m.id !== '') ? String(m.id) : 'idx-' + idx;
+            var dataId = ' id="chat-msg-' + escapeHtml(msgIdVal) + '" data-message-id="' + escapeHtml(msgIdVal) + '"';
             var msgClass = 'chat-msg ' + sideClass + adminClass;
             if (isMine) return '<div class="' + msgClass + '"' + dataId + '>' + body + avatarImg + '</div>';
             return '<div class="' + msgClass + '"' + dataId + '>' + avatarImg + body + '</div>';
@@ -707,6 +743,7 @@
             return;
           }
           if (action === 'edit') {
+            if (msgId.indexOf('idx-') === 0) { alert('이 메시지는 수정할 수 없습니다.'); return; }
             var current = messageText || '';
             var newText = prompt('메시지 수정', current);
             if (newText === null || newText.trim() === current.trim()) return;
@@ -727,6 +764,7 @@
             return;
           }
           if (action === 'delete') {
+            if (msgId.indexOf('idx-') === 0) { alert('이 메시지는 삭제할 수 없습니다.'); return; }
             if (!confirm('이 메시지를 삭제할까요?')) return;
             fetch('/api/chat/' + encodeURIComponent(msgId), { method: 'DELETE', credentials: 'same-origin' })
               .then(function (r) { return r.json(); })
@@ -853,7 +891,31 @@
           }
         });
 
-        chatMessages.addEventListener('click', function (e) {
+        document.addEventListener('click', function (e) {
+          if (!chatMessages || !chatMessages.contains(e.target)) return;
+          var btn = e.target.closest && e.target.closest('.chat-msg__action-btn');
+          if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var row = btn.closest('.chat-msg');
+            if (!row) return;
+            var msgId = row.dataset.messageId || row.getAttribute('data-message-id');
+            if (!msgId && row.id && row.id.indexOf('chat-msg-') === 0) msgId = row.id.slice(9);
+            var action = btn.getAttribute('data-action');
+            if (!msgId && action !== 'copy') return;
+            if (!msgId) {
+              var textEl = row.querySelector('.chat-msg__text');
+              var text = textEl ? textEl.textContent : '';
+              if (action === 'copy' && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text || '').then(function () {}).catch(function () {});
+              }
+              return;
+            }
+            openDropdownMsgId = msgId;
+            openDropdownRow = row;
+            if (action) runDropdownAction(action);
+            return;
+          }
           var linkEl = e.target.closest && e.target.closest('.chat-msg__link');
           if (linkEl) {
             e.preventDefault();
@@ -861,18 +923,7 @@
             openLinkConfirmDropdown(linkEl);
             return;
           }
-          var bubble = e.target.closest && e.target.closest('.chat-msg__bubble');
-          if (!bubble) return;
-          var row = bubble.closest('.chat-msg');
-          if (row) {
-            e.preventDefault();
-            e.stopPropagation();
-            var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
-            if (!me || !me.id) { return; }
-            if (openDropdownMsgId === row.dataset.messageId) { closeChatMsgDropdown(); return; }
-            openChatMsgDropdown(bubble);
-          }
-        });
+        }, true);
 
         if (chatLinkConfirmGo) chatLinkConfirmGo.addEventListener('click', function () {
           if (pendingLinkHref) {
@@ -895,14 +946,7 @@
 
         document.addEventListener('click', function (e) {
           if (chatLinkConfirmDropdown && chatLinkConfirmDropdown.contains(e.target)) return;
-          if (pendingLinkHref) {
-            if (e.target.closest && e.target.closest('.chat-msg__link')) return;
-            closeLinkConfirmDropdown();
-          }
-          if (!openDropdownMsgId) return;
-          if (chatMsgDropdown && chatMsgDropdown.contains(e.target)) return;
-          if (e.target.closest && e.target.closest('.chat-msg__bubble')) return;
-          closeChatMsgDropdown();
+          if (pendingLinkHref && !e.target.closest('.chat-msg__link')) closeLinkConfirmDropdown();
         });
 
         if (chatSend) chatSend.addEventListener('click', function () {

@@ -168,5 +168,18 @@
     })();
   </script>
   <script src="js/chat-page.js"></script>
+  <script>
+    /* 오버레이/토스트가 클릭을 가로채는지 확인용 — 확인 후 이 블록 삭제 */
+    setTimeout(function () {
+      var ids = ['chatRewardPartyOverlay', 'chatRisePrayerOverlay', 'chatBroomOverlay', 'chatItemUsedToast'];
+      console.log('[채팅 오버레이 검사]');
+      ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) { console.log('  ' + id + ': 없음'); return; }
+        var s = window.getComputedStyle(el);
+        console.log('  ' + id + ':', 'display=' + s.display, 'pointerEvents=' + s.pointerEvents, 'visibility=' + s.visibility);
+      });
+    }, 2000);
+  </script>
 </body>
 </html>
