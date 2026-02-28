@@ -220,18 +220,22 @@ const uploadProfileAvatar = multer({
   fileFilter: fileFilterImages,
 }).single('avatar');
 
-// 세션: [임시 테스트] proxy/secure/sameSite 완화 — 안 튕기면 보안 설정 문제, 튕기면 로직 문제
-const SESSION_COOKIE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12시간
+// 세션: connect-mongo로 DB 저장 → 서버 재시작 후에도 로그인 유지
+const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간 (1000 * 60 * 60 * 24)
+const sessionStore = MongoStore.create({
+  mongoUrl: process.env.MONGODB_URI,
+  ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
+});
 app.use(
   session({
     name: 'connect.sid',
-    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
+    store: sessionStore,
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     proxy: false,
     cookie: {
-      secure: false, // Localhost에서는 true면 세션이 안 구워질 수 있음
+      secure: false, // 로컬 테스트: false (배포 시 HTTPS면 true 권장)
       sameSite: 'lax',
       httpOnly: true,
       maxAge: SESSION_COOKIE_MAX_AGE_MS,
