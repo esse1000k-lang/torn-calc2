@@ -229,16 +229,15 @@ const sessionStore = MongoStore.create({
   mongoUrl: MONGODB_URI || undefined,
   ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
 });
-// touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시 (EventEmitter 유지 위해 touch만 오버라이드)
+// touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시하고 성공 처리 (store.on 등 그대로 사용)
 const originalTouch = sessionStore.touch.bind(sessionStore);
-sessionStore.touch = function touch(sid, session, cb) {
-  const callback = typeof cb === 'function' ? cb : () => {};
+sessionStore.touch = function (sid, session, cb) {
   originalTouch(sid, session, (err) => {
-    if (err && err.message === 'Unable to find the session to touch') {
-      if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', sid?.slice?.(0, 8) + '...');
-      return callback();
+    if (err && err.message && err.message.includes('Unable to find the session to touch')) {
+      if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', typeof sid === 'string' ? sid.slice(0, 8) + '...' : '');
+      return typeof cb === 'function' ? cb() : undefined;
     }
-    callback(err);
+    if (typeof cb === 'function') cb(err);
   });
 };
 if (isProduction && !MONGODB_URI) {

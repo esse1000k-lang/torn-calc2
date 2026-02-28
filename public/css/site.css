@@ -3554,11 +3554,11 @@ body::before {
 
 .chat-attach-btn {
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -3568,6 +3568,7 @@ body::before {
   line-height: 1;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
+  box-sizing: border-box;
 }
 .chat-attach-btn:hover {
   border-color: var(--neon);
@@ -3623,10 +3624,12 @@ body::before {
   box-sizing: border-box;
 }
 
+/* 바 안 요소 높이 통일(로그인 여부와 관계없이 동일한 한 줄) */
 .chat-input {
   flex: 1;
   min-width: 0;
-  padding: 0.6rem 0.85rem;
+  height: 40px;
+  padding: 0 0.85rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg-dark);
@@ -3635,6 +3638,8 @@ body::before {
   font-family: inherit;
   -webkit-appearance: none;
   appearance: none;
+  box-sizing: border-box;
+  line-height: 1.25;
 }
 .chat-input::placeholder {
   color: var(--text-muted);
@@ -3682,8 +3687,8 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   background: var(--bg-dark);
   border: 1px solid var(--border);
@@ -3693,6 +3698,7 @@ body::before {
   line-height: 1;
   font-family: inherit;
   cursor: pointer;
+  box-sizing: border-box;
 }
 .chat-item-dropdown:hover .chat-item-trigger {
   border-color: var(--neon);
@@ -3768,8 +3774,8 @@ body::before {
 }
 
 .chat-send {
-  padding: 0.6rem 1.1rem;
-  min-height: 38px;
+  height: 40px;
+  padding: 0 1.1rem;
   border: none;
   border-radius: 10px;
   background: var(--neon);
@@ -3781,6 +3787,9 @@ body::before {
   transition: background 0.2s, opacity 0.2s;
   flex-shrink: 0;
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .chat-send:hover:not(:disabled) {
   background: var(--neon-dim);
@@ -3831,14 +3840,21 @@ body::before {
   }
 
   .chat-input {
-    padding: 0.75rem 1rem;
+    height: 44px;
+    padding: 0 1rem;
     font-size: 16px; /* iOS 줌 방지 */
   }
 
+  .chat-attach-btn,
+  .chat-item-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
   .chat-send {
-    padding: 0.75rem 1.25rem;
+    height: 44px;
+    padding: 0 1.25rem;
     font-size: 0.95rem;
-    min-height: 44px; /* 터치 타겟 최소 44px */
   }
 }
 
@@ -3894,6 +3910,10 @@ main.chat-page-main {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+/* 전체 입력 바가 올라와 보이지 않도록 위쪽 여백 추가 */
+.chat-page .chat-input-wrap {
+  margin-top: 0.5rem;
 }
 /* 모바일·태블릿(1024px 이하): 가로·세로 뷰포트 딱 맞게 (100dvh/--vh), safe-area */
 @media (max-width: 1024px) {
