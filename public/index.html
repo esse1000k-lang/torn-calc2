@@ -72,6 +72,43 @@
         <button type="button" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeLogout" style="display:none;">로그아웃</button>
       </div>
     </div>
+    <!-- ====== 안내 메시지 배너 (삭제 시 이 블록 전체를 제거하세요) ====== -->
+    <div id="announcementBanner" class="announcement-banner" role="alert">
+      <div class="announcement-banner__glow"></div>
+      <button type="button" class="announcement-banner__close" id="announcementClose" aria-label="닫기">&times;</button>
+      <div class="announcement-banner__icon">📢</div>
+      <div class="announcement-banner__body">
+        <p class="announcement-banner__title">안내</p>
+        <p class="announcement-banner__text">아직 오픈하지도 않았는데 꽤나 많은 관심 감사합니다.<br>2/28일 기준 <strong>20%</strong> 정도 완성했습니다. 최대한 서두르겠습니다.<br>배당 조회 항목은 회원 가입 없이도 이용 가능합니다.</p>
+        <p class="announcement-banner__sign">— TornFi —</p>
+      </div>
+    </div>
+    <style>
+      .announcement-banner{position:relative;margin:0 auto 1.25rem;max-width:600px;padding:1.25rem 2.5rem 1.25rem 1.25rem;background:linear-gradient(135deg,rgba(0,255,136,.07) 0%,rgba(17,17,19,.95) 50%,rgba(0,255,136,.04) 100%);border:1px solid rgba(0,255,136,.25);border-radius:12px;overflow:hidden;animation:announceFadeIn .5s ease}
+      .announcement-banner__glow{position:absolute;top:-40%;left:-20%;width:60%;height:180%;background:radial-gradient(ellipse,rgba(0,255,136,.08) 0%,transparent 70%);pointer-events:none}
+      .announcement-banner__close{position:absolute;top:.6rem;right:.7rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:.25rem;border-radius:4px;transition:color .15s,background .15s;z-index:1}
+      .announcement-banner__close:hover{color:#fff;background:rgba(255,255,255,.1)}
+      .announcement-banner__icon{font-size:1.6rem;margin-bottom:.5rem}
+      .announcement-banner__body{position:relative;z-index:1}
+      .announcement-banner__title{font-size:.75rem;font-weight:700;color:var(--neon);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+      .announcement-banner__text{font-size:.88rem;font-weight:500;color:var(--text);line-height:1.7;word-break:keep-all}
+      .announcement-banner__text strong{color:var(--neon);font-weight:700}
+      .announcement-banner__sign{margin-top:.65rem;font-size:.8rem;font-weight:600;color:var(--neon-dim);letter-spacing:.06em;text-align:right}
+      @keyframes announceFadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+      @media(max-width:640px){.announcement-banner{margin:0 .5rem 1rem;padding:1rem 2.2rem 1rem 1rem;border-radius:10px}.announcement-banner__text{font-size:.82rem}}
+    </style>
+    <script>
+      (function(){
+        var banner=document.getElementById('announcementBanner');
+        var closeBtn=document.getElementById('announcementClose');
+        var STORAGE_KEY='tornfi-announcement-dismissed';
+        if(!banner)return;
+        try{if(localStorage.getItem(STORAGE_KEY)==='1'){banner.style.display='none';return;}}catch(e){}
+        if(closeBtn){closeBtn.addEventListener('click',function(){banner.style.display='none';try{localStorage.setItem(STORAGE_KEY,'1');}catch(e){}});}
+      })();
+    </script>
+    <!-- ====== /안내 메시지 배너 ====== -->
+
     <section id="feedSection" class="section feed-section">
       <div id="feedCompose" class="feed-compose" style="display:none;" aria-label="새 글 작성">
         <div class="feed-compose__inner">
