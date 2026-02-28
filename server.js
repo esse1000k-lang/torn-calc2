@@ -225,24 +225,21 @@ const uploadProfileAvatar = multer({
 const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간 (1000 * 60 * 60 * 24)
 const isProduction = process.env.NODE_ENV === 'production';
 const MONGODB_URI = (process.env.MONGODB_URI || '').trim();
-const mongoStore = MongoStore.create({
+const sessionStore = MongoStore.create({
   mongoUrl: MONGODB_URI || undefined,
   ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
 });
-// touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시하고 정상 처리
-const sessionStore = {
-  get: (sid, cb) => mongoStore.get(sid, cb),
-  set: (sid, session, cb) => mongoStore.set(sid, session, cb),
-  destroy: (sid, cb) => mongoStore.destroy(sid, cb),
-  touch(sid, session, cb) {
-    mongoStore.touch(sid, session, (err) => {
-      if (err && err.message === 'Unable to find the session to touch') {
-        if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', sid?.slice?.(0, 8) + '...');
-        return (typeof cb === 'function' ? cb : () => {})();
-      }
-      if (typeof cb === 'function') cb(err);
-    });
-  },
+// touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시 (EventEmitter 유지 위해 touch만 오버라이드)
+const originalTouch = sessionStore.touch.bind(sessionStore);
+sessionStore.touch = function touch(sid, session, cb) {
+  const callback = typeof cb === 'function' ? cb : () => {};
+  originalTouch(sid, session, (err) => {
+    if (err && err.message === 'Unable to find the session to touch') {
+      if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', sid?.slice?.(0, 8) + '...');
+      return callback();
+    }
+    callback(err);
+  });
 };
 if (isProduction && !MONGODB_URI) {
   console.warn('[session] Production without MONGODB_URI: sessions will not persist. Set MONGODB_URI for MongoDB Atlas.');
