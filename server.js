@@ -251,6 +251,7 @@ app.use(
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
+    rolling: true, // 활동 시마다 쿠키 만료를 연장해 12/24시간 유지
     proxy: isProduction, // 배포 시 프록시 뒤에서 X-Forwarded-Proto 신뢰
     cookie: {
       secure: isProduction, // 배포(HTTPS)일 때 true, 로컬일 때 false
