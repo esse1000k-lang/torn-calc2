@@ -15,6 +15,15 @@
         var itemUsedToastTimer = null;
         var itemUsedToastQueue = [];
         var CHAT_ITEM_NAMES = { pinMessage: '상단 고정 메시지', rewardParty: '리워드 파티', risePrayer: '떡상 기원', broom: '빗자루' };
+        // 채팅 아이템 오버레이 ID 목록 — 애니메이션/수정 시 이 목록과 아래 애니메이션 함수만 손대면 됨. 새 아이템 추가 시 여기에 overlay id 추가.
+        var CHAT_ITEM_OVERLAY_IDS = ['chatRewardPartyOverlay', 'chatRisePrayerOverlay', 'chatBroomOverlay'];
+        function isAnyChatItemOverlayVisible() {
+          for (var i = 0; i < CHAT_ITEM_OVERLAY_IDS.length; i++) {
+            var el = document.getElementById(CHAT_ITEM_OVERLAY_IDS[i]);
+            if (el && el.style.display === 'flex') return true;
+          }
+          return false;
+        }
         function showItemUsedToast(displayName, itemKey, onDone) {
           var itemName = CHAT_ITEM_NAMES[itemKey] || itemKey || '아이템';
           var name = (displayName || '').trim() || '알 수 없음';
@@ -109,7 +118,7 @@
               span.className = 'reward-party-scatter-item';
               span.textContent = scatterEmoji;
               var centerX = 50;
-              var centerY = 18;
+              var centerY = 28;
               span.style.left = (centerX + (Math.random() * 36 - 18)) + '%';
               span.style.top = centerY + '%';
               span.style.animation = 'reward-party-scatter-fall ' + scatterFallDurationS + 's ease-in forwards';
@@ -158,6 +167,14 @@
           overlay.offsetHeight;
           overlay.style.display = 'flex';
           broomEl.style.animation = 'broom-sweep 4.5s ease-in-out forwards';
+          // 애니메이션 발동 0.5초 후 채팅 영역 비우기 (애니메이션 4.5초는 그대로)
+          var hideContentAtMs = 500;
+          setTimeout(function () {
+            if (chatMessages) {
+              chatMessages.innerHTML = '<p class="chat-empty">메시지가 없습니다.</p>';
+              lastMessageCount = 0;
+            }
+          }, hideContentAtMs);
           setTimeout(function () {
             overlay.style.display = 'none';
             broomEl.style.animation = 'none';
@@ -358,7 +375,9 @@
                 }
                 processItemUsedToastQueue();
               }
-              if (data.ok && data.messages) renderMessages(data.messages, effectiveMyId);
+              if (data.ok && data.messages) {
+                if (!isAnyChatItemOverlayVisible()) renderMessages(data.messages, effectiveMyId);
+              }
               if (data.ok) {
                 if (typeof data.myHearts === 'number') myHearts = data.myHearts;
                 if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
@@ -403,7 +422,7 @@
                     if (meData && meData.ok && meData.user && window.TornFiAuth && window.TornFiAuth.setUser) {
                       window.TornFiAuth.setUser(meData.user);
                     }
-                    if (id && data.ok && data.messages) renderMessages(data.messages, id);
+                    if (id && data.ok && data.messages && !isAnyChatItemOverlayVisible()) renderMessages(data.messages, id);
                     applyGuestOrLoggedIn(id);
                   })
                   .catch(function () { applyGuestOrLoggedIn(null); });

@@ -82,6 +82,7 @@
     .profile-nickname-validation.wallet-validation--ok { color: var(--neon); }
     .profile-nickname-validation.wallet-validation--err { color: var(--danger); }
     .profile-password-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .profile-wallet-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
     .profile-password-match { font-size: 0.8rem; margin: 0; }
     .profile-password-match.is-ok { color: var(--neon); }
     .profile-password-match.is-err { color: var(--danger); }
@@ -186,6 +187,16 @@
           </form>
         </div>
         <div class="profile-edit-section">
+          <p class="profile-edit-section-title">지갑 주소 <span class="profile-edit-section-desc">(선택, 인증 시 회원 등급 반영)</span></p>
+          <p class="profile-edit-section-desc">이더리움 지갑을 등록하면 TORN 스테이킹 기준 회원 등급이 적용됩니다. 비워두면 등급 없이 이용 가능합니다.</p>
+          <input type="text" id="inputWallet" class="profile-edit-input" placeholder="0x..." autocomplete="off" spellcheck="false">
+          <div class="profile-wallet-row">
+            <button type="button" id="walletVerifyBtn" class="profile-edit-btn">인증하기</button>
+            <button type="button" id="walletClearBtn" class="profile-edit-btn" style="margin-left:0.5rem; background:transparent; color:var(--text-muted); border:1px solid var(--border);">지갑 삭제</button>
+          </div>
+          <p id="walletFeedback" class="profile-bio-feedback" aria-live="polite" style="margin-top:0.5rem;"></p>
+        </div>
+        <div class="profile-edit-section">
           <p class="profile-edit-section-title">비밀번호 <span class="profile-edit-section-desc">(영문·숫자 조합 8자 이상)</span></p>
           <form id="formPassword">
             <input type="password" id="inputPassword" class="profile-edit-input" minlength="8" placeholder="새 비밀번호" autocomplete="new-password">
@@ -256,7 +267,7 @@
           infoBio.classList.toggle('empty', !bioStr);
         }
         if (infoHearts) infoHearts.textContent = typeof user.points === 'number' ? user.points : 0;
-        infoWallet.textContent = user.walletAddress || '—';
+        infoWallet.textContent = (user.walletAddress && user.walletAddress.trim()) ? user.walletAddress : '없음';
         if (infoLevelIcon) infoLevelIcon.textContent = user.isAdmin ? '🛠️' : (LEVEL_ICONS[user.level] || '—');
         if (infoLevel) {
           infoLevel.textContent = user.isAdmin ? '관리자' : (LEVEL_NAMES[user.level] ? LEVEL_NAMES[user.level] + ' (Lv.' + user.level + ')' : '—');
@@ -654,6 +665,81 @@
             })
             .catch(function () {
               setBioFeedback('저장에 실패했습니다.', true);
+            });
+        });
+      }
+
+      var inputWallet = document.getElementById('inputWallet');
+      var walletVerifyBtn = document.getElementById('walletVerifyBtn');
+      var walletClearBtn = document.getElementById('walletClearBtn');
+      var walletFeedback = document.getElementById('walletFeedback');
+      function setWalletFeedback(message, isError) {
+        if (!walletFeedback) return;
+        walletFeedback.textContent = message || '';
+        walletFeedback.className = 'profile-bio-feedback ' + (isError ? 'profile-error' : 'profile-success');
+      }
+      if (walletVerifyBtn && inputWallet) {
+        walletVerifyBtn.addEventListener('click', function () {
+          var raw = inputWallet.value.trim();
+          if (!raw) {
+            setWalletFeedback('지갑 주소를 입력해 주세요.', true);
+            return;
+          }
+          walletVerifyBtn.disabled = true;
+          setWalletFeedback('인증 중…');
+          fetch('/api/me/verify-wallet', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: raw }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              walletVerifyBtn.disabled = false;
+              if (data.ok && data.user) {
+                setWalletFeedback(data.message || '지갑이 인증되었습니다.', false);
+                fillInfo(data.user);
+                inputWallet.value = '';
+                if (infoWallet) infoWallet.textContent = data.user.walletAddress || '없음';
+                if (infoLevel && data.user.level) infoLevel.textContent = (LEVEL_NAMES[data.user.level] || '') + (data.user.level ? ' (Lv.' + data.user.level + ')' : '');
+                if (infoLevelIcon) infoLevelIcon.textContent = LEVEL_ICONS[data.user.level] || '—';
+              } else {
+                setWalletFeedback(data.message || '인증에 실패했습니다.', true);
+              }
+            })
+            .catch(function () {
+              walletVerifyBtn.disabled = false;
+              setWalletFeedback('요청에 실패했습니다.', true);
+            });
+        });
+      }
+      if (walletClearBtn) {
+        walletClearBtn.addEventListener('click', function () {
+          walletClearBtn.disabled = true;
+          setWalletFeedback('삭제 중…');
+          fetch('/api/me', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: null }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              walletClearBtn.disabled = false;
+              if (data.ok && data.user) {
+                setWalletFeedback('지갑이 삭제되었습니다.', false);
+                fillInfo(data.user);
+                if (inputWallet) inputWallet.value = '';
+                if (infoWallet) infoWallet.textContent = '없음';
+                if (infoLevel) infoLevel.textContent = LEVEL_NAMES[1] ? LEVEL_NAMES[1] + ' (Lv.1)' : '—';
+                if (infoLevelIcon) infoLevelIcon.textContent = LEVEL_ICONS[1] || '—';
+              } else {
+                setWalletFeedback(data.message || '삭제에 실패했습니다.', true);
+              }
+            })
+            .catch(function () {
+              walletClearBtn.disabled = false;
+              setWalletFeedback('요청에 실패했습니다.', true);
             });
         });
       }

@@ -25,8 +25,6 @@ dns.setDefaultResultOrder('ipv4first');
   const uri = (process.env.MONGODB_URI || '').trim();
   const useMongo = !!uri;
   const uriHash = useMongo ? require('crypto').createHash('sha256').update(uri).digest('hex').slice(0, 16) : null;
-  console.log('.env 경로:', envPath, '| 파일 있음:', fs.existsSync(envPath), '| MONGODB_URI 로드됨:', useMongo);
-  console.log('DB mode:', useMongo ? 'MongoDB (uriHash ' + uriHash + ')' : 'file (data/*.json)');
 })();
 
 const express = require('express');
@@ -47,6 +45,7 @@ const app = express();
 
 // Render 등 프록시 뒤에서 동작 시 필수 — X-Forwarded-* 헤더 신뢰
 app.set('trust proxy', 1);
+app.set('etag', false);
 
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.SESSION_SECRET || 'tornfi-community-secret-change-in-production';
@@ -255,7 +254,6 @@ passport.deserializeUser((id, done) => {
       if (!u) u = users.find((x) => x.walletAddress && String(x.walletAddress).toLowerCase() === idStr.toLowerCase());
       if (!u) u = users.find((x) => x.displayName && String(x.displayName).toLowerCase() === idStr.toLowerCase());
       if (!u) {
-        console.log('[Deserialize] 유저 없음 — 세션 id=', idStr, 'typeof=', typeof id, 'DB 유저 수=', users.length, '첫 3명 id=', users.slice(0, 3).map((x) => String(x.id ?? x._id ?? '')));
         return done(null, null);
       }
       const isAdminByWallet = u.walletAddress && ADMIN_WALLET_ADDRESSES.includes(u.walletAddress.toLowerCase());
@@ -308,8 +306,6 @@ if (CLIENT_URL) {
     allowedHeaders: ['Content-Type', 'Authorization'],
   }));
 }
-
-app.use(express.static(path.join(__dirname, 'public')));
 
 function ensureDataDir() {
   const dir = path.join(__dirname, 'data');
@@ -829,9 +825,6 @@ async function runScheduledTornadoNews() {
       await new Promise((r) => setTimeout(r, 220));
     }
     if (toProcess.length > 0) writeTornadoNews(items);
-    if (result.added > 0 || (result.deduped && result.deduped > 0) || toProcess.length > 0) {
-      console.log('Tornado news:', 'added', result.added, 'deduped', result.deduped || 0, 'translated', toProcess.length);
-    }
   } catch (err) {
     console.error('Tornado news schedule error:', err.message);
   }
@@ -1198,10 +1191,11 @@ app.get('/api/public/check-nickname', async (req, res) => {
   return res.json({ ok: true, available: !taken, message: taken ? '이미 사용 중인 닉네임입니다.' : null });
 });
 
-// 회원가입 (닉네임 + 비밀번호, 지갑 주소 선택, 추천인 선택)
+// 회원가입 (닉네임 + 비밀번호 + 추천인 선택, 지갑 주소 없음)
+const REGISTER_NO_WALLET = '0x0000000000000000000000000000000000000000';
 app.post('/api/register', async (req, res) => {
   if (checkAuthRateLimit(req, res)) return;
-  const { password, displayName, referrer, walletAddress: walletRawBody } = req.body || {};
+  const { password, displayName, referrer } = req.body || {};
   const passwordStr = String(password || '');
   const nameRaw = String(displayName || '').trim() || null;
   const name = isNicknameValid(nameRaw) ? nameRaw : null;
@@ -1221,56 +1215,23 @@ app.post('/api/register', async (req, res) => {
 
   const referrerTrim = String(referrer || '').trim() || null;
   const clientIp = getClientIp(req);
-  let users = await db.readUsers();
+  const users = await db.readUsers();
   const displayNameLower = name.toLowerCase();
 
   const ipCheck = checkDuplicateIp(clientIp, users);
   if (ipCheck.block) {
-    return res.status(403).json({ ok: false, message: DUPLICATE_BLOCK_MESSAGE });
+    const who = ipCheck.sameIpRecent && ipCheck.sameIpRecent.length > 0
+      ? ipCheck.sameIpRecent.map((u) => u.displayName || u.id).join(', ')
+      : '';
+    const msg = who
+      ? `이미 이 IP에서 가입한 계정이 있어 가입이 제한되었습니다. (동일 IP 가입: ${who})`
+      : DUPLICATE_BLOCK_MESSAGE;
+    return res.status(403).json({ ok: false, message: msg });
   }
 
-  // 스테이킹 한 사람만 가입 통과 → 지갑 주소 필수
-  const walletRaw = String(walletRawBody ?? '').trim();
-  if (!walletRaw) {
-    return res.status(400).json({ ok: false, message: '지갑 주소를 입력해 주세요. TORN 스테이킹이 있는 지갑만 가입할 수 있습니다.' });
-  }
-
-  let walletAddress = null;
-  {
-    const normalized = validateAndNormalizeEthAddress(walletRaw);
-    if (!normalized) {
-      return res.status(400).json({ ok: false, message: '유효한 이더리움 지갑 주소가 아닙니다.' });
-    }
-    const forceWithdraws = await db.readForceWithdraws();
-    if (forceWithdraws.some(e => e.walletAddress && e.walletAddress.toLowerCase() === normalized.toLowerCase())) {
-      return res.status(403).json({ ok: false, message: '탈퇴 처리된 지갑은 재가입할 수 없습니다.' });
-    }
-    const ageCheck = await checkWalletAgeAndStake(normalized);
-    if (!ageCheck.allowed) {
-      return res.status(403).json({ ok: false, message: ageCheck.reason || '지갑 조건을 만족하지 않습니다.' });
-    }
-    const memberWalletSet = new Set(
-      users.filter(u => u.walletAddress && u.managementAccount !== true && !u.isFake).map(u => u.walletAddress.toLowerCase())
-    );
-    const transferCheck = await checkTransferNetwork(normalized, memberWalletSet);
-    if (transferCheck.block) {
-      return res.status(403).json({ ok: false, message: '최근 30일 내 기존 회원 지갑과 거래 이력이 있어 가입할 수 없습니다.' });
-    }
-    // 스테이킹 한 사람만 가입 통과 (배당조회와 동일: lockedBalance > 0 이어야 함)
-    const { staking: hasStaking, lockedBalance: lockedStr, error: stakingError } = await checkTornStaking(normalized);
-    if (stakingError) {
-      return res.status(502).json({ ok: false, message: '스테이킹 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
-    }
-    const lockedNum = parseFloat(String(lockedStr || '0'), 10);
-    if (!hasStaking || lockedNum <= 0) {
-      return res.status(403).json({ ok: false, message: 'TORN 스테이킹이 있는 지갑만 가입할 수 있습니다. 홈 화면 배당 조회에서 지갑 주소 입력 시 숫자가 표시되어야 합니다.' });
-    }
-    walletAddress = normalized;
-    const existingByWallet = users.find((u) => u.walletAddress && u.walletAddress.toLowerCase() === walletAddress.toLowerCase());
-    const existingByName = users.find((u) => u.displayName && u.displayName.toLowerCase() === displayNameLower);
-    if (existingByName && existingByName !== existingByWallet) {
-      return res.status(409).json({ ok: false, message: '이미 사용 중인 닉네임입니다.' });
-    }
+  const existingByName = users.find((u) => u.displayName && u.displayName.toLowerCase() === displayNameLower);
+  if (existingByName) {
+    return res.status(409).json({ ok: false, message: '이미 사용 중인 닉네임입니다.' });
   }
 
   const settings = await db.readSettings();
@@ -1280,7 +1241,7 @@ app.post('/api/register', async (req, res) => {
     id: crypto.randomBytes(12).toString('hex'),
     passwordHash: hash,
     displayName: name,
-    walletAddress,
+    walletAddress: REGISTER_NO_WALLET,
     referrer: referrerTrim || null,
     approved: autoApproveNewUsers,
     createdAt: new Date().toISOString(),
@@ -1293,46 +1254,13 @@ app.post('/api/register', async (req, res) => {
     user.approvedBy = 'auto';
   }
 
-  const byWalletIdx = users.findIndex((u) => u.walletAddress && u.walletAddress.toLowerCase() === (walletAddress || '').toLowerCase());
-  const byNameIdx = users.findIndex((u) => u.displayName && u.displayName.toLowerCase() === displayNameLower);
-  const upsertIdx = byWalletIdx >= 0 ? byWalletIdx : byNameIdx >= 0 ? byNameIdx : -1;
-
-  if (upsertIdx >= 0) {
-    const existing = users[upsertIdx];
-    const merged = {
-      ...existing,
-      id: existing.id || user.id,
-      passwordHash: user.passwordHash,
-      displayName: user.displayName,
-      walletAddress: user.walletAddress ?? existing.walletAddress,
-      referrer: user.referrer ?? existing.referrer,
-      approved: user.approved,
-      approvedAt: user.approved ? new Date().toISOString() : existing.approvedAt,
-      approvedBy: user.approved ? 'auto' : existing.approvedBy,
-      createdAt: existing.createdAt || user.createdAt,
-      level: typeof existing.level === 'number' ? existing.level : user.level,
-      points: typeof existing.points === 'number' ? existing.points : user.points,
-      shopItems: existing.shopItems && typeof existing.shopItems === 'object' ? existing.shopItems : {},
-      signupIp: clientIp || existing.signupIp,
-    };
-    users[upsertIdx] = merged;
-    const kill = new Set();
-    users.forEach((u, i) => {
-      if (i === upsertIdx) return;
-      if (u.walletAddress && (merged.walletAddress || '').toLowerCase() === u.walletAddress.toLowerCase()) kill.add(i);
-      if (u.displayName && u.displayName.toLowerCase() === displayNameLower) kill.add(i);
-    });
-    users = users.filter((_, i) => !kill.has(i));
-  } else {
-    users.push(user);
-  }
+  users.push(user);
   await db.writeUsers(users);
 
-  const outUser = upsertIdx >= 0 ? users[upsertIdx] : user;
   res.status(201).json({
     ok: true,
     message: autoApproveNewUsers ? '가입이 완료되었습니다. 로그인하여 이용해 주세요.' : '가입 신청이 완료되었습니다. 관리자 승인 후 로그인하여 이용해 주세요.',
-    user: { id: outUser.id, displayName: outUser.displayName, walletAddress: outUser.walletAddress, approved: outUser.approved },
+    user: { id: user.id, displayName: user.displayName, walletAddress: user.walletAddress, approved: user.approved },
   });
 });
 
@@ -1488,6 +1416,7 @@ async function handleGetMe(req, res) {
     points: typeof dbUser?.points === 'number' ? dbUser.points : 0,
     shopItems: dbUser && dbUser.shopItems && typeof dbUser.shopItems === 'object' ? dbUser.shopItems : {},
     level: dbUser ? getMemberLevel(dbUser) : MEMBER_LEVEL_MIN,
+    walletAddress: (dbUser && dbUser.walletAddress && dbUser.walletAddress !== REGISTER_NO_WALLET) ? dbUser.walletAddress : null,
   };
   res.json({ ok: true, user });
 }
@@ -1519,10 +1448,10 @@ app.post('/api/me/avatar', rateLimitWrites, authMiddleware, async (req, res) => 
   });
 });
 
-// 개인 회원 정보 수정 (닉네임, 비밀번호, 자기소개) — 커뮤니티 전용
+// 개인 회원 정보 수정 (닉네임, 비밀번호, 자기소개, 지갑 제거) — 커뮤니티 전용
 app.patch('/api/me', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
-  const { displayName, password, bio } = req.body || {};
+  const { displayName, password, bio, walletAddress } = req.body || {};
   const users = await db.readUsers();
   const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
@@ -1558,7 +1487,14 @@ app.patch('/api/me', async (req, res) => {
     users[idx].bio = bioStr;
   }
 
-  if (displayName === undefined && password === undefined && bio === undefined) return res.status(400).json({ ok: false, message: '변경할 항목을 보내 주세요.' });
+  if (walletAddress !== undefined) {
+    if (walletAddress === null || walletAddress === '') {
+      users[idx].walletAddress = REGISTER_NO_WALLET;
+      users[idx].level = MEMBER_LEVEL_MIN;
+    }
+  }
+
+  if (displayName === undefined && password === undefined && bio === undefined && walletAddress === undefined) return res.status(400).json({ ok: false, message: '변경할 항목을 보내 주세요.' });
 
   await db.writeUsers(users);
   const updated = users[idx];
@@ -1568,11 +1504,78 @@ app.patch('/api/me', async (req, res) => {
     user: {
       id: updated.id,
       displayName: updated.displayName,
-      walletAddress: updated.walletAddress,
+      walletAddress: updated.walletAddress === REGISTER_NO_WALLET ? null : updated.walletAddress,
       profileImageUrl: updated.profileImageUrl || null,
       bio: updated.bio != null ? updated.bio : '',
       points: typeof updated.points === 'number' ? updated.points : 0,
       level: getMemberLevel(updated),
+    },
+  });
+});
+
+// 내 정보: 지갑 주소 인증 (선택) — 검증 통과 시 지갑·회원 등급 반영
+app.post('/api/me/verify-wallet', authMiddleware, async (req, res) => {
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
+  const walletRaw = String(req.body?.walletAddress ?? '').trim();
+  if (!walletRaw) return res.status(400).json({ ok: false, message: '지갑 주소를 입력해 주세요.' });
+
+  const normalized = validateAndNormalizeEthAddress(walletRaw);
+  if (!normalized) return res.status(400).json({ ok: false, message: '유효한 이더리움 지갑 주소가 아닙니다.' });
+
+  const users = await db.readUsers();
+  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
+  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
+
+  const forceWithdraws = await db.readForceWithdraws();
+  if (forceWithdraws.some((e) => e.walletAddress && e.walletAddress.toLowerCase() === normalized.toLowerCase())) {
+    return res.status(403).json({ ok: false, message: '탈퇴 처리된 지갑은 등록할 수 없습니다.' });
+  }
+
+  const ageCheck = await checkWalletAgeAndStake(normalized);
+  if (!ageCheck.allowed) {
+    return res.status(403).json({ ok: false, message: ageCheck.reason || '지갑 조건을 만족하지 않습니다.' });
+  }
+
+  const memberWalletSet = new Set(
+    users
+      .filter((u) => u.id !== users[idx].id && u.walletAddress && u.managementAccount !== true && !u.isFake)
+      .map((u) => u.walletAddress.toLowerCase())
+  );
+  const transferCheck = await checkTransferNetwork(normalized, memberWalletSet);
+  if (transferCheck.block) {
+    return res.status(403).json({ ok: false, message: '최근 30일 내 기존 회원 지갑과 거래 이력이 있어 등록할 수 없습니다.' });
+  }
+
+  const { staking: hasStaking, lockedBalance: lockedStr, error: stakingError } = await checkTornStaking(normalized);
+  if (stakingError) {
+    return res.status(502).json({ ok: false, message: '스테이킹 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+  }
+  const lockedNum = parseFloat(formatUnits(lockedStr || '0', TORN_DECIMALS), 10);
+  if (!hasStaking || lockedNum <= 0) {
+    return res.status(403).json({ ok: false, message: 'TORN 스테이킹이 있는 지갑만 등록할 수 있습니다.' });
+  }
+
+  const existingByWallet = users.find((u) => u.id !== users[idx].id && u.walletAddress && u.walletAddress.toLowerCase() === normalized.toLowerCase());
+  if (existingByWallet) {
+    return res.status(409).json({ ok: false, message: '이미 다른 계정에서 등록된 지갑 주소입니다.' });
+  }
+
+  users[idx].walletAddress = normalized;
+  users[idx].level = stakedAmountToLevel(lockedNum);
+  await db.writeUsers(users);
+
+  const updatedUser = users[idx];
+  res.json({
+    ok: true,
+    message: '지갑이 인증되었습니다. 회원 등급이 반영되었습니다.',
+    user: {
+      id: updatedUser.id,
+      displayName: updatedUser.displayName,
+      walletAddress: updatedUser.walletAddress,
+      profileImageUrl: updatedUser.profileImageUrl || null,
+      bio: updatedUser.bio != null ? updatedUser.bio : '',
+      points: typeof updatedUser.points === 'number' ? updatedUser.points : 0,
+      level: getMemberLevel(updatedUser),
     },
   });
 });
@@ -2030,11 +2033,14 @@ app.post('/api/attendance', async (req, res) => {
 
 async function adminOnlyMiddleware(req, res, next) {
   try {
-    console.log('[adminOnlyMiddleware] req.user=', !!req.user, 'req.user?.isAdmin=', req.user?.isAdmin, 'req.session?.isAdmin=', req.session?.isAdmin);
     if (!req.user) {
       return res.status(403).json({ ok: false, message: '관리자만 이용할 수 있습니다.' });
     }
-    if (req.user.isAdmin) return next();
+    // 세션 로드가 늦을 수 있으므로 req.user.isAdmin과 req.session.isAdmin 둘 다 확인
+    if (req.user.isAdmin === true || req.session?.isAdmin === true) {
+      req.user.isAdmin = true;
+      return next();
+    }
     const users = await db.readUsers();
     const dbUser = users.find((u) => String(u.id) === String(req.user.id));
     if (dbUser && dbUser.boardAdmin === true) {
@@ -2050,7 +2056,6 @@ async function adminOnlyMiddleware(req, res, next) {
 function adminMiddleware(req, res, next) {
   adminOnlyMiddleware(req, res, function () {
     const pinOk = req.user.adminPinVerified === true;
-    console.log('[adminMiddleware] adminPinVerified=', pinOk, 'req.session?.adminPinVerified=', req.session?.adminPinVerified);
     if (pinOk) return next();
     return res.status(403).json({ ok: false, needPin: true, message: '관리자 비밀번호를 입력해 주세요.' });
   });
@@ -2096,19 +2101,17 @@ app.post('/api/admin/verify-pin', adminOnlyMiddleware, async (req, res) => {
     sessions.set(token, sess);
     if (typeof db.setSession === 'function') await db.setSession(token, sess);
   }
-  // express-session에 강제 반영 (Passport 사용자 등): 즉시 저장 후 응답
+  // express-session에 강제 반영 (Passport 사용자 등): 핀 인증 직후 반드시 save 후 응답
   if (req.session) {
     req.session.isAdmin = true;
     req.session.adminPinVerified = true;
     req.session.save((err) => {
       if (err) console.error('[admin/verify-pin] session.save err', err);
-      console.log('[admin/verify-pin] 인증 성공, 세션 저장 완료 — isAdmin=true, adminPinVerified=true');
       res.json({ ok: true });
     });
-    return;
+  } else {
+    res.json({ ok: true });
   }
-  console.log('[admin/verify-pin] 인증 성공 (세션 없음, 커스텀 토큰만 반영)');
-  res.json({ ok: true });
 });
 
 // 관리자: 6자리 비밀번호 변경 (관리 페이지 내에서만)
@@ -2268,11 +2271,9 @@ app.post('/api/admin/users', adminMiddleware, async (req, res) => {
 // 관리자: 회원 삭제 (가짜: DB에서만 제거 / 실제: 강퇴 목록 추가 후 제거)
 app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
   if (req.session && req.session.isAdmin !== true) {
-    console.log('[admin/delete-user] 권한 거부: req.session.isAdmin=', req.session.isAdmin, 'req.user?.isAdmin=', req.user?.isAdmin);
     return res.status(403).json({ ok: false, message: '관리자 세션이 유효하지 않습니다.' });
   }
   if (!req.user || req.user.isAdmin !== true) {
-    console.log('[admin/delete-user] 권한 거부: req.user=', !!req.user, 'req.user?.isAdmin=', req.user?.isAdmin);
     return res.status(403).json({ ok: false, message: '관리자만 이용할 수 있습니다.' });
   }
   const userId = String(req.params.userId || '').trim();
@@ -2296,7 +2297,6 @@ app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
   }
   const filtered = users.filter((u) => String(u.id) !== userId);
   await db.writeUsers(filtered);
-  console.log('[admin/delete-user] writeUsers 완료 (filter), 삭제 후 유저 수=', filtered.length, '제거된 ID=', userId);
   if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
     if (sess && String(sess.id) === userId) sessions.delete(token);
@@ -2549,12 +2549,6 @@ async function getFirstStakeTime(address) {
   return minTs;
 }
 
-/** TORN 스테이킹 횟수 (스테이킹 컨트랙트로 보낸 tx 건수). 관리자 이중 아이디 탐지용 */
-async function getStakeCount(address) {
-  const toStaking = await getTornStakingTransfers(address);
-  return toStaking.length;
-}
-
 /** 최근 N일 내 일반+내부 tx의 상대 주소 집합 (from/to, 본인 제외) */
 async function getTxCounterpartiesLast30Days(address) {
   const normalized = validateAndNormalizeEthAddress(address);
@@ -2598,9 +2592,12 @@ async function getTxCounterpartiesLast30Days(address) {
   }
 }
 
-/** 1) IP 커플링: 동일 IP에서 30일 이내 다른 지갑 가입 시도 → 차단 */
+/** 1) IP 커플링: 동일 IP에서 30일 이내 가입 이력 있으면 차단 (원인 추적용: sameIpRecent 반환) */
 function checkDuplicateIp(clientIp, users) {
-  if (!clientIp) return { block: false };
+  if (!clientIp) return { block: false, sameIpRecent: [] };
+  // localhost/개발 환경에서는 동일 PC에서 테스트 가입 허용
+  const isLocal = /^(::1|127\.0\.0\.1|localhost)$/i.test(String(clientIp).trim());
+  if (isLocal) return { block: false, sameIpRecent: [] };
   const cutoff = Date.now() - IP_COUPLE_DAYS * 24 * 60 * 60 * 1000;
   const sameIpRecent = users.filter(
     (u) => u.signupIp === clientIp && u.createdAt && new Date(u.createdAt).getTime() >= cutoff
@@ -2631,92 +2628,12 @@ async function checkTransferNetwork(address, memberWalletSet) {
 
 // (TORN 입금 자동 매칭 제거 — 포인트/교환 없음)
 
-// 관리자: 이중 아이디 탐지 (지갑 또는 IP로 조회)
-app.get('/api/admin/duplicate-check', adminMiddleware, async (req, res) => {
-  const wallet = String(req.query.wallet || '').trim();
-  const ip = String(req.query.ip || '').trim();
-  const users = await db.readUsers();
-  const memberWalletSet = new Set(
-    users.filter((u) => u.walletAddress && !u.managementAccount && !u.isFake).map((u) => u.walletAddress.toLowerCase())
-  );
-
-  if (ip) {
-    const sameIpUsers = users.filter((u) => u.signupIp === ip && u.walletAddress);
-    return res.json({
-      ok: true,
-      mode: 'ip',
-      ip,
-      users: sameIpUsers.map((u) => ({
-        id: u.id,
-        displayName: u.displayName,
-        walletAddress: u.walletAddress,
-        createdAt: u.createdAt,
-        signupIp: u.signupIp,
-      })),
-    });
-  }
-
-  if (wallet) {
-    const normalized = validateAndNormalizeEthAddress(wallet);
-    if (!normalized) {
-      return res.status(400).json({ ok: false, message: '유효한 지갑 주소가 아닙니다.' });
-    }
-    const user = users.find((u) => u.walletAddress && u.walletAddress.toLowerCase() === normalized.toLowerCase());
-    let sameIpUsers = [];
-    if (user && user.signupIp) {
-      sameIpUsers = users.filter((u) => u.signupIp === user.signupIp && u.id !== user.id);
-    }
-    const counterparties = await getTxCounterpartiesLast30Days(normalized);
-    const transferNetworkMembers = users.filter(
-      (u) => u.walletAddress && memberWalletSet.has(u.walletAddress.toLowerCase()) && counterparties.has(u.walletAddress.toLowerCase())
-    );
-    const [firstTxTs, stakeCount] = await Promise.all([
-      getAccountFirstTxTime(normalized),
-      getStakeCount(normalized),
-    ]);
-    return res.json({
-      ok: true,
-      mode: 'wallet',
-      wallet: normalized,
-      user: user
-        ? {
-            id: user.id,
-            displayName: user.displayName,
-            walletAddress: user.walletAddress,
-            createdAt: user.createdAt,
-            signupIp: user.signupIp,
-          }
-        : null,
-      sameIpUsers: sameIpUsers.map((u) => ({
-        id: u.id,
-        displayName: u.displayName,
-        walletAddress: u.walletAddress,
-        createdAt: u.createdAt,
-        signupIp: u.signupIp,
-      })),
-      transferNetworkMembers: transferNetworkMembers.map((u) => ({
-        id: u.id,
-        displayName: u.displayName,
-        walletAddress: u.walletAddress,
-      })),
-      walletAge: {
-        firstTxAt: firstTxTs ? new Date(firstTxTs * 1000).toISOString() : null,
-        stakeCount: typeof stakeCount === 'number' ? stakeCount : 0,
-      },
-    });
-  }
-
-  return res.status(400).json({ ok: false, message: 'query에 wallet 또는 ip를 지정해 주세요.' });
-});
-
 // 관리자: 강제 탈퇴 (회원 삭제 — 커뮤니티 전용)
 app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req, res) => {
   if (req.session && req.session.isAdmin !== true) {
-    console.log('[admin/force-withdraw] 권한 거부: req.session.isAdmin=', req.session.isAdmin, 'req.user?.isAdmin=', req.user?.isAdmin);
     return res.status(403).json({ ok: false, message: '관리자 세션이 유효하지 않습니다.' });
   }
   if (!req.user || req.user.isAdmin !== true) {
-    console.log('[admin/force-withdraw] 권한 거부: req.user=', !!req.user, 'req.user?.isAdmin=', req.user?.isAdmin);
     return res.status(403).json({ ok: false, message: '관리자만 이용할 수 있습니다.' });
   }
   const userId = String((req.params.userId || '').trim());
@@ -2724,7 +2641,6 @@ app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req,
   const users = await db.readUsers();
   const target = users.find((u) => String(u.id) === userId);
   if (!target) {
-    console.log('[admin/force-withdraw] 회원 없음: userId=', userId, 'DB id 타입 샘플=', users.slice(0, 3).map((u) => ({ id: u.id, type: typeof u.id })));
     return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
   }
   if (target.managementAccount === true) {
@@ -2742,7 +2658,6 @@ app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req,
   });
   const filtered = users.filter((u) => String(u.id) !== userId);
   await db.writeUsers(filtered);
-  console.log('[admin/force-withdraw] writeUsers 완료 (filter), 삭제 후 유저 수=', filtered.length, '제거된 ID=', userId);
   if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
     if (sess && String(sess.id) === userId) sessions.delete(token);
@@ -3004,20 +2919,18 @@ app.patch('/api/posts/:postId', async (req, res) => {
   res.json({ ok: true, post: enriched });
 });
 
-// ——— 홈 피드 (게시판과 독립) ———
+// ——— 홈 피드 (feeds + feed_comments 컬렉션, _id 기반) ———
 app.get('/api/feed', async (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
-  const posts = await db.readFeedPosts();
-  const sorted = [...posts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const slice = sorted.slice(offset, offset + limit);
-  const users = await db.readUsers();
+  const { posts, total } = await db.getFeedPosts(limit, offset);
+  const users = await db.readUsersFresh();
   const FEED_COMMENTS_RETURN = 50;
-  const enriched = slice.map((p) => {
-    const author = users.find((u) => u.id === p.authorId);
+  const enriched = posts.map((p) => {
+    const author = users.find((u) => String(u.id) === String(p.authorId));
     const authorLevel = author ? getMemberLevel(author) : null;
     const comments = (p.comments || []).slice(-FEED_COMMENTS_RETURN).map((c) => {
-      const commentAuthor = users.find((u) => u.id === c.authorId);
+      const commentAuthor = users.find((u) => String(u.id) === String(c.authorId));
       const commentAuthorLevel = commentAuthor ? getMemberLevel(commentAuthor) : null;
       return {
         ...c,
@@ -3034,22 +2947,24 @@ app.get('/api/feed', async (req, res) => {
       comments,
     };
   });
-  res.json({ ok: true, posts: enriched, total: sorted.length });
+  res.json({ ok: true, posts: enriched, total });
 });
 
-// 단일 피드 글 조회 (댓글 상세 보기용)
+// 단일 피드 글 조회 (_id 기반, 캐시 무효화 헤더로 304 방지)
 app.get('/api/feed/:postId', async (req, res) => {
   const postId = String(req.params.postId || '').trim();
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
-  const posts = await db.readFeedPosts();
-  const idx = posts.findIndex((p) => p.id === postId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
-  const p = posts[idx];
-  const users = await db.readUsers();
-  const author = users.find((u) => u.id === p.authorId);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.removeHeader('ETag');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  const p = await db.getFeedPostById(postId);
+  if (!p) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const users = await db.readUsersFresh();
+  const author = users.find((u) => String(u.id) === String(p.authorId));
   const authorLevel = author ? getMemberLevel(author) : null;
   const comments = (p.comments || []).map((c) => {
-    const commentAuthor = users.find((u) => u.id === c.authorId);
+    const commentAuthor = users.find((u) => String(u.id) === String(c.authorId));
     const commentAuthorLevel = commentAuthor ? getMemberLevel(commentAuthor) : null;
     return {
       ...c,
@@ -3096,18 +3011,18 @@ app.post('/api/feed', rateLimitWrites, async (req, res, next) => {
     return res.status(400).json({ ok: false, message: '내용을 1~10000자로 입력해 주세요.' });
   }
   const imagePaths = files.map((f) => '/uploads/' + f.filename);
-  const posts = await db.readFeedPosts();
-  const newPost = {
-    id: crypto.randomBytes(8).toString('hex'),
-    authorId: req.user.id,
-    authorDisplayName: req.user.displayName || '—',
+  const users = await db.readUsersFresh();
+  const me = users.find((u) => String(u.id) === String(req.user.id))
+    || users.find((u) => (u.displayName || '').toLowerCase() === (req.user.displayName || '').toLowerCase());
+  const authorId = me ? me.id : req.user.id;
+  const authorDisplayName = me ? (me.displayName || '—') : (req.user.displayName || '—');
+  const newPost = await db.createFeedPost({
+    authorId,
+    authorDisplayName,
     body,
     images: imagePaths,
-    createdAt: new Date().toISOString(),
-    comments: [],
-  };
-  posts.unshift(newPost);
-  await db.writeFeedPosts(posts);
+    createdAt: new Date(),
+  });
   res.status(201).json({ ok: true, post: newPost });
 });
 
@@ -3115,10 +3030,8 @@ app.post('/api/feed', rateLimitWrites, async (req, res, next) => {
 app.delete('/api/feed/:postId', adminMiddleware, async (req, res) => {
   const postId = String(req.params.postId || '').trim();
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
-  const posts = await db.readFeedPosts();
-  const idx = posts.findIndex((p) => p.id === postId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
-  const post = posts[idx];
+  const post = await db.getFeedPostById(postId);
+  if (!post) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
   const deletedEntry = {
     ...post,
     deletedAt: new Date().toISOString(),
@@ -3126,8 +3039,7 @@ app.delete('/api/feed/:postId', adminMiddleware, async (req, res) => {
     deletedByDisplayName: req.user.displayName || '—',
   };
   await db.appendDeletedFeedPost(deletedEntry);
-  posts.splice(idx, 1);
-  await db.writeFeedPosts(posts);
+  await db.deleteFeedPostFromCollection(postId);
   res.json({ ok: true, message: '피드 글이 삭제되었습니다.' });
 });
 
@@ -3137,20 +3049,35 @@ app.get('/api/admin/deleted-feed', adminMiddleware, async (req, res) => {
   res.json({ ok: true, posts });
 });
 
-// 관리자: 삭제된 피드 글 복구
+// 관리자: 삭제된 피드 글 복구 (새 _id로 복구)
 app.post('/api/admin/deleted-feed/:postId/restore', adminMiddleware, async (req, res) => {
   const postId = String(req.params.postId || '').trim();
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
   const deletedList = await db.readDeletedFeedPosts();
-  const entry = deletedList.find((p) => p.id === postId);
+  const entry = deletedList.find((p) => String(p.id) === postId);
   if (!entry) return res.status(404).json({ ok: false, message: '삭제된 글을 찾을 수 없습니다.' });
-  const { deletedAt, deletedBy, deletedByDisplayName, ...post } = entry;
-  const posts = await db.readFeedPosts();
-  if (posts.some((p) => p.id === postId)) return res.status(400).json({ ok: false, message: '이미 피드에 존재합니다.' });
-  posts.unshift(post);
-  await db.writeFeedPosts(posts);
+  const { deletedAt, deletedBy, deletedByDisplayName, comments = [], ...rest } = entry;
+  const created = await db.createFeedPost({
+    authorId: rest.authorId,
+    authorDisplayName: rest.authorDisplayName,
+    body: rest.body || '',
+    images: rest.images || [],
+    createdAt: rest.createdAt ? new Date(rest.createdAt) : new Date(),
+  });
+  for (const c of comments) {
+    await db.createFeedComment({
+      postId: created.id,
+      authorId: c.authorId,
+      authorDisplayName: c.authorDisplayName,
+      body: c.body || '',
+      authorProfileImageUrl: c.authorProfileImageUrl || null,
+      replyToCommentId: c.replyToCommentId || null,
+      replyToDisplayName: c.replyToDisplayName || null,
+      createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+    });
+  }
   await db.removeDeletedFeedPost(postId);
-  res.json({ ok: true, message: '피드 글이 복구되었습니다.' });
+  res.json({ ok: true, postId: created.id, message: '피드 글이 복구되었습니다.' });
 });
 
 // 관리자: 피드 댓글 삭제 (삭제된 댓글 목록으로 이동)
@@ -3158,14 +3085,10 @@ app.delete('/api/feed/:postId/comments/:commentId', adminMiddleware, async (req,
   const postId = String(req.params.postId || '').trim();
   const commentId = String(req.params.commentId || '').trim();
   if (!postId || !commentId) return res.status(400).json({ ok: false, message: '글 ID와 댓글 ID가 필요합니다.' });
-  const posts = await db.readFeedPosts();
-  const postIdx = posts.findIndex((p) => p.id === postId);
-  if (postIdx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
-  const post = posts[postIdx];
-  const comments = post.comments || [];
-  const commentIdx = comments.findIndex((c) => c.id === commentId);
-  if (commentIdx === -1) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
-  const comment = comments[commentIdx];
+  const post = await db.getFeedPostById(postId);
+  if (!post) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const comment = (post.comments || []).find((c) => String(c.id) === commentId);
+  if (!comment) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
   const deletedEntry = {
     ...comment,
     postId,
@@ -3175,8 +3098,7 @@ app.delete('/api/feed/:postId/comments/:commentId', adminMiddleware, async (req,
     deletedByDisplayName: req.user.displayName || '—',
   };
   await db.appendDeletedFeedComment(deletedEntry);
-  comments.splice(commentIdx, 1);
-  await db.writeFeedPosts(posts);
+  await db.deleteFeedCommentFromCollection(commentId);
   res.json({ ok: true, message: '댓글이 삭제되었습니다.' });
 });
 
@@ -3191,23 +3113,28 @@ app.post('/api/admin/deleted-feed-comments/:commentId/restore', adminMiddleware,
   const commentId = String(req.params.commentId || '').trim();
   if (!commentId) return res.status(400).json({ ok: false, message: '댓글 ID가 필요합니다.' });
   const deletedList = await db.readDeletedFeedComments();
-  const entry = deletedList.find((c) => c.id === commentId);
+  const entry = deletedList.find((c) => String(c.id) === commentId);
   if (!entry) return res.status(404).json({ ok: false, message: '삭제된 댓글을 찾을 수 없습니다.' });
   const postId = entry.postId;
   if (!postId) return res.status(400).json({ ok: false, message: '원글이 없습니다.' });
-  const posts = await db.readFeedPosts();
-  const postIdx = posts.findIndex((p) => p.id === postId);
-  if (postIdx === -1) return res.status(404).json({ ok: false, message: '원 글이 없어 복구할 수 없습니다.' });
+  const post = await db.getFeedPostById(postId);
+  if (!post) return res.status(404).json({ ok: false, message: '원 글이 없어 복구할 수 없습니다.' });
   const { deletedAt, deletedBy, deletedByDisplayName, postId: _p, postBodyPreview, ...comment } = entry;
-  if (!posts[postIdx].comments) posts[postIdx].comments = [];
-  if (posts[postIdx].comments.some((c) => c.id === commentId)) return res.status(400).json({ ok: false, message: '이미 댓글이 있습니다.' });
-  posts[postIdx].comments.push(comment);
-  await db.writeFeedPosts(posts);
+  const created = await db.createFeedComment({
+    postId,
+    authorId: comment.authorId,
+    authorDisplayName: comment.authorDisplayName,
+    body: comment.body || '',
+    authorProfileImageUrl: comment.authorProfileImageUrl || null,
+    replyToCommentId: comment.replyToCommentId || null,
+    replyToDisplayName: comment.replyToDisplayName || null,
+    createdAt: comment.createdAt ? new Date(comment.createdAt) : new Date(),
+  });
   await db.removeDeletedFeedComment(commentId);
-  res.json({ ok: true, message: '댓글이 복구되었습니다.' });
+  res.json({ ok: true, commentId: created.id, message: '댓글이 복구되었습니다.' });
 });
 
-// 피드 글에 댓글 작성 — 로그인 필요
+// 피드 글에 댓글 작성 — 로그인 필요, 생성된 댓글 반환으로 화면 즉시 반영
 const FEED_COMMENT_BODY_MAX = 1000;
 const FEED_COMMENTS_MAX = 200;
 app.post('/api/feed/:postId/comments', rateLimitWrites, async (req, res) => {
@@ -3217,99 +3144,96 @@ app.post('/api/feed/:postId/comments', rateLimitWrites, async (req, res) => {
   const replyToCommentId = String(req.body?.replyToCommentId || '').trim() || null;
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
   if (!body || body.length > FEED_COMMENT_BODY_MAX) return res.status(400).json({ ok: false, message: '댓글을 1~' + FEED_COMMENT_BODY_MAX + '자로 입력해 주세요.' });
-  const posts = await db.readFeedPosts();
-  const idx = posts.findIndex((p) => p.id === postId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
-  if (!posts[idx].comments) posts[idx].comments = [];
-  const comments = posts[idx].comments;
-  if (comments.length >= FEED_COMMENTS_MAX) return res.status(400).json({ ok: false, message: '댓글 수 제한에 도달했습니다.' });
+  const post = await db.getFeedPostById(postId);
+  if (!post) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const commentCount = (post.comments || []).length;
+  if (commentCount >= FEED_COMMENTS_MAX) return res.status(400).json({ ok: false, message: '댓글 수 제한에 도달했습니다.' });
   let replyToDisplayName = null;
-  if (replyToCommentId) {
-    const parent = comments.find((c) => c.id === replyToCommentId);
+  if (replyToCommentId && post.comments) {
+    const parent = post.comments.find((c) => String(c.id) === replyToCommentId);
     if (!parent) return res.status(400).json({ ok: false, message: '답글 대상 댓글을 찾을 수 없습니다.' });
     replyToDisplayName = parent.authorDisplayName || '—';
   }
-  const users = await db.readUsers();
-  const author = users.find((u) => String(u.id) === String(req.user.id));
-  const newComment = {
-    id: crypto.randomBytes(8).toString('hex'),
-    authorId: req.user.id,
-    authorDisplayName: req.user.displayName || '—',
+  const users = await db.readUsersFresh();
+  const author = users.find((u) => String(u.id) === String(req.user.id))
+    || users.find((u) => (u.displayName || '').toLowerCase() === (req.user.displayName || '').toLowerCase());
+  const newComment = await db.createFeedComment({
+    postId,
+    authorId: author ? author.id : req.user.id,
+    authorDisplayName: author ? (author.displayName || '—') : (req.user.displayName || '—'),
     authorProfileImageUrl: author && author.profileImageUrl ? author.profileImageUrl : null,
     body,
-    createdAt: new Date().toISOString(),
-  };
-  if (replyToCommentId) newComment.replyToCommentId = replyToCommentId;
-  if (replyToDisplayName) newComment.replyToDisplayName = replyToDisplayName;
-  comments.push(newComment);
-  await db.writeFeedPosts(posts);
-  res.status(201).json({ ok: true, comment: newComment, comments: comments.slice(-50) });
+    replyToCommentId: replyToCommentId || null,
+    replyToDisplayName: replyToDisplayName || null,
+    createdAt: new Date(),
+  });
+  if (!newComment) return res.status(500).json({ ok: false, message: '댓글 저장에 실패했습니다.' });
+  const payload = { ...newComment, createdAt: newComment.createdAt && typeof newComment.createdAt === 'object' ? newComment.createdAt.toISOString() : newComment.createdAt };
+  res.status(201).json({ ok: true, comment: payload });
 });
 
-// 피드 글에 하트 보내기 — 로그인 필요, 본인 글에는 불가, 1개 차감 후 작성자에게 지급
+// 피드 글에 하트 보내기 — DB에 즉시 반영, 응답으로 새 숫자 반환(실시간 반영)
 app.post('/api/feed/:postId/send-heart', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 하트를 보낼 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
-  const posts = await db.readFeedPosts();
-  const idx = posts.findIndex((p) => p.id === postId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
-  const post = posts[idx];
-  if (String(post.authorId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 글에는 하트를 보낼 수 없습니다.' });
-  const users = await db.readUsers();
-  const senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
+  const post = await db.getFeedPostById(postId);
+  if (!post) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const users = await db.readUsersFresh();
+  let senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
+  if (senderIdx === -1 && req.user.displayName) {
+    senderIdx = users.findIndex((u) => (u.displayName || '').toLowerCase() === (req.user.displayName || '').toLowerCase());
+  }
   const authorIdx = users.findIndex((u) => String(u.id) === String(post.authorId));
-  if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
+  if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요.' });
+  if (String(users[senderIdx].id) === String(post.authorId)) return res.status(400).json({ ok: false, message: '본인 글에는 하트를 보낼 수 없습니다.' });
   const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
   if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
   users[senderIdx].points = senderPoints - 1;
   const authorPoints = typeof users[authorIdx].points === 'number' ? users[authorIdx].points : 0;
   users[authorIdx].points = authorPoints + 1;
   await db.writeUsers(users);
-  posts[idx].heartsReceived = (posts[idx].heartsReceived || 0) + 1;
-  await db.writeFeedPosts(posts);
+  const heartsReceived = await db.incrementFeedPostHearts(postId);
   req.session.save((err) => {
     if (err) {
       console.error('[feed/send-heart] session.save err', err);
       return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
     }
-    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived: posts[idx].heartsReceived, message: '하트를 보냈습니다.' });
+    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived, message: '하트를 보냈습니다.' });
   });
 });
 
-// 피드 댓글에 하트 보내기 — 로그인 필요, 본인 댓글에는 불가
+// 피드 댓글에 하트 보내기 — DB에 즉시 반영, 응답으로 새 숫자 반환(실시간 반영)
 app.post('/api/feed/:postId/comments/:commentId/send-heart', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 하트를 보낼 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   const commentId = String(req.params.commentId || '').trim();
   if (!postId || !commentId) return res.status(400).json({ ok: false, message: '글 ID와 댓글 ID가 필요합니다.' });
-  const posts = await db.readFeedPosts();
-  const postIdx = posts.findIndex((p) => p.id === postId);
-  if (postIdx === -1) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
-  const post = posts[postIdx];
-  const comments = post.comments || [];
-  const commentIdx = comments.findIndex((c) => c.id === commentId);
-  if (commentIdx === -1) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
-  const comment = comments[commentIdx];
-  if (String(comment.authorId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 댓글에는 하트를 보낼 수 없습니다.' });
-  const users = await db.readUsers();
-  const senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
+  const post = await db.getFeedPostById(postId);
+  if (!post) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
+  const comment = (post.comments || []).find((c) => String(c.id) === commentId);
+  if (!comment) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
+  const users = await db.readUsersFresh();
+  let senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
+  if (senderIdx === -1 && req.user.displayName) {
+    senderIdx = users.findIndex((u) => (u.displayName || '').toLowerCase() === (req.user.displayName || '').toLowerCase());
+  }
   const authorIdx = users.findIndex((u) => String(u.id) === String(comment.authorId));
-  if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
+  if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요.' });
+  if (String(users[senderIdx].id) === String(comment.authorId)) return res.status(400).json({ ok: false, message: '본인 댓글에는 하트를 보낼 수 없습니다.' });
   const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
   if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
   users[senderIdx].points = senderPoints - 1;
   const authorPoints = typeof users[authorIdx].points === 'number' ? users[authorIdx].points : 0;
   users[authorIdx].points = authorPoints + 1;
   await db.writeUsers(users);
-  comments[commentIdx].heartsReceived = (comments[commentIdx].heartsReceived || 0) + 1;
-  await db.writeFeedPosts(posts);
+  const heartsReceived = await db.incrementFeedCommentHearts(commentId);
   req.session.save((err) => {
     if (err) {
       console.error('[feed/comment/send-heart] session.save err', err);
       return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
     }
-    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived: comments[commentIdx].heartsReceived, message: '하트를 보냈습니다.' });
+    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived, message: '하트를 보냈습니다.' });
   });
 });
 
@@ -3441,17 +3365,12 @@ app.post('/api/tornado-news/translate-existing', adminMiddleware, async (req, re
 function onServerListen(listenPort) {
   ensureDataDir();
   ensureUploadsDir();
-  console.log(`TornFi Community server running at http://localhost:${listenPort}`);
   const LEVEL_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
   setTimeout(() => {
-    syncAllMemberLevels().then((r) => {
-      if (r.updated > 0) console.log('Level sync:', r.synced, 'members,', r.updated, 'updated');
-    }).catch((err) => console.error('Level sync error:', err.message));
+    syncAllMemberLevels().then(() => {}).catch((err) => console.error('Level sync error:', err.message));
   }, 60 * 1000);
   setInterval(() => {
-    syncAllMemberLevels().then((r) => {
-      if (r.updated > 0) console.log('Level sync:', r.synced, 'members,', r.updated, 'updated');
-    }).catch((err) => console.error('Level sync error:', err.message));
+    syncAllMemberLevels().then(() => {}).catch((err) => console.error('Level sync error:', err.message));
   }, LEVEL_SYNC_INTERVAL_MS);
   function scheduleNextDailyHearts() {
     const now = new Date();
@@ -3460,9 +3379,7 @@ function onServerListen(listenPort) {
     const delay = msTo15Utc <= 0 ? msTo15Utc + 24 * 60 * 60 * 1000 : msTo15Utc;
     setTimeout(() => {
       runDailyHeartGrants()
-        .then((r) => {
-          if (r.granted > 0) console.log('Daily hearts:', r.date, r.granted, 'members granted');
-        })
+        .then(() => {})
         .catch((err) => console.error('Daily heart grant error:', err.message))
         .finally(() => scheduleNextDailyHearts());
     }, delay);
@@ -3475,6 +3392,9 @@ function onServerListen(listenPort) {
     runScheduledTornadoNews().catch((err) => console.error('Tornado news schedule:', err.message));
   }, TORNADO_NEWS_FETCH_INTERVAL_MS);
 }
+
+// API 라우트보다 뒤에 두어 /api/* 요청이 static에 맡지 않도록 함
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 미처리 예외 → 500 JSON 응답 (스택 노출 방지)
 app.use((err, _req, res, _next) => {

@@ -118,33 +118,6 @@
     .admin-summary { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 8px; margin-bottom: 1rem !important; border: 1px solid var(--border); border-left: 3px solid var(--neon); font-size: 0.875rem; box-sizing: border-box; }
     .admin-summary strong { color: var(--neon); font-weight: 600; }
 
-    /* 이중 아이디 탐지 전용 */
-    #adminDuplicateCheckSection .admin-section-body { padding: 1.25rem 1.5rem; }
-    .duplicate-check-body { display: flex; flex-direction: column; gap: 1.25rem; }
-    .duplicate-check-search { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
-    .duplicate-check-search input { flex: 1; min-width: 200px; max-width: 420px; min-height: 42px; padding: 0 1rem; font-size: 0.9rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
-    .duplicate-check-search input::placeholder { color: var(--text-muted); }
-    .duplicate-check-search input:focus { outline: none; border-color: var(--neon); box-shadow: 0 0 0 2px rgba(0,255,136,0.12); }
-    .duplicate-check-search .admin-btn { min-height: 42px; padding: 0 1.25rem; font-size: 0.875rem; }
-    .duplicate-check-msg { font-size: 0.875rem; margin: 0; padding: 0.5rem 0; }
-    .duplicate-check-err { color: var(--danger); }
-    .duplicate-check-loading { color: var(--text-muted); }
-    #duplicateCheckResult { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 0.5rem; }
-    .duplicate-check-block { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; box-sizing: border-box; }
-    .duplicate-check-block h3 { font-size: 0.875rem; font-weight: 600; color: var(--neon); margin: 0 0 0.75rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.5rem; }
-    .duplicate-check-block h3::before { content: ''; width: 4px; height: 1em; background: var(--neon); border-radius: 2px; }
-    .duplicate-check-block .admin-section-desc { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-muted); }
-    .duplicate-check-block .admin-section-desc p { margin: 0 0 0.35em 0; }
-    .duplicate-check-block .admin-section-desc p:last-child { margin-bottom: 0; }
-    .duplicate-check-block ul { margin: 0; padding-left: 1.25rem; font-size: 0.8125rem; color: var(--text); line-height: 1.6; }
-    .duplicate-check-block .admin-table-wrap { margin: 0 -0.25rem 0 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
-    .duplicate-check-block .admin-table { min-width: 320px; font-size: 0.8125rem; }
-    .duplicate-check-block .admin-table th, .duplicate-check-block .admin-table td { padding: 0.6rem 0.85rem; }
-    #duplicateCheckByIp .duplicate-check-block, #duplicateCheckByWallet { display: grid; gap: 1.25rem; }
-    .duplicate-check-wallet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
-    #duplicateCheckUserBox.duplicate-check-user-card { padding: 1rem 1.25rem; border-radius: 10px; border-left: 4px solid var(--neon); margin-bottom: 0; }
-    .duplicate-check-ip-badge { display: inline-block; padding: 0.25em 0.6em; font-size: 0.8rem; background: rgba(0,255,136,0.12); color: var(--neon); border-radius: 6px; font-family: monospace; }
-
     .admin-msg { font-size: 0.875rem; }
     .admin-denied-box { max-width: 360px; margin: 0 auto; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2); }
     .admin-denied { text-align: center; padding: 3rem 1.25rem; color: var(--text-muted); }
@@ -333,9 +306,6 @@
       .management-detail-td { padding: 0.875rem 1rem; border-radius: 0 0 8px 8px; }
       .management-tx-status-select, .management-reverse-status-select { min-width: 90px; min-height: 38px; }
       .admin-search-wrap input { max-width: 100%; min-height: 40px; }
-      #adminDuplicateCheckSection .admin-section-body { padding: 1rem 1.25rem; }
-      .duplicate-check-search input { max-width: 100%; }
-      .duplicate-check-wallet-grid { grid-template-columns: 1fr; }
       #adminUsersSection .admin-section-body { padding: 1rem; }
       #adminUsersSection .admin-btn { min-height: 18px; height: 18px; padding: 0 0.4375rem; font-size: 0.8125rem; }
       #adminUsersSection .admin-create-user-wrap { padding: 0.875rem 1rem; margin-bottom: 1rem; }
@@ -360,8 +330,6 @@
       #adminUsersSection .admin-create-user-wrap input#createUserWallet,
       #adminUsersSection .admin-create-user-wrap select#createUserLevel { width: 100%; min-width: 0; max-width: none; }
       #adminUsersSection .admin-summary { padding: 0.5rem 0.75rem; flex-wrap: wrap; }
-      #adminDuplicateCheckSection .admin-section-body { padding: 0.875rem 1rem; }
-      .duplicate-check-block { padding: 0.875rem 1rem; }
     }
   </style>
 </head>
@@ -405,11 +373,10 @@
       <div class="admin-nav-dropdown-wrap">
         <a href="#" class="admin-nav-link" data-panel="adminAccountSection">회원</a>
         <div class="admin-nav-dropdown-menu">
-          <a href="#" class="admin-nav-link" data-panel="adminLevelTable">🔱 등급 관리</a>
+          <a href="#" class="admin-nav-link" data-panel="adminLevelTable">🐋 등급 관리</a>
           <a href="#" class="admin-nav-link" data-panel="adminPending">⏳ 가입 승인</a>
           <a href="#" class="admin-nav-link" data-panel="adminUsersSection">👤 개별 관리</a>
           <a href="#" class="admin-nav-link" data-panel="adminForceWithdrawSection">🚫 강제 탈퇴</a>
-          <a href="#" class="admin-nav-link" data-panel="adminDuplicateCheckSection">🔗 이중 아이디 탐지</a>
         </div>
       </div>
       <div class="admin-nav-dropdown-wrap">
@@ -474,7 +441,7 @@
               <tr><td><span class="level-icon" aria-hidden="true">🦭</span> 물개</td><td>Lv.4</td><td>3,000개 미만</td></tr>
               <tr><td><span class="level-icon" aria-hidden="true">🦈</span> 상어</td><td>Lv.5</td><td>4,000개 미만</td></tr>
               <tr><td><span class="level-icon" aria-hidden="true">🐋</span> 고래</td><td>Lv.6</td><td>4,000개 이상</td></tr>
-              <tr class="admin-level-table--admin"><td><span class="level-icon" aria-hidden="true">🛠️</span> 관리자</td><td>—</td><td>회원 관리에서 지정</td></tr>
+              <tr class="admin-level-table--admin"><td><span class="level-icon" aria-hidden="true">🛠️</span> 관리자</td><td>—</td><td>개별 관리에서 지정</td></tr>
             </tbody>
           </table>
         </div>
@@ -511,8 +478,7 @@
 
     <section id="adminUsersSection" class="admin-section admin-panel">
       <div class="admin-section-header">
-        <h2>회원 관리</h2>
-        <p class="admin-section-desc">가입된 회원 목록입니다. 하트 지급/차감은 양수=지급, 음수=차감 입력 후 적용하세요. 관리자가 생성한 테스트 회원은 로그인할 수 없으며 구분 표시됩니다.</p>
+        <h2>개별 관리</h2>
       </div>
       <div class="admin-section-body">
         <div class="admin-create-user-wrap">
@@ -557,56 +523,6 @@
             </thead>
             <tbody id="usersBody"></tbody>
           </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="adminDuplicateCheckSection" class="admin-section admin-panel">
-      <div class="admin-section-header">
-        <h2>이중 아이디 탐지</h2>
-        <p class="admin-section-desc">지갑 주소 또는 가입 시 IP로 이중 가입·연쇄 송금 관계를 조회합니다. (IP·지갑 커플링, 연쇄 송금 네트워크, 지갑/스테이킹 3일 기준)</p>
-      </div>
-      <div class="admin-section-body">
-        <div class="duplicate-check-body">
-          <div class="duplicate-check-search">
-            <input type="text" id="duplicateCheckInput" placeholder="지갑 주소 또는 IP 입력" aria-label="지갑 주소 또는 IP">
-            <button type="button" id="duplicateCheckBtn" class="admin-btn">조회</button>
-          </div>
-          <p id="duplicateCheckErr" class="duplicate-check-msg duplicate-check-err" style="display:none;"></p>
-          <p id="duplicateCheckLoading" class="duplicate-check-msg duplicate-check-loading" style="display:none;">조회 중… (이더스캔 API 호출로 다소 걸릴 수 있습니다)</p>
-          <div id="duplicateCheckResult" style="display:none;">
-            <div id="duplicateCheckByIp" style="display:none;">
-              <div class="duplicate-check-block">
-                <h3>동일 IP 가입 회원</h3>
-                <p class="admin-section-desc">IP: <span class="duplicate-check-ip-badge" id="duplicateCheckIpValue"></span></p>
-                <div class="admin-table-wrap">
-                  <table class="admin-table">
-                    <thead>
-                      <tr><th>닉네임</th><th>지갑 주소</th><th>가입일</th></tr>
-                    </thead>
-                    <tbody id="duplicateCheckByIpBody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            <div id="duplicateCheckByWallet" style="display:none;">
-              <div id="duplicateCheckUserBox" class="admin-summary duplicate-check-user-card"></div>
-              <div class="duplicate-check-wallet-grid">
-                <div class="duplicate-check-block">
-                  <h3>동일 IP에서 가입한 다른 회원</h3>
-                  <div id="duplicateCheckSameIpBox" class="admin-section-desc"></div>
-                </div>
-                <div class="duplicate-check-block">
-                  <h3>최근 30일 내 거래한 회원 (연쇄 송금)</h3>
-                  <div id="duplicateCheckTransferBox" class="admin-section-desc"></div>
-                </div>
-                <div class="duplicate-check-block">
-                  <h3>지갑 · 스테이킹</h3>
-                  <div id="duplicateCheckWalletAgeBox" class="admin-section-desc"></div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
@@ -1130,7 +1046,11 @@
               return;
             }
             var list = data.users || [];
-            var regularUsers = list.filter(function (u) { return !u.managementAccount; });
+            var regularUsers = list.filter(function (u) {
+              if (u.managementAccount) return false;
+              var w = (u.walletAddress && String(u.walletAddress).trim()) || '';
+              return w.length > 0;
+            });
             lastRegularUsers = regularUsers;
             var countEl = document.getElementById('usersSummaryCount');
             if (countEl) countEl.textContent = regularUsers.length;
@@ -1981,87 +1901,6 @@
             })
             .catch(function () { alert('삭제 처리 중 오류가 발생했습니다.'); })
             .finally(function () { btn.disabled = false; });
-        });
-      })();
-
-      (function setupDuplicateCheck() {
-        var input = document.getElementById('duplicateCheckInput');
-        var btn = document.getElementById('duplicateCheckBtn');
-        var errEl = document.getElementById('duplicateCheckErr');
-        var loadingEl = document.getElementById('duplicateCheckLoading');
-        var resultWrap = document.getElementById('duplicateCheckResult');
-        var byIpWrap = document.getElementById('duplicateCheckByIp');
-        var byWalletWrap = document.getElementById('duplicateCheckByWallet');
-        if (!btn || !input) return;
-        btn.addEventListener('click', function () {
-          var raw = (input.value || '').trim();
-          if (!raw) {
-            if (errEl) { errEl.textContent = '지갑 주소 또는 IP를 입력해 주세요.'; errEl.style.display = 'block'; }
-            if (resultWrap) resultWrap.style.display = 'none';
-            return;
-          }
-          if (errEl) errEl.style.display = 'none';
-          if (resultWrap) resultWrap.style.display = 'none';
-          loadingEl.style.display = 'block';
-          btn.disabled = true;
-          var isIp = !/^0x[a-fA-F0-9]{40}$/i.test(raw);
-          var query = isIp ? 'ip=' + encodeURIComponent(raw) : 'wallet=' + encodeURIComponent(raw);
-          fetch('/api/admin/duplicate-check?' + query, { credentials: 'same-origin' })
-            .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
-            .then(function (result) {
-              loadingEl.style.display = 'none';
-              btn.disabled = false;
-              var data = result.data;
-              if (!data.ok) {
-                errEl.textContent = data.message || '조회에 실패했습니다.';
-                errEl.style.display = 'block';
-                return;
-              }
-              resultWrap.style.display = 'block';
-              if (data.mode === 'ip') {
-                byIpWrap.style.display = 'block';
-                byWalletWrap.style.display = 'none';
-                document.getElementById('duplicateCheckIpValue').textContent = data.ip || raw;
-                var list = data.users || [];
-                var tbody = document.getElementById('duplicateCheckByIpBody');
-                tbody.innerHTML = list.length === 0
-                  ? '<tr><td colspan="3" class="text-muted">해당 IP로 가입한 회원이 없습니다.</td></tr>'
-                  : list.map(function (u) {
-                      var name = (u.displayName || '').trim() || '-';
-                      var wallet = (u.walletAddress || '').trim() || '-';
-                      var date = u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : '-';
-                      return '<tr><td>' + name + '</td><td class="wallet">' + wallet + '</td><td>' + date + '</td></tr>';
-                    }).join('');
-              } else {
-                byIpWrap.style.display = 'none';
-                byWalletWrap.style.display = 'block';
-                var user = data.user;
-                var userBox = document.getElementById('duplicateCheckUserBox');
-                if (user) {
-                  userBox.innerHTML = '<strong>닉네임</strong> ' + (user.displayName || '-') + ' &nbsp;|&nbsp; <strong>지갑</strong> <span class="wallet">' + (user.walletAddress || '-') + '</span> &nbsp;|&nbsp; <strong>가입일</strong> ' + (user.createdAt ? new Date(user.createdAt).toLocaleString('ko-KR') : '-') + ' &nbsp;|&nbsp; <strong>가입 IP</strong> ' + (user.signupIp || '-');
-                } else {
-                  userBox.innerHTML = '해당 지갑으로 가입된 회원이 없습니다. (지갑 주소만 조회됨)';
-                }
-                var sameIp = data.sameIpUsers || [];
-                document.getElementById('duplicateCheckSameIpBox').innerHTML = sameIp.length === 0
-                  ? '<p class="text-muted">동일 IP에서 가입한 다른 회원 없음.</p>'
-                  : '<ul style="margin:0; padding-left:1.25rem;">' + sameIp.map(function (u) { return '<li>' + (u.displayName || '-') + ' — ' + (u.walletAddress || '').slice(0, 10) + '…' + (u.createdAt ? new Date(u.createdAt).toLocaleString('ko-KR') : ''); }).join('') + '</ul>';
-                var transfer = data.transferNetworkMembers || [];
-                document.getElementById('duplicateCheckTransferBox').innerHTML = transfer.length === 0
-                  ? '<p class="text-muted">최근 30일 내 거래한 회원 없음.</p>'
-                  : '<ul style="margin:0; padding-left:1.25rem;">' + transfer.map(function (u) { return '<li>' + (u.displayName || '-') + ' <span class="wallet">' + (u.walletAddress || '') + '</span>'; }).join('') + '</ul>';
-                var age = data.walletAge || {};
-                var firstTx = age.firstTxAt ? new Date(age.firstTxAt).toLocaleString('ko-KR') : '—';
-                var stakeCount = typeof age.stakeCount === 'number' ? age.stakeCount : 0;
-                document.getElementById('duplicateCheckWalletAgeBox').innerHTML = '<p><strong>최초 트랜잭션</strong> ' + firstTx + ' &nbsp;|&nbsp; <strong>스테이킹 횟수</strong> ' + stakeCount + '회</p>';
-              }
-            })
-            .catch(function () {
-              loadingEl.style.display = 'none';
-              btn.disabled = false;
-              errEl.textContent = '조회 중 오류가 발생했습니다.';
-              errEl.style.display = 'block';
-            });
         });
       })();
 

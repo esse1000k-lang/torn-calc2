@@ -25,8 +25,6 @@
     }
     .shop-hero h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem 0; }
     .shop-hero p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
-    .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
-    .back-link:hover { color: var(--neon); }
     .shop-balance {
       display: flex; align-items: center; justify-content: center; gap: 0.5rem;
       padding: 1rem 1.25rem; margin-bottom: 1.5rem;
@@ -80,6 +78,10 @@
     .shop-buy-modal__row label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem; }
     .shop-buy-modal__input { width: 100%; box-sizing: border-box; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-dark); color: var(--text); font-size: 1rem; }
     .shop-buy-modal__input:focus { outline: none; border-color: var(--neon); }
+    /* 구매 수량 입력란 스피너(우측 화살표) 제거 - 모든 아이템 구매 모달에 적용 */
+    .shop-buy-modal input[type="number"]::-webkit-inner-spin-button,
+    .shop-buy-modal input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .shop-buy-modal input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     .shop-buy-modal__actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
     .shop-buy-modal__btn { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; }
     .shop-buy-modal__btn--cancel { background: var(--border); color: var(--text); }
@@ -108,7 +110,6 @@
   </nav>
 
   <div class="shop-page">
-    <a href="/" class="back-link">← 홈으로</a>
     <div class="shop-hero">
       <h1>상점</h1>
       <p>모은 하트로 채팅·게시판 등 다양한 아이템을 구매하세요.</p>

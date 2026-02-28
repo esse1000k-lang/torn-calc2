@@ -688,6 +688,7 @@
           })
             .then(function (r) { return r.json(); })
             .then(function (data) {
+              console.log('[feed/send-heart] response', data);
               feedSendHeartOk.disabled = false;
               closeFeedSendHeartModal();
               if (data.ok) {

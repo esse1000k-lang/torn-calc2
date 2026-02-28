@@ -60,7 +60,7 @@
           return Promise.reject(data);
         });
     },
-    register: function (displayName, password, referrer, walletAddress) {
+    register: function (displayName, password, referrer) {
       return fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,7 +69,6 @@
           displayName: displayName || undefined,
           password: password,
           referrer: referrer || undefined,
-          walletAddress: (walletAddress && walletAddress.trim()) ? walletAddress.trim() : undefined,
         }),
       })
         .then(function (res) { return res.json(); })

@@ -135,6 +135,7 @@
       fetch(url, { method: 'POST', credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (data) {
+          console.log('[feed/send-heart] response', data);
           feedSendHeartOk.disabled = false;
           closeHeartModal();
           if (data.ok) {
@@ -524,22 +525,11 @@
               var list = root.querySelector('.feed-card__comments-list');
               var titleEl = root.querySelector('.feed-card__comments-title');
               if (list) {
-                var li = document.createElement('li');
-                li.className = 'feed-comment';
-                li.setAttribute('data-comment-id', data.comment.id);
-                var name = (data.comment.authorDisplayName || '—');
-                var av = (data.comment.authorProfileImageUrl && data.comment.authorProfileImageUrl.trim())
-                  ? '<img class="feed-comment__avatar feed-card__avatar--img" src="' + String(data.comment.authorProfileImageUrl).replace(/"/g, '&quot;') + '" alt="" loading="lazy">'
-                  : '<span class="feed-comment__avatar" aria-hidden="true">' + (name.charAt(0) || '?') + '</span>';
-                var dateStr = formatDate(data.comment.createdAt);
-                var replyToLine = (data.comment.replyToDisplayName && data.comment.replyToDisplayName.trim())
-                  ? '<div class="feed-comment__reply-to">답글: <span class="feed-comment__reply-to-name">@' + String(data.comment.replyToDisplayName || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>'
-                  : '';
-                li.innerHTML = av + '<div class="feed-comment__body">' + replyToLine +
-                  '<span class="feed-comment__author">' + String(name).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>' +
-                  '<span class="feed-comment__date">' + dateStr + '</span>' +
-                  '<p class="feed-comment__text">' + String(data.comment.body || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>';
-                list.appendChild(li);
+                var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+                var myId = me ? me.id : null;
+                var isAdmin = !!(me && me.isAdmin);
+                var html = renderComment(data.comment, myId, pid, isAdmin);
+                list.insertAdjacentHTML('beforeend', html);
               }
               if (titleEl) titleEl.textContent = '댓글 ' + root.querySelectorAll('.feed-comment').length;
             } else if (data.message) alert(data.message);
@@ -615,7 +605,7 @@
       attachHandlers();
     }
 
-    fetch('/api/feed/' + encodeURIComponent(postId), { credentials: 'same-origin' })
+    fetch('/api/feed/' + encodeURIComponent(postId) + '?t=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data && data.ok && data.post) {
