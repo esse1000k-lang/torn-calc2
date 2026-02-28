@@ -228,6 +228,7 @@ const MONGODB_URI = (process.env.MONGODB_URI || '').trim();
 const sessionStore = MongoStore.create({
   mongoUrl: MONGODB_URI || undefined,
   ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
+  touchAfter: 24 * 3600, // 24시간 동안 touch 생략 → 불필요한 DB 업데이트·세션 유실 가능성 감소
 });
 // touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시하고 성공 처리 (store.on 등 그대로 사용)
 const originalTouch = sessionStore.touch.bind(sessionStore);
@@ -256,6 +257,7 @@ app.use(
       sameSite: 'lax',
       httpOnly: true,
       maxAge: SESSION_COOKIE_MAX_AGE_MS,
+      domain: undefined, // tornfi.onrender.com 등 배포 도메인과 충돌 방지
     },
   })
 );
@@ -1335,7 +1337,7 @@ app.post('/api/login', async (req, res) => {
     isAdmin: !!isAdmin,
   };
 
-  // 강제 동기화: req.login 후 반드시 req.session.save() 호출하고, 그 콜백 안에서만 응답
+  // 로그인 직후 세션을 DB에 강제 저장한 뒤 응답 (save 콜백 안에서만 다음 로직 진행)
   req.login(sessionUser, (err) => {
     if (err) {
       console.error('!!! SESSION SAVE ERROR !!!', err);

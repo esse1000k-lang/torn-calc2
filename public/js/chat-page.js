@@ -905,19 +905,32 @@
           closeChatMsgDropdown();
         });
 
-        if (chatSend) chatSend.addEventListener('click', sendMessage);
+        if (chatSend) chatSend.addEventListener('click', function () {
+          var user = window.TornFiAuth && window.TornFiAuth.getUser();
+          if (!user || !user.id) {
+            window.location.href = '/login.html';
+            return;
+          }
+          sendMessage();
+        });
         if (chatInput) {
           chatInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
           });
         }
 
-        if (chatSend) chatSend.disabled = !(window.TornFiAuth && window.TornFiAuth.getUser() && window.TornFiAuth.getUser().id);
+        function updateChatSendButton(user) {
+          if (chatSend) {
+            chatSend.textContent = (user && user.id) ? '전송' : '로그인';
+            if (!user || !user.id) chatSend.disabled = false;
+          }
+        }
+        updateChatSendButton(window.TornFiAuth && window.TornFiAuth.getUser());
         if (chatAttach) chatAttach.disabled = !(window.TornFiAuth && window.TornFiAuth.getUser() && window.TornFiAuth.getUser().id);
         if (window.TornFiAuth && window.TornFiAuth.onUser) {
           window.TornFiAuth.onUser(function (user) {
             if (chatInput) chatInput.placeholder = user ? '메시지 입력' : '메시지 입력 (로그인 후 전송)';
-            if (chatSend) chatSend.disabled = !user || !user.id;
+            updateChatSendButton(user);
             if (chatAttach) chatAttach.disabled = !user || !user.id;
             if (chatMessages) {
               if (user && user.id) {
