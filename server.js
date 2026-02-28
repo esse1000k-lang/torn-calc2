@@ -5,8 +5,9 @@
 // 1. 환경 변수 로드
 require('dotenv').config();
 
-// 2. MongoStore 안전하게 가져오기 (connect-mongo v6 CJS)
+// 2. MongoStore(connect-mongo) + MongoDB 드라이버 — 세션은 반드시 MongoDB Atlas에 저장
 const MongoStore = require('connect-mongo').default || require('connect-mongo').MongoStore;
+const { MongoClient } = require('mongodb');
 
 // 3. 세션 + Passport
 const session = require('express-session');
@@ -220,12 +221,17 @@ const uploadProfileAvatar = multer({
   fileFilter: fileFilterImages,
 }).single('avatar');
 
-// 세션: connect-mongo로 DB 저장 → 서버 재시작 후에도 로그인 유지
+// 세션: connect-mongo로 MongoDB Atlas에만 저장 (로컬 메모리/파일 사용 금지)
 const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간 (1000 * 60 * 60 * 24)
+const isProduction = process.env.NODE_ENV === 'production';
+const MONGODB_URI = (process.env.MONGODB_URI || '').trim();
 const sessionStore = MongoStore.create({
-  mongoUrl: process.env.MONGODB_URI,
+  mongoUrl: MONGODB_URI || undefined,
   ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
 });
+if (isProduction && !MONGODB_URI) {
+  console.warn('[session] Production without MONGODB_URI: sessions will not persist. Set MONGODB_URI for MongoDB Atlas.');
+}
 app.use(
   session({
     name: 'connect.sid',
@@ -233,9 +239,9 @@ app.use(
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    proxy: false,
+    proxy: isProduction, // 배포 시 프록시 뒤에서 X-Forwarded-Proto 신뢰
     cookie: {
-      secure: false, // 로컬 테스트: false (배포 시 HTTPS면 true 권장)
+      secure: isProduction, // 배포(HTTPS)일 때 true, 로컬일 때 false
       sameSite: 'lax',
       httpOnly: true,
       maxAge: SESSION_COOKIE_MAX_AGE_MS,
@@ -3369,6 +3375,17 @@ app.post('/api/tornado-news/translate-existing', adminMiddleware, async (req, re
 function onServerListen(listenPort) {
   ensureDataDir();
   ensureUploadsDir();
+  // 세션 스토어(MongoDB Atlas) 연결 검증 로그
+  if (process.env.MONGODB_URI) {
+    MongoClient.connect(process.env.MONGODB_URI)
+      .then((client) => {
+        console.log('Session Store connected to MongoDB');
+        return client.close();
+      })
+      .catch((err) => console.warn('[session] MongoDB connection check failed:', err.message));
+  } else {
+    console.warn('[session] MONGODB_URI not set — session store may not persist.');
+  }
   const LEVEL_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
   setTimeout(() => {
     syncAllMemberLevels().then(() => {}).catch((err) => console.error('Level sync error:', err.message));

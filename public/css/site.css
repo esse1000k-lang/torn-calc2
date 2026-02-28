@@ -2105,6 +2105,47 @@ body::before {
 .auth-card--login input#password {
   margin-bottom: 1.34rem;
 }
+/* 로그인 버튼: 움직이는 테두리로 부각 */
+.auth-login-btn-wrap {
+  margin-top: 1.34rem;
+  padding: 2px;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.auth-login-btn-wrap::before {
+  content: '';
+  position: absolute;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, var(--neon), rgba(0, 255, 136, 0.4), var(--neon), rgba(0, 255, 136, 0.4), var(--neon));
+  animation: loginBtnBorderSpin 2.5s linear infinite;
+}
+.auth-login-btn-wrap .auth-submit,
+.auth-login-btn-wrap button[type="submit"] {
+  margin-top: 0;
+  padding: 0.85rem 1rem;
+  width: 100%;
+  border-radius: 10px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  display: block;
+  position: relative;
+  z-index: 1;
+  background: var(--neon);
+  border: none;
+  color: var(--bg-dark);
+}
+.auth-login-btn-wrap .auth-submit:hover,
+.auth-login-btn-wrap button[type="submit"]:hover {
+  background: var(--neon-dim);
+}
+@keyframes loginBtnBorderSpin {
+  to { transform: rotate(360deg); }
+}
 .auth-card--login .auth-form .auth-submit,
 .auth-card--login .auth-form button[type="submit"] {
   margin-top: 1.34rem;
@@ -2113,6 +2154,10 @@ body::before {
   border-radius: 10px;
   font-size: 1rem;
   box-sizing: border-box;
+}
+.auth-card--login .auth-form .auth-submit:hover,
+.auth-card--login .auth-form button[type="submit"]:hover {
+  background: var(--neon-dim);
 }
 .auth-card--login .auth-link {
   margin-top: 1.75rem;
@@ -3568,11 +3613,14 @@ body::before {
 
 .chat-input-wrap {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
+  min-height: 48px;
   border-top: 1px solid var(--border);
   background: var(--bg-card);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .chat-input {
@@ -3721,6 +3769,7 @@ body::before {
 
 .chat-send {
   padding: 0.6rem 1.1rem;
+  min-height: 38px;
   border: none;
   border-radius: 10px;
   background: var(--neon);
@@ -3731,6 +3780,7 @@ body::before {
   white-space: nowrap;
   transition: background 0.2s, opacity 0.2s;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 .chat-send:hover:not(:disabled) {
   background: var(--neon-dim);
