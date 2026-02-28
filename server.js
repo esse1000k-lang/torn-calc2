@@ -225,10 +225,25 @@ const uploadProfileAvatar = multer({
 const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간 (1000 * 60 * 60 * 24)
 const isProduction = process.env.NODE_ENV === 'production';
 const MONGODB_URI = (process.env.MONGODB_URI || '').trim();
-const sessionStore = MongoStore.create({
+const mongoStore = MongoStore.create({
   mongoUrl: MONGODB_URI || undefined,
   ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
 });
+// touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시하고 정상 처리
+const sessionStore = {
+  get: (sid, cb) => mongoStore.get(sid, cb),
+  set: (sid, session, cb) => mongoStore.set(sid, session, cb),
+  destroy: (sid, cb) => mongoStore.destroy(sid, cb),
+  touch(sid, session, cb) {
+    mongoStore.touch(sid, session, (err) => {
+      if (err && err.message === 'Unable to find the session to touch') {
+        if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', sid?.slice?.(0, 8) + '...');
+        return (typeof cb === 'function' ? cb : () => {})();
+      }
+      if (typeof cb === 'function') cb(err);
+    });
+  },
+};
 if (isProduction && !MONGODB_URI) {
   console.warn('[session] Production without MONGODB_URI: sessions will not persist. Set MONGODB_URI for MongoDB Atlas.');
 }
@@ -969,6 +984,7 @@ async function authMiddleware(req, res, next) {
       req.sessionToken = token;
       const users = await db.readUsers();
       const dbUser = users.find((u) => String(u.id) === String(req.user.id));
+      // 회원에 없어도 세션 삭제하지 않음. 탈퇴(withdrawn)인 경우에만 세션 제거
       if (dbUser && dbUser.withdrawn === true) {
         if (typeof db.deleteSession === 'function') await db.deleteSession(token);
         else sessions.delete(token);
@@ -1401,14 +1417,14 @@ app.post('/api/withdraw', async (req, res) => {
 
 const NICKNAME_CHANGE_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 14일
 
-// 현재 사용자 정보 (커뮤니티용). 세션 id가 DB에 없어도 200으로 세션 기준 반환(기능 꼬임 방지), sessionInvalid 플래그로 재로그인 유도
+// 현재 사용자 정보 (커뮤니티용). 세션이 있으면 유지 — 회원 DB에 없어도 sessionInvalid 주지 않음 (강제 로그아웃 방지)
 async function handleGetMe(req, res) {
   if (!req.user) return res.status(401).json({ ok: false, user: null });
   const users = await db.readUsers();
   const dbUser = users.find((u) => String(u.id) === String(req.user.id));
   if (!dbUser) {
-    const minimal = { ...req.user, isAdmin: false, sessionInvalid: true, profileImageUrl: null, bio: '', points: 0, shopItems: {}, level: 1, nextDisplayNameChangeAt: null };
-    return res.json({ ok: true, user: minimal, sessionInvalid: true });
+    const minimal = { ...req.user, isAdmin: false, profileImageUrl: null, bio: '', points: 0, shopItems: {}, level: 1, nextDisplayNameChangeAt: null };
+    return res.json({ ok: true, user: minimal });
   }
   let nextDisplayNameChangeAt = null;
   if (dbUser.lastDisplayNameChangedAt) {
