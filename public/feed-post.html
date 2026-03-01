@@ -92,6 +92,7 @@
     </div>
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
     <div class="nav-menu-wrap">
+      <button type="button" class="nav-withdraw-trigger js-open-withdraw" id="openWithdrawBtn" aria-label="회원탈퇴" style="display:none;">회원탈퇴</button>
       <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
       <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
@@ -155,12 +156,12 @@
     </div>
   </main>
 
-  <footer class="site-footer">
-    Copyright 2025-2026 TornFi. All rights reserved.
-    <div class="site-footer-withdraw" id="footerWithdrawWrap" style="display:none;">
-      <button type="button" id="footerWithdrawBtn">회원탈퇴</button>
-    </div>
-  </footer>
+  <div class="page-bottom">
+    <p class="page-bottom__copy">© 2025-2026 TornFi. All rights reserved.</p>
+    <span class="page-bottom__withdraw-wrap" id="bottomWithdrawWrap" style="display:none;">
+      <button type="button" class="page-bottom__withdraw-btn js-open-withdraw">회원탈퇴</button>
+    </span>
+  </div>
 
   <div id="withdrawConfirmLayer" class="withdraw-confirm-layer" style="display:none;">
     <div class="withdraw-confirm-box">
@@ -192,27 +193,32 @@
   <script src="js/feed-post.js"></script>
   <script>
     (function () {
+      var bottomWithdrawWrap = document.getElementById('bottomWithdrawWrap');
+      var navWithdrawBtn = document.getElementById('openWithdrawBtn');
       function updateFooter(user) {
-        var wrap = document.getElementById('footerWithdrawWrap');
-        if (wrap) wrap.style.display = user ? 'block' : 'none';
+        if (navWithdrawBtn) navWithdrawBtn.style.display = user ? 'block' : 'none';
+        if (bottomWithdrawWrap) bottomWithdrawWrap.style.display = user ? 'block' : 'none';
       }
       if (window.TornFiAuth && window.TornFiAuth.onUser) {
         window.TornFiAuth.onUser(updateFooter);
       }
+      updateFooter(window.TornFiAuth && window.TornFiAuth.getUser());
 
       (function setupWithdrawConfirm() {
         var layer = document.getElementById('withdrawConfirmLayer');
-        var btn = document.getElementById('footerWithdrawBtn');
         var cancelBtn = document.getElementById('withdrawConfirmCancel');
         var okBtn = document.getElementById('withdrawConfirmOk');
         var passwordInput = document.getElementById('withdrawConfirmPassword');
         var passwordErr = document.getElementById('withdrawConfirmPasswordErr');
-        if (!layer || !btn || !okBtn) return;
-        btn.addEventListener('click', function () {
+        if (!layer || !okBtn) return;
+        function openWithdrawModal() {
           if (passwordInput) passwordInput.value = '';
           if (passwordErr) { passwordErr.style.display = 'none'; passwordErr.textContent = ''; }
           layer.style.display = 'flex';
           if (passwordInput) passwordInput.focus();
+        }
+        document.querySelectorAll('.js-open-withdraw').forEach(function (el) {
+          el.addEventListener('click', openWithdrawModal);
         });
         if (cancelBtn) cancelBtn.addEventListener('click', function () { layer.style.display = 'none'; });
         okBtn.addEventListener('click', function () {

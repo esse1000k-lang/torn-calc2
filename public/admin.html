@@ -186,7 +186,7 @@
     .admin-nav-dropdown-menu a:hover { background: rgba(0, 255, 136, 0.1); }
     .admin-panel { display: none; margin-bottom: 0; }
     .admin-panel.is-active { display: block; }
-    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminForceWithdrawSection, #adminDeletedFeedSection { scroll-margin-top: 0.5rem; }
+    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminForceWithdrawSection, #adminDeletedFeedSection, #adminBannerSection { scroll-margin-top: 0.5rem; }
     #adminUsersSection .admin-btn { min-height: 18px; height: 18px; padding: 0 0.4375rem; border-radius: 4px; font-size: 0.8125rem; }
     #adminUsersSection .admin-section-body { padding: 1.25rem 1.25rem 1.5rem; }
     #adminUsersSection .admin-create-user-wrap {
@@ -391,6 +391,7 @@
         </div>
       </div>
       <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedSection">🗑️ 삭제된 피드</a>
+      <a href="#" class="admin-nav-link" data-panel="adminBannerSection">📢 홈 배너</a>
       <a href="#" class="admin-nav-link" data-panel="adminTornadoNewsSection">📰 뉴스 소스 · 수집</a>
     </nav>
 
@@ -555,6 +556,39 @@
             </thead>
             <tbody id="deletedFeedTbody"></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminBannerSection" class="admin-section admin-panel">
+      <div class="admin-section-header">
+        <h2>홈 배너</h2>
+        <p class="admin-section-desc">홈 화면 내정보·로그아웃 버튼 아래에 표시되는 광고 영역입니다. 문구만 쓰거나, 이미지를 첨부하면 해당 크기(데스크 600×180px, 모바일 약 336×160px)로 이미지가 표시됩니다. 이미지가 없을 때는 아래 문구가 표시됩니다.</p>
+      </div>
+      <div class="admin-section-body">
+        <h3 style="font-size:0.9rem; font-weight:600; color:var(--neon); margin:0 0 0.5rem 0;">광고판 이미지</h3>
+        <div id="adminBannerImageWrap" style="margin-bottom:0.75rem;">
+          <div id="adminBannerImagePreview" style="display:none; margin-bottom:0.5rem;">
+            <img id="adminBannerImageImg" src="" alt="현재 배너" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid var(--border);">
+            <button type="button" id="adminBannerImageRemove" class="admin-btn admin-btn--outline" style="margin-top:0.5rem;">이미지 제거</button>
+          </div>
+          <div id="adminBannerImageUpload" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <input type="file" id="adminBannerImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="font-size:0.85rem;">
+            <button type="button" id="adminBannerImageApply" class="admin-btn admin-btn--outline">이미지 적용</button>
+            <span id="adminBannerImageMsg" style="font-size:0.85rem; color:var(--text-muted);"></span>
+          </div>
+          <div id="adminBannerImageSelectPreview" style="display:none; margin-top:0.75rem;">
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 0.35rem 0;">선택한 이미지 미리보기 (적용 전)</p>
+            <div style="max-width:400px; height:120px; background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <img id="adminBannerImageSelectPreviewImg" src="" alt="미리보기" style="width:100%; height:100%; object-fit:cover;">
+            </div>
+          </div>
+        </div>
+        <label for="adminBannerText" style="display:block; font-size:0.9rem; font-weight:600; color:var(--neon); margin-bottom:0.5rem;">배너 문구 (이미지 없을 때 표시)</label>
+        <textarea id="adminBannerText" rows="6" placeholder="토네이도 캐시는 진정한 자유의 상징이다. …" style="width:100%; padding:0.75rem 1rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:inherit; font-size:0.9rem; resize:vertical; box-sizing:border-box;"></textarea>
+        <div style="margin-top:0.75rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <button type="button" id="adminBannerSave" class="admin-btn admin-btn--primary">문구 저장</button>
+          <span id="adminBannerMsg" style="font-size:0.85rem; color:var(--text-muted);"></span>
         </div>
       </div>
     </section>
@@ -1515,6 +1549,9 @@
         if (panelId === 'adminDeletedFeedSection') {
           loadDeletedFeedAll();
         }
+        if (panelId === 'adminBannerSection') {
+          loadBanner();
+        }
         if (panelId === 'adminTornadoNewsSection') {
           loadTornadoNewsSources();
           loadTornadoNewsKeywords();
@@ -1610,6 +1647,130 @@
         tbody.innerHTML = '<tr><td colspan="7" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
       });
       }
+
+      function loadBanner() {
+        var ta = document.getElementById('adminBannerText');
+        var msg = document.getElementById('adminBannerMsg');
+        var preview = document.getElementById('adminBannerImagePreview');
+        var imgEl = document.getElementById('adminBannerImageImg');
+        var imgMsg = document.getElementById('adminBannerImageMsg');
+        if (!ta) return;
+        if (msg) msg.textContent = '';
+        if (imgMsg) imgMsg.textContent = '';
+        fetch('/api/admin/banner', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.ok && data.text != null) ta.value = data.text;
+            var imageUrl = (data && data.ok && data.imageUrl) ? String(data.imageUrl).trim() : '';
+            if (preview && imgEl) {
+              if (imageUrl) {
+                imgEl.src = imageUrl;
+                preview.style.display = 'block';
+              } else {
+                imgEl.src = '';
+                preview.style.display = 'none';
+              }
+            }
+          })
+          .catch(function () { if (msg) msg.textContent = '불러오기에 실패했습니다.'; });
+      }
+      var adminBannerSave = document.getElementById('adminBannerSave');
+      if (adminBannerSave) {
+        adminBannerSave.addEventListener('click', function () {
+          var ta = document.getElementById('adminBannerText');
+          var msg = document.getElementById('adminBannerMsg');
+          if (!ta) return;
+          if (msg) msg.textContent = '저장 중…';
+          adminBannerSave.disabled = true;
+          fetch('/api/admin/banner', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: ta.value }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              adminBannerSave.disabled = false;
+              if (msg) msg.textContent = (data && data.message) ? data.message : (data && data.ok ? '저장되었습니다.' : (data.message || '저장 실패'));
+            })
+            .catch(function () {
+              adminBannerSave.disabled = false;
+              if (msg) msg.textContent = '저장에 실패했습니다.';
+            });
+        });
+      }
+      (function () {
+        var input = document.getElementById('adminBannerImageInput');
+        var applyBtn = document.getElementById('adminBannerImageApply');
+        var removeBtn = document.getElementById('adminBannerImageRemove');
+        var imgMsg = document.getElementById('adminBannerImageMsg');
+        var selectPreviewWrap = document.getElementById('adminBannerImageSelectPreview');
+        var selectPreviewImg = document.getElementById('adminBannerImageSelectPreviewImg');
+        var selectPreviewObjectUrl = null;
+        function clearSelectPreview() {
+          if (selectPreviewObjectUrl) {
+            try { URL.revokeObjectURL(selectPreviewObjectUrl); } catch (e) {}
+            selectPreviewObjectUrl = null;
+          }
+          if (selectPreviewImg) selectPreviewImg.removeAttribute('src');
+          if (selectPreviewWrap) selectPreviewWrap.style.display = 'none';
+        }
+        if (input) {
+          input.addEventListener('change', function () {
+            clearSelectPreview();
+            var file = input.files && input.files[0];
+            if (!file || !file.type.match(/^image\//)) return;
+            selectPreviewObjectUrl = URL.createObjectURL(file);
+            if (selectPreviewImg) selectPreviewImg.src = selectPreviewObjectUrl;
+            if (selectPreviewWrap) selectPreviewWrap.style.display = 'block';
+          });
+        }
+        if (applyBtn && input) {
+          applyBtn.addEventListener('click', function () {
+            var file = input.files && input.files[0];
+            if (!file) { if (imgMsg) imgMsg.textContent = '파일을 선택해 주세요.'; return; }
+            if (imgMsg) imgMsg.textContent = '업로드 중…';
+            applyBtn.disabled = true;
+            var form = new FormData();
+            form.append('image', file);
+            fetch('/api/admin/banner-image', { method: 'POST', credentials: 'same-origin', body: form })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                applyBtn.disabled = false;
+                input.value = '';
+                clearSelectPreview();
+                if (imgMsg) imgMsg.textContent = (data && data.message) ? data.message : (data && data.ok ? '적용되었습니다.' : (data.message || '실패'));
+                if (data && data.ok) loadBanner();
+              })
+              .catch(function () {
+                applyBtn.disabled = false;
+                if (imgMsg) imgMsg.textContent = '업로드에 실패했습니다.';
+              });
+          });
+        }
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function () {
+            if (imgMsg) imgMsg.textContent = '제거 중…';
+            removeBtn.disabled = true;
+            fetch('/api/admin/banner', {
+              method: 'PATCH',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageUrl: '' }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                removeBtn.disabled = false;
+                if (imgMsg) imgMsg.textContent = (data && data.ok) ? '이미지를 제거했습니다.' : (data.message || '실패');
+                if (data && data.ok) loadBanner();
+              })
+              .catch(function () {
+                removeBtn.disabled = false;
+                if (imgMsg) imgMsg.textContent = '제거에 실패했습니다.';
+              });
+          });
+        }
+      })();
 
       function escapeHtmlTn(s) {
         if (s == null) return '';

@@ -55,11 +55,7 @@
   });
 
   if (window.TornFiAuth && window.TornFiAuth.onUser) {
-    window.TornFiAuth.onUser(function (user) {
-      updateNav(user);
-      var wrap = document.getElementById('footerWithdrawWrap');
-      if (wrap) wrap.style.display = user ? 'block' : 'none';
-    });
+    window.TornFiAuth.onUser(updateNav);
   }
 
   if (navMenuLogout) {

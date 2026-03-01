@@ -253,6 +253,28 @@ const uploadProfileAvatar = multer({
   fileFilter: fileFilterImages,
 }).single('avatar');
 
+// 홈 광고판 이미지 업로드 (관리자 전용, 한 장만 유지·덮어쓰기)
+const BANNER_UPLOADS_DIR = path.join(__dirname, 'public', 'uploads', 'banner');
+const BANNER_IMAGE_MAX_SIZE = 2 * 1024 * 1024; // 2MB
+function ensureBannerUploadsDir() {
+  if (!fs.existsSync(BANNER_UPLOADS_DIR)) fs.mkdirSync(BANNER_UPLOADS_DIR, { recursive: true });
+}
+const storageBannerImage = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    ensureBannerUploadsDir();
+    cb(null, BANNER_UPLOADS_DIR);
+  },
+  filename: function (_req, file, cb) {
+    const ext = ALLOWED_MIMES[file.mimetype] || '.jpg';
+    cb(null, 'banner' + ext);
+  },
+});
+const uploadBannerImage = multer({
+  storage: storageBannerImage,
+  limits: { fileSize: BANNER_IMAGE_MAX_SIZE },
+  fileFilter: fileFilterImages,
+}).single('image');
+
 // 세션: MONGODB_URI 있으면 connect-mongo(MongoDB), 없으면 메모리 스토어(재시작 시 세션 소멸)
 const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간 (1000 * 60 * 60 * 24)
 const isProduction = process.env.NODE_ENV === 'production';
@@ -2471,6 +2493,58 @@ app.patch('/api/admin/settings/auto-approve', adminMiddleware, async (req, res) 
   settings.autoApproveNewUsers = autoApproveNewUsers;
   await db.writeSettings(settings);
   res.json({ ok: true, autoApproveNewUsers, message: autoApproveNewUsers ? '신규 가입 자동 승인 사용 중입니다.' : '신규 가입은 관리자 승인 후 로그인됩니다.' });
+});
+
+// 홈 배너 문구 (공개 — 내정보/로그아웃 버튼 아래 광고 영역)
+const DEFAULT_HOME_BANNER_TEXT = '토네이도 캐시는 개인의 자유와 익명성을 지키려는 상징 같은 존재다. 중앙화된 시스템이 당연시되는 세상에서, 기술만으로 자율성을 지키려는 시도라는 점이 의미 있다. 단순한 코드 이상의 가치, 권력으로부터 독립하려는 믿음, 그게 토네이도 캐시의 철학이다.';
+app.get('/api/banner', async (req, res) => {
+  try {
+    const settings = await db.readSettings();
+    const text = (settings.homeBannerText != null && String(settings.homeBannerText).trim()) ? String(settings.homeBannerText).trim() : DEFAULT_HOME_BANNER_TEXT;
+    const imageUrl = (settings.homeBannerImageUrl != null && String(settings.homeBannerImageUrl).trim()) ? String(settings.homeBannerImageUrl).trim() : '';
+    res.json({ ok: true, text, imageUrl });
+  } catch (e) {
+    res.json({ ok: true, text: DEFAULT_HOME_BANNER_TEXT, imageUrl: '' });
+  }
+});
+app.get('/api/admin/banner', adminMiddleware, async (req, res) => {
+  try {
+    const settings = await db.readSettings();
+    const text = (settings.homeBannerText != null && String(settings.homeBannerText).trim()) ? String(settings.homeBannerText).trim() : DEFAULT_HOME_BANNER_TEXT;
+    const imageUrl = (settings.homeBannerImageUrl != null && String(settings.homeBannerImageUrl).trim()) ? String(settings.homeBannerImageUrl).trim() : '';
+    res.json({ ok: true, text, imageUrl });
+  } catch (e) {
+    res.json({ ok: true, text: DEFAULT_HOME_BANNER_TEXT, imageUrl: '' });
+  }
+});
+app.patch('/api/admin/banner', adminMiddleware, async (req, res) => {
+  const hasText = req.body && req.body.text !== undefined;
+  const text = hasText ? String(req.body.text).trim() : '';
+  const imageUrlSet = req.body && req.body.imageUrl !== undefined ? String(req.body.imageUrl).trim() : undefined;
+  const settings = await db.readSettings();
+  if (hasText) settings.homeBannerText = text || DEFAULT_HOME_BANNER_TEXT;
+  if (imageUrlSet !== undefined) settings.homeBannerImageUrl = imageUrlSet;
+  await db.writeSettings(settings);
+  res.json({ ok: true, text: settings.homeBannerText, imageUrl: settings.homeBannerImageUrl || '', message: '배너가 저장되었습니다.' });
+});
+app.post('/api/admin/banner-image', adminMiddleware, (req, res) => {
+  uploadBannerImage(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ ok: false, message: err.message || '이미지 업로드에 실패했습니다. (JPG/PNG/GIF/WEBP, 2MB 이하)' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, message: '이미지 파일을 선택해 주세요.' });
+    }
+    const imageUrl = '/uploads/banner/' + req.file.filename;
+    try {
+      const settings = await db.readSettings();
+      settings.homeBannerImageUrl = imageUrl;
+      await db.writeSettings(settings);
+      res.json({ ok: true, imageUrl, message: '광고판 이미지가 적용되었습니다.' });
+    } catch (e) {
+      res.status(500).json({ ok: false, message: '설정 저장에 실패했습니다.' });
+    }
+  });
 });
 
 // 관리자: 총 발행량/유통량 설정 (포인트·환전 제거로 미사용 — 스텁)

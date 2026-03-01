@@ -69,10 +69,20 @@
         </a>
       </nav>
       <div class="mobile-home-menu__actions">
-        <a href="/login.html" class="mobile-home-menu__btn mobile-home-menu__btn--primary" id="mobileHomeLogin">로그인</a>
-        <a href="/register.html" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeRegister">회원가입</a>
-        <a href="/profile.html" class="mobile-home-menu__btn mobile-home-menu__btn--primary" id="mobileHomeProfile" style="display:none;">내 정보</a>
-        <button type="button" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeLogout" style="display:none;">로그아웃</button>
+        <span class="mobile-home-menu__actions-guest">
+          <a href="/login.html" class="mobile-home-menu__btn mobile-home-menu__btn--primary" id="mobileHomeLogin">로그인</a>
+          <a href="/register.html" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeRegister">회원가입</a>
+        </span>
+        <span class="mobile-home-menu__actions-logged-in" id="mobileHomeLoggedInWrap" style="display:none;">
+          <a href="/profile.html" class="mobile-home-menu__btn mobile-home-menu__btn--primary" id="mobileHomeProfile">내 정보</a>
+          <button type="button" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeLogout">로그아웃</button>
+        </span>
+      </div>
+    </div>
+    <div class="home-banner" id="homeBanner" aria-label="광고 배너">
+      <div class="home-banner__inner">
+        <span class="home-banner__emoji" aria-hidden="true">🌪️</span>
+        <p class="home-banner__text" id="homeBannerText">불러오는 중…</p>
       </div>
     </div>
     <!-- ====== 안내 메시지 배너 (삭제 시 이 블록 전체를 제거하세요) ====== -->
@@ -108,6 +118,38 @@
         if(!banner)return;
         try{if(localStorage.getItem(STORAGE_KEY)==='1'){banner.style.display='none';return;}}catch(e){}
         if(closeBtn){closeBtn.addEventListener('click',function(){banner.style.display='none';try{localStorage.setItem(STORAGE_KEY,'1');}catch(e){}});}
+      })();
+    </script>
+    <script>
+      (function () {
+        var banner = document.getElementById('homeBanner');
+        var inner = banner && banner.querySelector('.home-banner__inner');
+        var textEl = document.getElementById('homeBannerText');
+        if (!inner) return;
+        fetch('/api/banner', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (data) {
+          var imageUrl = (data && data.ok && data.imageUrl) ? String(data.imageUrl).trim() : '';
+          if (imageUrl) {
+            inner.classList.add('has-image');
+            var img = document.createElement('img');
+            img.className = 'home-banner__img';
+            img.src = imageUrl;
+            img.alt = '';
+            inner.innerHTML = '';
+            inner.appendChild(img);
+          } else {
+            var text = (data && data.ok && data.text) ? data.text : '';
+            if (textEl) {
+              if (text) {
+                var div = document.createElement('div');
+                div.textContent = text;
+                textEl.innerHTML = div.innerHTML.replace(/\n/g, '<br>');
+                textEl.classList.add('home-banner__text--loaded');
+              } else {
+                textEl.textContent = '';
+              }
+            }
+          }
+        }).catch(function () { if (textEl) textEl.textContent = ''; });
       })();
     </script>
     <!-- ====== /안내 메시지 배너 ====== -->
@@ -164,12 +206,12 @@
     </div>
   </main>
 
-  <footer class="site-footer">
-    Copyright 2025-2026 TornFi. All rights reserved.
-    <div class="site-footer-withdraw" id="footerWithdrawWrap" style="display:none;">
-      <button type="button" id="footerWithdrawBtn">회원탈퇴</button>
-    </div>
-  </footer>
+  <div class="page-bottom">
+    <p class="page-bottom__copy">© 2025-2026 TornFi. All rights reserved.</p>
+    <span class="page-bottom__withdraw-wrap" id="bottomWithdrawWrap" style="display:none;">
+      <button type="button" class="page-bottom__withdraw-btn js-open-withdraw">회원탈퇴</button>
+    </span>
+  </div>
 
   <div id="feedDeleteConfirmLayer" class="feed-delete-confirm-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedDeleteConfirmTitle">
     <div class="feed-delete-confirm-box">
@@ -237,36 +279,29 @@
       var navMenuBtn = document.getElementById('navMenuBtn');
       var mobileHomeLogin = document.getElementById('mobileHomeLogin');
       var mobileHomeRegister = document.getElementById('mobileHomeRegister');
+      var mobileHomeLoggedInWrap = document.getElementById('mobileHomeLoggedInWrap');
       var mobileHomeProfile = document.getElementById('mobileHomeProfile');
       var mobileHomeLogout = document.getElementById('mobileHomeLogout');
+      var bottomWithdrawWrap = document.getElementById('bottomWithdrawWrap');
       function updateNav(user) {
         if (user) {
           if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
           if (mobileHomeLogin) mobileHomeLogin.style.display = 'none';
           if (mobileHomeRegister) mobileHomeRegister.style.display = 'none';
-          if (mobileHomeProfile) mobileHomeProfile.style.display = 'block';
-          if (mobileHomeLogout) mobileHomeLogout.style.display = 'block';
+          if (mobileHomeLoggedInWrap) mobileHomeLoggedInWrap.style.display = 'flex';
+          if (bottomWithdrawWrap) bottomWithdrawWrap.style.display = 'block';
         } else {
           if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (navAdminCenter) navAdminCenter.style.display = 'none';
           if (mobileHomeLogin) mobileHomeLogin.style.display = 'block';
           if (mobileHomeRegister) mobileHomeRegister.style.display = 'block';
-          if (mobileHomeProfile) mobileHomeProfile.style.display = 'none';
-          if (mobileHomeLogout) mobileHomeLogout.style.display = 'none';
+          if (mobileHomeLoggedInWrap) mobileHomeLoggedInWrap.style.display = 'none';
+          if (bottomWithdrawWrap) bottomWithdrawWrap.style.display = 'none';
         }
       }
-      function syncFooterWithdraw() {
-        var wrap = document.getElementById('footerWithdrawWrap');
-        if (!wrap) return;
-        var user = window.TornFiAuth && window.TornFiAuth.getUser();
-        wrap.style.display = user ? 'block' : 'none';
-      }
-      window.TornFiAuth.onUser(function (user) {
-        updateNav(user);
-        syncFooterWithdraw();
-      });
-      setTimeout(syncFooterWithdraw, 800);
+      window.TornFiAuth.onUser(updateNav);
+      updateNav(window.TornFiAuth && window.TornFiAuth.getUser());
 
       var navMenuDropdown = document.getElementById('navMenuDropdown');
       if (navMenuBtn && navMenuDropdown) {
@@ -291,17 +326,19 @@
 
       (function setupWithdrawConfirm() {
         var layer = document.getElementById('withdrawConfirmLayer');
-        var btn = document.getElementById('footerWithdrawBtn');
         var cancelBtn = document.getElementById('withdrawConfirmCancel');
         var okBtn = document.getElementById('withdrawConfirmOk');
         var passwordInput = document.getElementById('withdrawConfirmPassword');
         var passwordErr = document.getElementById('withdrawConfirmPasswordErr');
-        if (!layer || !btn || !okBtn) return;
-        btn.addEventListener('click', function () {
+        if (!layer || !okBtn) return;
+        function openWithdrawModal() {
           if (passwordInput) passwordInput.value = '';
           if (passwordErr) { passwordErr.style.display = 'none'; passwordErr.textContent = ''; }
           layer.style.display = 'flex';
           if (passwordInput) passwordInput.focus();
+        }
+        document.querySelectorAll('.js-open-withdraw').forEach(function (el) {
+          el.addEventListener('click', openWithdrawModal);
         });
         cancelBtn.addEventListener('click', function () {
           layer.style.display = 'none';
@@ -522,7 +559,6 @@
               if (feedMoreWrap) {
                 feedMoreWrap.style.display = (currentOffset < totalPosts) ? 'block' : 'none';
               }
-              if (typeof syncFooterWithdraw === 'function') syncFooterWithdraw();
               if (!append) {
                 try {
                   var savedY = sessionStorage.getItem('feedHomeScrollY');
