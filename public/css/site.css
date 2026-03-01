@@ -481,6 +481,9 @@ body::before {
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 }
+.site-main--home {
+  padding-top: 0;
+}
 
 /* 홈 메뉴 그리드 (PC·모바일 공통, PC는 넓은 레이아웃) */
 .mobile-home-menu {
@@ -525,6 +528,77 @@ body::before {
   border-color: var(--neon);
   color: var(--text);
 }
+
+/* 홈 상단 검색 바: 필 모양, 초록 테두리, 채팅 복사 아이콘 스타일의 돋보기 */
+.home-search-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  max-width: 320px;
+  min-height: 44px;
+  padding: 0 0.5rem 0 1.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--neon);
+  border-radius: 999px;
+  box-sizing: border-box;
+}
+.home-search-bar:focus-within {
+  border-color: var(--neon);
+  background: rgba(0, 255, 136, 0.06);
+  box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.2);
+}
+.home-search-bar__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.9rem;
+  padding: 0.4rem 0.5rem 0.4rem 0;
+}
+.home-search-bar__input::placeholder {
+  color: var(--text-muted);
+}
+.home-search-bar__input:focus {
+  outline: none;
+}
+.home-search-bar__dropdown-icon {
+  flex-shrink: 0;
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  padding: 0 0.35rem;
+  line-height: 1;
+}
+.home-search-bar__submit {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--neon);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+.home-search-bar__submit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.home-search-bar__submit-icon svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+.home-search-bar__submit:hover {
+  color: var(--neon);
+  background: rgba(0, 255, 136, 0.12);
+}
+
 .mobile-home-menu__grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -630,9 +704,13 @@ body::before {
   .mobile-home-menu__logo {
     text-align: center;
   }
-  .mobile-home-menu__search {
+  .mobile-home-menu__search,
+  .home-search-bar {
     max-width: none;
-    padding: 0.65rem 1rem;
+  }
+  .home-search-bar {
+    padding: 0 0.5rem 0 1rem;
+    min-height: 42px;
   }
   .mobile-home-menu__grid {
     gap: 0.6rem;
@@ -730,6 +808,21 @@ body::before {
   text-align: center;
   padding: 2rem 1rem;
   margin-bottom: 1rem;
+}
+.feed-search-hint {
+  text-align: center;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.feed-search-hint a {
+  color: var(--neon);
+  text-decoration: none;
+  margin-left: 0.35rem;
+}
+.feed-search-hint a:hover {
+  text-decoration: underline;
 }
 .feed-list {
   display: flex;
@@ -2538,7 +2631,7 @@ body::before {
   50% { opacity: 0.35; transform: translateX(-50%) scale(0.98); }
 }
 
-/* 리워드 파티 애니메이션 (data-* 속성으로 수정 가능) — fixed로 전체 화면에 표시(채팅 패널 overflow에 가리지 않음) */
+/* 배당 파티 애니메이션 (data-* 속성으로 수정 가능) — fixed로 전체 화면에 표시(채팅 패널 overflow에 가리지 않음) */
 .reward-party-overlay {
   position: fixed;
   inset: 0;

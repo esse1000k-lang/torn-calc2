@@ -80,7 +80,6 @@
       '<div class="feed-card__reply-to-chip" style="display:none;">답글: <span class="feed-card__reply-to-name"></span> <button type="button" class="feed-card__reply-to-cancel">취소</button></div>' +
       '<input type="text" class="feed-card__comment-input" placeholder="댓글을 입력하세요..." maxlength="1000" data-post-id="' + escapeHtml(p.id) + '">' +
       '<button type="button" class="feed-card__comment-submit">댓글</button></div>';
-    var adminDeleteBtn = isAdmin ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑 삭제</button></div>' : '';
     currentPost = p;
     var cardInner = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
       '<div class="feed-card__link">' +
@@ -99,7 +98,7 @@
             '<div class="feed-card__actions">' + footer + '</div>' +
           '</div></div></div>' +
       '<div class="feed-card__comments">' + commentsHtml + '</div></article>';
-    root.innerHTML = isAdmin ? '<div class="feed-card-wrap">' + cardInner + adminDeleteBtn + '</div>' : cardInner;
+    root.innerHTML = cardInner;
   }
 
   function attachHandlers() {
@@ -186,13 +185,9 @@
       var feedAdminPinErr = document.getElementById('feedAdminPinErr');
       var feedAdminPinCancel = document.getElementById('feedAdminPinCancel');
       var feedAdminPinOk = document.getElementById('feedAdminPinOk');
-      var pendingDeletePostId = null;
-      var pendingDeleteBtn = null;
       var pendingCommentDelete = null;
 
       function closeFeedDeleteModal() {
-        pendingDeletePostId = null;
-        pendingDeleteBtn = null;
         pendingCommentDelete = null;
         if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
       }
@@ -201,9 +196,6 @@
         if (feedAdminPinLayer) feedAdminPinLayer.style.display = 'none';
         if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
         if (feedAdminPinInput) feedAdminPinInput.value = '';
-        if (pendingDeleteBtn) pendingDeleteBtn.disabled = false;
-        pendingDeletePostId = null;
-        pendingDeleteBtn = null;
         pendingCommentDelete = null;
       }
 
@@ -233,36 +225,6 @@
           .catch(function () { alert('댓글 삭제 요청에 실패했습니다.'); pendingCommentDelete = null; });
       }
 
-      function doFeedDelete() {
-        if (!pendingDeletePostId || !pendingDeleteBtn) return;
-        var postId = pendingDeletePostId;
-        var btn = pendingDeleteBtn;
-        if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
-        btn.disabled = true;
-        fetch('/api/feed/' + encodeURIComponent(postId), { method: 'DELETE', credentials: 'same-origin' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (data.ok) {
-              window.location.href = '/';
-            } else if (data.needPin && feedAdminPinLayer) {
-              feedAdminPinLayer.style.display = 'flex';
-              if (feedAdminPinInput) { feedAdminPinInput.value = ''; feedAdminPinInput.focus(); }
-              if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
-            } else {
-              alert(data.message || '삭제에 실패했습니다.');
-              btn.disabled = false;
-              pendingDeletePostId = null;
-              pendingDeleteBtn = null;
-            }
-          })
-          .catch(function () {
-            alert('삭제 요청에 실패했습니다.');
-            btn.disabled = false;
-            pendingDeletePostId = null;
-            pendingDeleteBtn = null;
-          });
-      }
-
       function submitFeedAdminPin() {
         var pin = (feedAdminPinInput && feedAdminPinInput.value) ? feedAdminPinInput.value.trim() : '';
         if (pin.length !== 6 || !/^[0-9]+$/.test(pin)) {
@@ -277,7 +239,7 @@
               if (feedAdminPinLayer) feedAdminPinLayer.style.display = 'none';
               if (feedAdminPinInput) feedAdminPinInput.value = '';
               if (feedAdminPinErr) feedAdminPinErr.style.display = 'none';
-              if (pendingCommentDelete) { doCommentDelete(); } else { doFeedDelete(); }
+              if (pendingCommentDelete) doCommentDelete();
             } else {
               if (feedAdminPinErr) { feedAdminPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.'; feedAdminPinErr.style.display = 'block'; }
             }
@@ -289,7 +251,6 @@
 
       function onFeedDeleteConfirmOk() {
         if (pendingCommentDelete) doCommentDelete();
-        else doFeedDelete();
       }
       if (feedDeleteCancel) feedDeleteCancel.addEventListener('click', closeFeedDeleteModal);
       if (feedDeleteOk) feedDeleteOk.addEventListener('click', onFeedDeleteConfirmOk);
@@ -316,19 +277,6 @@
           pendingCommentDelete = { postId: postId, commentId: commentId, li: li };
           if (feedDeleteConfirmTitle) feedDeleteConfirmTitle.textContent = '댓글 삭제';
           if (feedDeleteConfirmMsg) feedDeleteConfirmMsg.textContent = '이 댓글을 삭제하시겠습니까? 삭제된 댓글은 관리자 페이지에서 복구할 수 있습니다.';
-          if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
-          return;
-        }
-        var btn = e.target && e.target.closest && e.target.closest('.feed-card__admin-delete');
-        if (btn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var postId = btn.getAttribute('data-post-id');
-          if (!postId) return;
-          pendingDeletePostId = postId;
-          pendingDeleteBtn = btn;
-          if (feedDeleteConfirmTitle) feedDeleteConfirmTitle.textContent = '피드 삭제';
-          if (feedDeleteConfirmMsg) feedDeleteConfirmMsg.textContent = '이 피드 글을 삭제하시겠습니까?';
           if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
         }
       });

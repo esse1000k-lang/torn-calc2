@@ -29,10 +29,14 @@
     </div>
   </nav>
 
-  <main class="site-main">
+  <main class="site-main site-main--home">
     <div class="mobile-home-menu" id="mobileHomeMenu" aria-label="모바일 홈 메뉴">
       <div class="mobile-home-menu__header">
-        <a href="/board.html" class="mobile-home-menu__search" aria-label="가이드 검색">검색</a>
+        <form class="home-search-bar" id="homeSearchForm" action="#" method="get" role="search">
+          <input type="text" name="q" id="homeSearchInput" class="home-search-bar__input" placeholder="피드 글 검색" autocomplete="off" aria-label="피드 글 검색">
+          <span class="home-search-bar__dropdown-icon" aria-hidden="true">▼</span>
+          <button type="submit" class="home-search-bar__submit" aria-label="검색"><span class="home-search-bar__submit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span></button>
+        </form>
       </div>
       <nav class="mobile-home-menu__grid" aria-label="서비스 메뉴">
         <a href="/chat.html" class="mobile-home-menu__item">
@@ -51,9 +55,8 @@
           <span class="mobile-home-menu__icon" aria-hidden="true">✅</span>
           <span class="mobile-home-menu__label">가이드</span>
         </a>
-        <!-- 배당 조회 메뉴 잠시 비활성화 (활성화 시 아래 style 제거) -->
-        <a href="/calculator.html" class="mobile-home-menu__item" style="display:none;">
-          <span class="mobile-home-menu__icon" aria-hidden="true">🔍</span>
+        <a href="/calculator.html" class="mobile-home-menu__item" aria-label="배당 조회">
+          <span class="mobile-home-menu__icon mobile-home-menu__icon--search" aria-hidden="true">🔍</span>
           <span class="mobile-home-menu__label">배당 조회</span>
         </a>
         <a href="/tornado-news.html" class="mobile-home-menu__item">
@@ -130,6 +133,7 @@
         </div>
       </div>
       <p class="text-muted feed-loading" id="feedLoading">불러오는 중…</p>
+      <div id="feedSearchHint" class="feed-search-hint" style="display:none;">검색: "<span id="feedSearchQueryText"></span>" <a href="#" id="feedSearchClear">전체 보기</a></div>
       <p class="text-muted feed-empty" id="feedEmpty" style="display:none;">아직 글이 없습니다. 첫 글을 올려 보세요!</p>
       <div id="feedList" class="feed-list" aria-live="polite"></div>
       <div class="feed-more-wrap" id="feedMoreWrap" style="display:none;">
@@ -342,10 +346,16 @@
         var feedEmpty = document.getElementById('feedEmpty');
         var feedMoreWrap = document.getElementById('feedMoreWrap');
         var feedMoreBtn = document.getElementById('feedMoreBtn');
+        var feedSearchHint = document.getElementById('feedSearchHint');
+        var feedSearchQueryText = document.getElementById('feedSearchQueryText');
+        var feedSearchClear = document.getElementById('feedSearchClear');
+        var homeSearchForm = document.getElementById('homeSearchForm');
+        var homeSearchInput = document.getElementById('homeSearchInput');
         var FEED_PAGE_SIZE = 20;
         var currentOffset = 0;
         var totalLoaded = 0;
         var totalPosts = 0;
+        var currentSearchQuery = '';
         var feedPostsById = {};
 
         function escapeHtml(s) {
@@ -390,7 +400,8 @@
           if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
           footer += '</div>';
           var topActionsHtml = (!isMine && myId) ? '<div class="feed-card__top-actions"><button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '">❤️ 보내기</button></div>' : '';
-          var adminDeleteBtn = isAdmin ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑 삭제</button></div>' : '';
+          var showDeleteBtn = isAdmin || isMine;
+          var deleteBtn = showDeleteBtn ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑 삭제</button></div>' : '';
           var commentsHtml = '<div class="feed-card__comments">댓글 ' + comments.length + '개</div>';
           var cardInner =
             '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '" data-author-id="' + escapeHtml(p.authorId || '') + '">' +
@@ -416,21 +427,32 @@
                 '</div>' +
               '</a>' +
             '</article>';
-          return isAdmin ? '<div class="feed-card-wrap">' + cardInner + adminDeleteBtn + '</div>' : cardInner;
+          return showDeleteBtn ? '<div class="feed-card-wrap">' + cardInner + deleteBtn + '</div>' : cardInner;
         }
-        function loadFeed(append) {
-          if (!append) { currentOffset = 0; totalLoaded = 0; }
+        function loadFeed(append, searchQuery) {
+          if (!append) { currentOffset = 0; totalLoaded = 0; currentSearchQuery = searchQuery || ''; }
+          var q = append ? currentSearchQuery : (searchQuery || '');
           if (!append && feedLoading) feedLoading.style.display = 'block';
           if (!append && feedEmpty) feedEmpty.style.display = 'none';
-          fetch('/api/feed?limit=' + FEED_PAGE_SIZE + '&offset=' + currentOffset, { credentials: 'same-origin' })
+          if (!append && feedSearchHint) feedSearchHint.style.display = q ? 'block' : 'none';
+          if (!append && q && feedSearchQueryText) feedSearchQueryText.textContent = q;
+          var url = '/api/feed?limit=' + FEED_PAGE_SIZE + '&offset=' + currentOffset;
+          if (q) url += '&q=' + encodeURIComponent(q);
+          fetch(url, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
               if (feedLoading) feedLoading.style.display = 'none';
-              if (!data.ok) { if (feedEmpty) feedEmpty.style.display = 'block'; return; }
+              if (!data.ok) {
+                if (feedEmpty) { feedEmpty.textContent = '불러오기에 실패했습니다.'; feedEmpty.style.display = 'block'; }
+                return;
+              }
               var posts = data.posts || [];
               totalPosts = data.total != null ? data.total : totalLoaded + posts.length;
               if (posts.length === 0 && !append) {
-                if (feedEmpty) feedEmpty.style.display = 'block';
+                if (feedEmpty) {
+                  feedEmpty.textContent = currentSearchQuery ? '검색 결과가 없습니다.' : '아직 글이 없습니다. 첫 글을 올려 보세요!';
+                  feedEmpty.style.display = 'block';
+                }
                 return;
               }
               if (feedEmpty) feedEmpty.style.display = 'none';
@@ -458,7 +480,31 @@
               if (feedEmpty) { feedEmpty.textContent = '불러오기에 실패했습니다.'; feedEmpty.style.display = 'block'; }
             });
         }
-        loadFeed(false);
+        var initialQ = (new URLSearchParams(window.location.search)).get('q') || '';
+        if (homeSearchInput && initialQ) homeSearchInput.value = initialQ;
+        currentSearchQuery = initialQ;
+        loadFeed(false, initialQ);
+
+        if (homeSearchForm && homeSearchInput) {
+          homeSearchForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var q = (homeSearchInput.value || '').trim();
+            var path = window.location.pathname || '/';
+            var newUrl = q ? path + '?q=' + encodeURIComponent(q) : path;
+            history.replaceState(null, '', newUrl);
+            currentSearchQuery = q;
+            loadFeed(false, q);
+          });
+        }
+        if (feedSearchClear) {
+          feedSearchClear.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (homeSearchInput) homeSearchInput.value = '';
+            history.replaceState(null, '', window.location.pathname || '/');
+            currentSearchQuery = '';
+            loadFeed(false);
+          });
+        }
 
         if (feedList) {
           var feedDeleteLayer = document.getElementById('feedDeleteConfirmLayer');

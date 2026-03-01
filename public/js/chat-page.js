@@ -20,7 +20,7 @@
         var lastShownItemUseAt = null;
         var itemUsedToastTimer = null;
         var itemUsedToastQueue = [];
-        var CHAT_ITEM_NAMES = { pinMessage: '상단 고정 메시지', rewardParty: '리워드 파티', risePrayer: '떡상 기원', broom: '빗자루' };
+        var CHAT_ITEM_NAMES = { pinMessage: '고정 메시지', rewardParty: '배당 파티', risePrayer: '떡상 기원', broom: '빗자루' };
         // 채팅 아이템 오버레이 ID 목록 — 애니메이션/수정 시 이 목록과 아래 애니메이션 함수만 손대면 됨. 새 아이템 추가 시 여기에 overlay id 추가.
         var CHAT_ITEM_OVERLAY_IDS = ['chatRewardPartyOverlay', 'chatRisePrayerOverlay', 'chatBroomOverlay'];
         function isAnyChatItemOverlayVisible() {
@@ -33,7 +33,7 @@
         function showItemUsedToast(displayName, itemKey, onDone) {
           var itemName = CHAT_ITEM_NAMES[itemKey] || itemKey || '아이템';
           var name = (displayName || '').trim() || '알 수 없음';
-          var html = '<span class="chat-item-used-toast__name">' + escapeHtml(name) + '</span> 님이 <span class="chat-item-used-toast__item">' + escapeHtml(itemName) + '</span> 아이템을 사용!';
+          var html = '<span class="chat-item-used-toast__name">' + escapeHtml(name) + '</span> 님이 <span class="chat-item-used-toast__item">' + escapeHtml(itemName) + '</span> 아이템 사용!';
           var el = document.getElementById('chatItemUsedToast');
           if (!el) { if (onDone) onDone(); return; }
           if (itemUsedToastTimer) clearTimeout(itemUsedToastTimer);
@@ -356,12 +356,12 @@
           if (inCooldown) html += '<div class="chat-item-menu-cooldown">' + cooldownSec + '초 후 사용 가능</div>';
           if (pinMessageN > 0) {
             html += '<div class="chat-item-row chat-item-row--left">';
-            for (var p = 0; p < pinMessageN; p++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="pinMessage" title="상단 고정 메시지"' + (inCooldown ? ' disabled' : '') + '>📌</button>';
+            for (var p = 0; p < pinMessageN; p++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="pinMessage" title="고정 메시지"' + (inCooldown ? ' disabled' : '') + '>📌</button>';
             html += '</div>';
           }
           if (rewardPartyN > 0) {
             html += '<div class="chat-item-row chat-item-row--left">';
-            for (var r = 0; r < rewardPartyN; r++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="rewardParty" title="리워드 파티"' + (inCooldown ? ' disabled' : '') + '>🚁</button>';
+            for (var r = 0; r < rewardPartyN; r++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="rewardParty" title="배당 파티"' + (inCooldown ? ' disabled' : '') + '>🚁</button>';
             html += '</div>';
           }
           if (risePrayerN > 0) {

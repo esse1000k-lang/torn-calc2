@@ -15,23 +15,58 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
   <style>
-    .shop-page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 3rem; position: relative; z-index: 1; }
+    .shop-page { max-width: 900px; margin: 0 auto; padding: 0.5rem 1rem 3rem; position: relative; z-index: 1; }
     .shop-hero {
       text-align: center; margin-bottom: 2rem;
       background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(0, 255, 136, 0.06) 50%, transparent 100%);
       border: 1px solid rgba(255, 215, 0, 0.2);
       border-radius: 16px;
       padding: 1.75rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .shop-hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.08), transparent);
+      animation: shop-shine 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes shop-shine {
+      0%, 100% { transform: translateX(0); opacity: 0; }
+      50% { transform: translateX(200%); opacity: 1; }
     }
     .shop-hero h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem 0; }
     .shop-hero p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
-    .shop-balance {
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-      padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+    .shop-balance-row { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .shop-balance-box, .shop-items-box {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem;
+      padding: 1rem 1.25rem;
       background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); border-radius: 12px;
-      border-left: 4px solid var(--neon);
-      font-size: 1.1rem; font-weight: 600; color: var(--text);
+      font-size: 1rem; font-weight: 600; color: var(--text);
+      position: relative;
+      overflow: hidden;
     }
+    .shop-balance-box::before, .shop-items-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+      animation: shop-shine 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .shop-items-box::before { animation-delay: 0.8s; }
+    .shop-balance-box { border-left: 4px solid #e53935; }
+    .shop-items-box { border-left: 4px solid var(--neon); }
+    .shop-balance-box__label, .shop-items-box__label { color: var(--text-muted); font-weight: 500; margin-right: 0.25rem; }
+    .shop-balance { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; }
     .shop-balance .heart { color: #ff6b9d; }
     .shop-section-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem 0; }
     .shop-category { margin-bottom: 2rem; }
@@ -60,16 +95,10 @@
     .shop-item-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .shop-login-msg { text-align: center; padding: 2rem; color: var(--text-muted); }
     .shop-login-msg a { color: var(--neon); text-decoration: none; }
-    .shop-items-wrap {
-      display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem;
-      padding: 0.75rem 1rem; margin-bottom: 1.5rem;
-      background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); border-radius: 10px;
-      font-size: 0.9rem;
-    }
-    .shop-items-label { color: var(--text-muted); font-weight: 500; }
-    .shop-items-list { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; color: var(--text); }
-    .shop-items-list .shop-item-badge { display: inline-flex; align-items: center; gap: 0.35rem; }
-    .shop-items-empty { color: var(--text-muted); font-size: 0.85rem; }
+    .shop-items-wrap { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 0.75rem; margin: 0; padding: 0; font-size: inherit; }
+    .shop-items-list { display: inline-flex; flex-wrap: wrap; gap: 0 0.75rem; color: var(--text); }
+    .shop-items-list .shop-item-badge { display: inline-flex; align-items: center; gap: 0.2rem; }
+    .shop-items-empty { color: var(--text-muted); font-size: 0.9rem; font-weight: 400; }
     .shop-buy-modal { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
     .shop-buy-modal.is-open { display: flex; }
     .shop-buy-modal__box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; min-width: 280px; max-width: 90vw; }
@@ -95,6 +124,54 @@
     .shop-toast-modal__actions { display: flex; justify-content: flex-end; }
     .shop-toast-modal__btn { padding: 0.5rem 1.25rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; background: var(--neon); color: var(--bg-dark); }
     .shop-toast-modal__btn:hover { background: var(--neon-dim); }
+
+    /* 상점 → 채팅방 플로팅 버튼 (최하단 중앙) — 구름처럼 둥둥 */
+    @keyframes shop-float-bob {
+      0%, 100% { transform: translate(-50%, 0); }
+      50% { transform: translate(-50%, -10px); }
+    }
+    .shop-float-chat {
+      position: fixed;
+      left: 50%;
+      bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem));
+      transform: translateX(-50%);
+      z-index: 90;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--neon);
+      text-decoration: none;
+      background: rgba(10, 10, 11, 0.92);
+      border: 2px solid var(--neon);
+      border-radius: 999px;
+      box-shadow: 0 0 0 0 var(--neon-glow), 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: box-shadow 0.25s ease, border-color 0.2s ease, color 0.2s ease;
+      backdrop-filter: blur(8px);
+      -webkit-tap-highlight-color: transparent;
+      animation: shop-float-bob 4s ease-in-out infinite;
+    }
+    .shop-float-chat:hover {
+      animation-play-state: paused;
+      transform: translate(-50%, 0) scale(1.06);
+      transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease, color 0.2s ease;
+      box-shadow: 0 0 24px var(--neon-glow), 0 0 40px rgba(0, 255, 136, 0.15), 0 6px 24px rgba(0, 0, 0, 0.45);
+      border-color: var(--neon);
+      color: var(--text);
+      background: rgba(0, 255, 136, 0.12);
+    }
+    .shop-float-chat:active {
+      transform: translate(-50%, 0) scale(1.02);
+    }
+    .shop-float-chat__icon {
+      font-size: 1.15em;
+      line-height: 1;
+      opacity: 0.95;
+    }
   </style>
 </head>
 <body>
@@ -112,16 +189,21 @@
   <div class="shop-page">
     <div class="shop-hero">
       <h1>상점</h1>
-      <p>모은 하트로 채팅·게시판 등 다양한 아이템을 구매하세요.</p>
+      <p>다양한 아이템을 구매하세요.</p>
     </div>
 
-    <div id="shopBalanceWrap" class="shop-balance" style="display:none;">
-      <span class="heart" aria-hidden="true">❤️</span>
-      <span>보유 하트: <strong id="shopMyHearts">0</strong>개</span>
-    </div>
-    <div id="shopItemsWrap" class="shop-items-wrap" style="display:none;">
-      <span class="shop-items-label">보유 아이템</span>
-      <span id="shopItemsList" class="shop-items-list"></span>
+    <div id="shopBalanceWrap" class="shop-balance-row" style="display:none;">
+      <div class="shop-balance-box">
+        <span class="shop-balance-box__label">보유 하트 :</span>
+        <div class="shop-balance">
+          <span class="heart" aria-hidden="true">❤️</span>
+          <span><strong id="shopMyHearts">0</strong></span>
+        </div>
+      </div>
+      <div id="shopItemsWrap" class="shop-items-box" style="display:none;">
+        <span class="shop-items-box__label">보유 아이템 :</span>
+        <span id="shopItemsList" class="shop-items-list"></span>
+      </div>
     </div>
     <p id="shopLoginMsg" class="shop-login-msg" style="display:none;">
       로그인하면 보유 하트를 확인하고 아이템을 구매할 수 있습니다. <a href="/login.html">로그인</a>
@@ -131,13 +213,13 @@
       <h2 id="shop-category-chat" class="shop-section-title">채팅</h2>
       <div id="shopItemList" class="shop-item-grid">
         <div class="shop-item-card" data-item-id="pinMessage" data-cost="15">
-          <p class="shop-item-name">상단 고정 메시지</p>
+          <p class="shop-item-name">고정 메시지</p>
           <p class="shop-item-desc">채팅 상단에 1시간 동안 고정</p>
           <p class="shop-item-price"><span class="heart">❤️</span> 15 → 📌 1</p>
           <button type="button" class="shop-item-btn" data-exchange="pinMessage">구매</button>
         </div>
         <div class="shop-item-card" data-item-id="rewardParty" data-cost="1">
-          <p class="shop-item-name">리워드 파티</p>
+          <p class="shop-item-name">배당 파티</p>
           <p class="shop-item-desc">배당 축하 애니메이션</p>
           <p class="shop-item-price"><span class="heart">❤️</span> 1 → 🚁 1</p>
           <button type="button" class="shop-item-btn" data-exchange="rewardParty">구매</button>
@@ -181,6 +263,11 @@
     </div>
   </div>
 
+  <a href="/chat.html" class="shop-float-chat" aria-label="채팅방으로 이동">
+    <span class="shop-float-chat__icon" aria-hidden="true">💬</span>
+    <span>채팅방으로</span>
+  </a>
+
   <script src="js/auth.js"></script>
   <script src="js/nav-logo.js"></script>
   <script>
@@ -216,15 +303,15 @@
         lastShopItems = shopItems && typeof shopItems === 'object' ? shopItems : {};
         var items = [];
         var pinMessage = (lastShopItems.pinMessage != null && typeof lastShopItems.pinMessage === 'number') ? lastShopItems.pinMessage : 0;
-        if (pinMessage > 0) items.push('<span class="shop-item-badge">📌 상단 고정 메시지 <strong>' + pinMessage + '</strong>개</span>');
+        if (pinMessage > 0) items.push('<span class="shop-item-badge" title="고정 메시지">📌 <strong>' + pinMessage + '</strong></span>');
         var rewardParty = (lastShopItems.rewardParty != null && typeof lastShopItems.rewardParty === 'number') ? lastShopItems.rewardParty : 0;
-        if (rewardParty > 0) items.push('<span class="shop-item-badge">🚁 리워드 파티 <strong>' + rewardParty + '</strong>개</span>');
+        if (rewardParty > 0) items.push('<span class="shop-item-badge" title="배당 파티">🚁 <strong>' + rewardParty + '</strong></span>');
         var risePrayer = (lastShopItems.risePrayer != null && typeof lastShopItems.risePrayer === 'number') ? lastShopItems.risePrayer : 0;
-        if (risePrayer > 0) items.push('<span class="shop-item-badge">🙏 떡상 기원 <strong>' + risePrayer + '</strong>개</span>');
+        if (risePrayer > 0) items.push('<span class="shop-item-badge" title="떡상 기원">🙏 <strong>' + risePrayer + '</strong></span>');
         var broom = (lastShopItems.broom != null && typeof lastShopItems.broom === 'number') ? lastShopItems.broom : 0;
-        if (broom > 0) items.push('<span class="shop-item-badge">🧹 빗자루 <strong>' + broom + '</strong>개</span>');
+        if (broom > 0) items.push('<span class="shop-item-badge" title="빗자루">🧹 <strong>' + broom + '</strong></span>');
         shopItemsList.innerHTML = items.length ? items.join('') : '<span class="shop-items-empty">보유한 아이템이 없습니다.</span>';
-        if (shopItemsWrap) shopItemsWrap.style.display = 'flex';
+        if (shopItemsWrap) shopItemsWrap.style.display = 'inline-flex';
       }
 
       function loadBalance() {

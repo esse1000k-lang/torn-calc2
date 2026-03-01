@@ -37,18 +37,11 @@
     .board-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .back-link { display: inline-block; margin-bottom: 1rem; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
     .back-link:hover { color: var(--neon); }
-    .board-vote { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-    .board-vote .counts { font-size: 0.9rem; color: var(--text-muted); }
-    .board-vote .vote-btn { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer; }
-    .board-vote .vote-btn:hover { border-color: var(--neon); color: var(--neon); }
-    .board-vote .vote-btn.active-like { border-color: var(--neon); color: var(--neon); }
-    .board-donate-btn { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--neon); color: var(--neon); border-radius: 4px; cursor: pointer; margin-left: 0.5rem; }
-    .board-donate-btn:hover { background: rgba(0, 255, 136, 0.1); }
-    .board-donate-layer { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
-    .board-donate-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; max-width: 320px; width: 90%; }
-    .board-donate-box h3 { font-size: 1rem; color: var(--neon); margin-bottom: 0.75rem; }
-    .board-donate-box input { width: 100%; padding: 0.6rem; margin-bottom: 1rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); }
-    .board-donate-box .err { font-size: 0.85rem; color: var(--danger); margin-bottom: 0.5rem; }
+    .board-hearts { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .board-hearts .counts { font-size: 0.9rem; color: var(--text-muted); }
+    .board-hearts .heart-btn { padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer; }
+    .board-hearts .heart-btn:hover:not(:disabled) { border-color: #ff6b9d; color: #ff6b9d; }
+    .board-hearts .heart-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .board-edit-btn { margin-top: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; }
     .board-edit-btn:hover { border-color: var(--neon); color: var(--neon); }
     .board-edit-form { margin-top: 1rem; padding: 1rem; background: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border); }
@@ -79,7 +72,7 @@
       <p id="detailMeta" class="meta"></p>
       <div id="detailBody" class="body"></div>
       <div id="detailImages" class="board-detail-images"></div>
-      <div id="boardVote" class="board-vote" style="display:none;"></div>
+      <div id="boardHearts" class="board-hearts" style="display:none;"></div>
       <button type="button" id="btnEdit" class="board-edit-btn" style="display:none;">수정</button>
       <div id="boardEditForm" class="board-edit-form" style="display:none;">
         <input type="text" id="editTitle" placeholder="제목" maxlength="200">
@@ -136,7 +129,7 @@
       var btnWrite = document.getElementById('btnWrite');
       var navAdminCenter = document.getElementById('navAdminCenter');
       var navMenuBtn = document.getElementById('navMenuBtn');
-      var boardVote = document.getElementById('boardVote');
+      var boardHearts = document.getElementById('boardHearts');
       var btnEdit = document.getElementById('btnEdit');
       var boardEditForm = document.getElementById('boardEditForm');
       var editTitle = document.getElementById('editTitle');
@@ -196,43 +189,42 @@
         }
 
         var user = window.TornFiAuth.getUser();
-        var isAuthor = user && post.authorId === user.id;
-        var likeCount = post.likeCount != null ? post.likeCount : 0;
-        var userVote = post.userVote || null;
+        var isAuthor = user && String(post.authorId) === String(user.id);
+        var heartsReceived = post.heartsReceived != null ? post.heartsReceived : 0;
 
         btnEdit.style.display = isAuthor ? 'inline-block' : 'none';
-        boardVote.style.display = 'block';
-        var voteHtml = '<span class="counts">👍 ' + likeCount + '</span>';
-        voteHtml += '<button type="button" class="vote-btn' + (userVote === 'like' ? ' active-like' : '') + '" data-vote="like">👍 좋아요</button>';
-        boardVote.innerHTML = voteHtml;
-        boardVote.querySelectorAll('.vote-btn').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var type = this.getAttribute('data-vote');
-            if (!type || !currentPost) return;
-            if (!user) {
-              alert('로그인한 회원만 좋아요를 누를 수 있습니다.');
-              return;
-            }
-            fetch('/api/posts/' + currentPost.id + '/vote', {
+        boardHearts.style.display = 'block';
+        var heartHtml = '<span class="counts">❤️ 받은 하트 ' + heartsReceived + '</span>';
+        if (user && !isAuthor) {
+          heartHtml += '<button type="button" class="heart-btn" id="boardSendHeartBtn">❤️ 하트 보내기</button>';
+        }
+        boardHearts.innerHTML = heartHtml;
+        var sendHeartBtn = document.getElementById('boardSendHeartBtn');
+        if (sendHeartBtn && currentPost) {
+          sendHeartBtn.addEventListener('click', function () {
+            if (!currentPost || sendHeartBtn.disabled) return;
+            sendHeartBtn.disabled = true;
+            fetch('/api/posts/' + encodeURIComponent(currentPost.id) + '/send-heart', {
               method: 'POST',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: type }),
+              body: '{}',
             })
               .then(function (r) { return r.json(); })
               .then(function (data) {
                 if (data.ok) {
-                  fetch('/api/posts/' + currentPost.id, { credentials: 'same-origin' })
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) {
-                      if (d.ok && d.post) showDetail(d.post);
-                    });
+                  var cnt = document.querySelector('#boardHearts .counts');
+                  if (cnt) cnt.textContent = '❤️ 받은 하트 ' + (data.heartsReceived != null ? data.heartsReceived : (heartsReceived + 1));
+                  sendHeartBtn.disabled = false;
+                  if (data.message) alert(data.message);
                 } else {
+                  sendHeartBtn.disabled = false;
                   if (data.message) alert(data.message);
                 }
-              });
+              })
+              .catch(function () { sendHeartBtn.disabled = false; });
           });
-        });
+        }
       }
 
       function showWriteForm() {
@@ -260,16 +252,18 @@
               return;
             }
             boardEmpty.style.display = 'none';
-            boardList.innerHTML = posts.map(function (p) {
+            var postsWithId = posts.filter(function (p) { return p.id != null && String(p.id).trim() !== ''; });
+            boardList.innerHTML = postsWithId.map(function (p) {
+              var id = String(p.id);
               var date = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ko-KR') : '';
-              var likeCount = p.likeCount != null ? p.likeCount : 0;
-              return '<a href="/board.html#' + p.id + '" class="board-row" data-id="' + p.id + '"><div class="title">' + escapeHtml(p.title) + '</div><div class="meta">' + escapeHtml(p.authorDisplayName || '—') + ' · ' + date + ' · 👍 ' + likeCount + '</div></a>';
+              var heartsReceived = p.heartsReceived != null ? p.heartsReceived : 0;
+              return '<a href="/board.html#' + encodeURIComponent(id) + '" class="board-row" data-id="' + escapeHtml(id) + '"><div class="title">' + escapeHtml(p.title) + '</div><div class="meta">' + escapeHtml(p.authorDisplayName || '—') + ' · ' + date + ' · ❤️ ' + heartsReceived + '</div></a>';
             }).join('');
             boardList.querySelectorAll('.board-row').forEach(function (el) {
               el.addEventListener('click', function (e) {
                 e.preventDefault();
                 var id = el.getAttribute('data-id');
-                if (id) window.location.hash = id;
+                if (id) window.location.hash = encodeURIComponent(id);
               });
             });
           });
@@ -283,7 +277,8 @@
       }
 
       function applyHash() {
-        var id = (window.location.hash || '').replace(/^#/, '');
+        var raw = (window.location.hash || '').replace(/^#/, '');
+        var id = raw ? (function () { try { return decodeURIComponent(raw); } catch (e) { return raw; } })() : '';
         if (id) {
           fetch('/api/posts/' + id, { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
