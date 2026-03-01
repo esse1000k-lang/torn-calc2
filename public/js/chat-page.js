@@ -16,6 +16,7 @@
         var chatItemSelectWrap = document.getElementById('chatItemSelectWrap');
         var LEVEL_EMOJI = { 1: '🐚', 2: '🦐', 3: '🐡', 4: '🦭', 5: '🦈', 6: '🐋' };
         var lastMessageCount = 0;
+        var chatPageIsAdmin = false;
         var lastShownItemUseAt = null;
         var itemUsedToastTimer = null;
         var itemUsedToastQueue = [];
@@ -233,22 +234,24 @@
           return out || escapeHtml(s);
         }
 
-        function renderMessages(messages, effectiveMyIdFromServer) {
+        function renderMessages(messages, effectiveMyIdFromServer, isViewerAdmin) {
           if (!Array.isArray(messages) || messages.length === 0) {
             chatMessages.innerHTML = '<p class="chat-empty">메시지가 없습니다.</p>';
             return;
           }
           var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
           var myId = effectiveMyIdFromServer != null ? effectiveMyIdFromServer : me.id;
+          var isAdmin = !!isViewerAdmin;
           var existingRows = chatMessages.querySelectorAll('.chat-msg');
           if (messages.length === lastMessageCount && existingRows.length > 0) return;
+          var wasNearBottom = (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < 150;
           lastMessageCount = messages.length;
           var placeholderAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36"><circle fill="%231a1a1e" cx="18" cy="18" r="18"/><circle fill="%236b7280" cx="18" cy="14" r="5"/><path fill="%236b7280" d="M6 32c0-8 5.3-14 12-14s12 6 12 14H6z"/></svg>');
           chatMessages.innerHTML = messages.map(function (m, idx) {
             var time = m.createdAt ? new Date(m.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '';
             var name = (m.displayName || '').trim() || '알 수 없음';
             var levelEmoji = LEVEL_EMOJI[(m.level >= 1 && m.level <= 6) ? m.level : 0] || '';
-            var isMine = !!(m.userId && myId && m.userId === myId);
+            var isMine = !!(m.userId != null && myId != null && String(m.userId) === String(myId));
             var sideClass = isMine ? 'chat-msg--mine' : 'chat-msg--other';
             var adminClass = m.isAdmin ? ' chat-msg--admin' : '';
             var avatarUrl = (m.profileImageUrl && m.profileImageUrl.trim()) ? m.profileImageUrl : placeholderAvatar;
@@ -269,6 +272,7 @@
               actions += '<button type="button" class="chat-msg__action-btn" data-action="edit">수정</button><button type="button" class="chat-msg__action-btn" data-action="delete">삭제</button>';
             } else {
               actions += '<button type="button" class="chat-msg__action-btn" data-action="sendHeart" title="하트 보내기">❤️</button>';
+              if (isAdmin) actions += '<button type="button" class="chat-msg__action-btn" data-action="delete" title="관리자 삭제">삭제</button>';
             }
             var actionsRow = '<div class="chat-msg__actions">' + actions + '</div>';
             var body = '<div class="chat-msg__body">' + bubble + heartsBelow + actionsRow + '</div>';
@@ -278,10 +282,26 @@
             if (isMine) return '<div class="' + msgClass + '"' + dataId + '>' + body + avatarImg + '</div>';
             return '<div class="' + msgClass + '"' + dataId + '>' + avatarImg + body + '</div>';
           }).join('');
-          chatMessages.scrollTop = chatMessages.scrollHeight;
+          if (wasNearBottom) chatMessages.scrollTop = chatMessages.scrollHeight;
           var imgs = chatMessages.querySelectorAll('.chat-msg__img');
           for (var i = 0; i < imgs.length; i++) {
-            if (!imgs[i].complete) imgs[i].addEventListener('load', function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; });
+            (function (img) {
+              if (!img.complete) img.addEventListener('load', function () {
+                if ((chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < 200) chatMessages.scrollTop = chatMessages.scrollHeight;
+              });
+              img.addEventListener('error', function () {
+                if (img._chatImgFailed) return;
+                img._chatImgFailed = true;
+                img.style.display = 'none';
+                var wrap = img.closest('.chat-msg__img-wrap');
+                if (wrap) {
+                  var fallback = document.createElement('span');
+                  fallback.className = 'chat-msg__img-fallback';
+                  fallback.textContent = '이미지를 불러올 수 없습니다.';
+                  wrap.appendChild(fallback);
+                }
+              });
+            })(imgs[i]);
           }
         }
 
@@ -413,13 +433,14 @@
                 }
                 processItemUsedToastQueue();
               }
-              if (data.ok && data.messages) {
-                if (!isAnyChatItemOverlayVisible()) renderMessages(data.messages, effectiveMyId);
-              }
               if (data.ok) {
                 if (typeof data.myHearts === 'number') myHearts = data.myHearts;
                 if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
+                chatPageIsAdmin = !!(data.me && data.me.isAdmin);
                 updateChatItemMenu(lastMyShopItems);
+              }
+              if (data.ok && data.messages) {
+                if (!isAnyChatItemOverlayVisible()) renderMessages(data.messages, effectiveMyId, chatPageIsAdmin);
               }
               function applyGuestOrLoggedIn(resolvedId) {
                 if (chatGuestNotice) {
@@ -460,7 +481,8 @@
                     if (meData && meData.ok && meData.user && window.TornFiAuth && window.TornFiAuth.setUser) {
                       window.TornFiAuth.setUser(meData.user);
                     }
-                    if (id && data.ok && data.messages && !isAnyChatItemOverlayVisible()) renderMessages(data.messages, id);
+                    var isAdminFromMe = !!(meData && meData.ok && meData.user && meData.user.isAdmin);
+                    if (id && data.ok && data.messages && !isAnyChatItemOverlayVisible()) renderMessages(data.messages, id, isAdminFromMe);
                     applyGuestOrLoggedIn(id);
                   })
                   .catch(function () { applyGuestOrLoggedIn(null); });
@@ -475,8 +497,12 @@
                   pinnedMetaEl.textContent = exp ? metaStr + ' · ' + exp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + '까지' : metaStr;
                 }
                 chatPinnedWrap.style.display = 'block';
+                var chatPinnedUnpinBtn = document.getElementById('chatPinnedUnpinBtn');
+                if (chatPinnedUnpinBtn) chatPinnedUnpinBtn.style.display = chatPageIsAdmin ? 'inline-block' : 'none';
               } else if (chatPinnedWrap) {
                 chatPinnedWrap.style.display = 'none';
+                var chatPinnedUnpinBtn = document.getElementById('chatPinnedUnpinBtn');
+                if (chatPinnedUnpinBtn) chatPinnedUnpinBtn.style.display = 'none';
               }
             })
             .catch(function () {});
@@ -657,6 +683,90 @@
           }
         }
 
+        var chatEditModal = document.getElementById('chatEditModal');
+        var chatEditModalInput = document.getElementById('chatEditModalInput');
+        var chatEditModalCancel = document.getElementById('chatEditModalCancel');
+        var chatEditModalConfirm = document.getElementById('chatEditModalConfirm');
+        var pendingEditMsgId = null;
+        var pendingEditOriginalText = '';
+        function closeEditModal() {
+          pendingEditMsgId = null;
+          pendingEditOriginalText = '';
+          if (chatEditModal) chatEditModal.style.display = 'none';
+        }
+        function openEditModal(msgId, currentText) {
+          pendingEditMsgId = msgId;
+          pendingEditOriginalText = currentText || '';
+          if (chatEditModalInput) { chatEditModalInput.value = pendingEditOriginalText; chatEditModalInput.focus(); }
+          if (chatEditModal) chatEditModal.style.display = 'flex';
+        }
+        if (chatEditModal) {
+          var editBackdrop = chatEditModal.querySelector('.chat-edit-modal__backdrop');
+          if (editBackdrop) editBackdrop.addEventListener('click', closeEditModal);
+          if (chatEditModalCancel) chatEditModalCancel.addEventListener('click', closeEditModal);
+          if (chatEditModalConfirm && chatEditModalInput) {
+            chatEditModalConfirm.addEventListener('click', function () {
+              var newText = (chatEditModalInput.value || '').trim();
+              if (newText === pendingEditOriginalText.trim()) { closeEditModal(); return; }
+              if (newText.length === 0) { alert('내용을 입력해 주세요.'); return; }
+              if (newText.length > 500) { alert('메시지는 500자 이내로 입력해 주세요.'); return; }
+              if (!pendingEditMsgId) { closeEditModal(); return; }
+              chatEditModalConfirm.disabled = true;
+              fetch('/api/chat/' + encodeURIComponent(pendingEditMsgId), {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: newText }),
+              })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                  chatEditModalConfirm.disabled = false;
+                  closeEditModal();
+                  if (data.ok) { lastMessageCount = 0; fetchChat(); }
+                  else if (data.message) alert(data.message);
+                })
+                .catch(function () { chatEditModalConfirm.disabled = false; });
+            });
+          }
+        }
+
+        var chatDeleteModal = document.getElementById('chatDeleteModal');
+        var chatDeleteModalCancel = document.getElementById('chatDeleteModalCancel');
+        var chatDeleteModalConfirm = document.getElementById('chatDeleteModalConfirm');
+        var pendingDeleteMsgId = null;
+        var pendingDeleteIsAdmin = false;
+        function closeDeleteModal() {
+          pendingDeleteMsgId = null;
+          pendingDeleteIsAdmin = false;
+          if (chatDeleteModal) chatDeleteModal.style.display = 'none';
+        }
+        function openDeleteModal(msgId, isAdminDelete) {
+          pendingDeleteMsgId = msgId;
+          pendingDeleteIsAdmin = !!isAdminDelete;
+          if (chatDeleteModal) chatDeleteModal.style.display = 'flex';
+        }
+        if (chatDeleteModal) {
+          var deleteBackdrop = chatDeleteModal.querySelector('.chat-delete-modal__backdrop');
+          if (deleteBackdrop) deleteBackdrop.addEventListener('click', closeDeleteModal);
+          if (chatDeleteModalCancel) chatDeleteModalCancel.addEventListener('click', closeDeleteModal);
+          if (chatDeleteModalConfirm) {
+            chatDeleteModalConfirm.addEventListener('click', function () {
+              if (!pendingDeleteMsgId) { closeDeleteModal(); return; }
+              var msgId = pendingDeleteMsgId;
+              var byAdmin = pendingDeleteIsAdmin;
+              closeDeleteModal();
+              var url = byAdmin ? ('/api/admin/chat/' + encodeURIComponent(msgId)) : ('/api/chat/' + encodeURIComponent(msgId));
+              fetch(url, { method: 'DELETE', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                  if (data.ok) { lastMessageCount = 0; fetchChat(); }
+                  else if (data.message) alert(data.message);
+                })
+                .catch(function () {});
+            });
+          }
+        }
+
         var chatAttach = document.getElementById('chatAttach');
         var chatImage = document.getElementById('chatImage');
         var chatPreviewWrap = document.getElementById('chatPreviewWrap');
@@ -667,7 +777,7 @@
           chatImage.addEventListener('change', function () {
             var file = chatImage.files && chatImage.files[0];
             if (!file || !file.type.match(/^image\/(jpeg|png|gif|webp)$/)) return;
-            if (file.size > 2 * 1024 * 1024) { alert('이미지는 2MB 이하로 선택해 주세요.'); chatImage.value = ''; return; }
+            if (file.size > 5 * 1024 * 1024) { alert('이미지는 5MB 이하로 선택해 주세요.'); chatImage.value = ''; return; }
             pendingChatFile = file;
             if (chatPreviewWrap && chatPreviewImg) {
               var url = URL.createObjectURL(file);
@@ -698,14 +808,24 @@
         function openChatMsgDropdown(bubbleEl) {
           var row = bubbleEl.closest('.chat-msg');
           if (!row) return;
-          var msgId = row.dataset.messageId;
+          var msgId = row.dataset.messageId || row.getAttribute('data-message-id');
           if (!msgId) return;
           var rect = bubbleEl.getBoundingClientRect();
           if (chatMsgDropdown) {
             chatMsgDropdown.classList.toggle('is-other', !row.classList.contains('chat-msg--mine'));
-            chatMsgDropdown.style.left = (rect.right - 100) + 'px';
-            chatMsgDropdown.style.top = (rect.bottom + 4) + 'px';
+            chatMsgDropdown.classList.toggle('is-admin', !!chatPageIsAdmin);
+            var menuWidth = 136;
+            var left = row.classList.contains('chat-msg--mine') ? (rect.right - menuWidth) : rect.left;
+            if (left < 8) left = 8;
+            chatMsgDropdown.style.left = left + 'px';
+            chatMsgDropdown.style.top = (rect.bottom + 6) + 'px';
             chatMsgDropdown.style.display = 'block';
+            var menuHeight = chatMsgDropdown.offsetHeight;
+            var spaceBelow = window.innerHeight - rect.bottom - 6;
+            var minSpace = 16;
+            if (spaceBelow < menuHeight + minSpace && rect.top >= menuHeight + minSpace) {
+              chatMsgDropdown.style.top = (rect.top - menuHeight - 6) + 'px';
+            }
           }
           openDropdownMsgId = msgId;
           openDropdownRow = row;
@@ -714,7 +834,8 @@
         function runDropdownAction(action) {
           if (!openDropdownMsgId || !openDropdownRow) return;
           var isMine = openDropdownRow.classList.contains('chat-msg--mine');
-          if ((action === 'edit' || action === 'delete') && !isMine) return;
+          if (action === 'edit' && !isMine) return;
+          if (action === 'delete' && !isMine && !chatPageIsAdmin) return;
           var textEl = openDropdownRow.querySelector('.chat-msg__text');
           var messageText = textEl ? textEl.textContent : '';
           var msgId = openDropdownMsgId;
@@ -743,36 +864,12 @@
             return;
           }
           if (action === 'edit') {
-            if (msgId.indexOf('idx-') === 0) { alert('이 메시지는 수정할 수 없습니다.'); return; }
-            var current = messageText || '';
-            var newText = prompt('메시지 수정', current);
-            if (newText === null || newText.trim() === current.trim()) return;
-            if (newText.trim().length === 0) { alert('내용을 입력해 주세요.'); return; }
-            if (newText.length > 500) { alert('메시지는 500자 이내로 입력해 주세요.'); return; }
-            fetch('/api/chat/' + encodeURIComponent(msgId), {
-                method: 'PATCH',
-              credentials: 'same-origin',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: newText.trim() }),
-            })
-              .then(function (r) { return r.json(); })
-              .then(function (data) {
-                if (data.ok) { lastMessageCount = 0; fetchChat(); }
-                else if (data.message) alert(data.message);
-              })
-              .catch(function () {});
+            openEditModal(msgId, messageText);
             return;
           }
           if (action === 'delete') {
-            if (msgId.indexOf('idx-') === 0) { alert('이 메시지는 삭제할 수 없습니다.'); return; }
-            if (!confirm('이 메시지를 삭제할까요?')) return;
-            fetch('/api/chat/' + encodeURIComponent(msgId), { method: 'DELETE', credentials: 'same-origin' })
-              .then(function (r) { return r.json(); })
-              .then(function (data) {
-                if (data.ok) { lastMessageCount = 0; fetchChat(); }
-                else if (data.message) alert(data.message);
-              })
-              .catch(function () {});
+            openDeleteModal(msgId, !isMine && chatPageIsAdmin);
+            return;
           }
         }
 
@@ -855,7 +952,8 @@
           var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
           if (!me.id) { alert('로그인 후 하트를 보낼 수 있습니다.'); return; }
           if (myHearts < 1) { alert('보유 하트가 없습니다.'); return; }
-          var msgId = row.dataset.messageId;
+          var msgId = row.dataset.messageId || row.getAttribute('data-message-id');
+          if (!msgId && row.id && row.id.indexOf('chat-msg-') === 0) msgId = row.id.slice(9);
           var nameEl = row.querySelector('.chat-msg__name');
           var recipientName = (nameEl && nameEl.textContent) ? nameEl.textContent.trim() : '이 사용자';
           if (!msgId) return;
@@ -892,7 +990,16 @@
         });
 
         document.addEventListener('click', function (e) {
-          if (!chatMessages || !chatMessages.contains(e.target)) return;
+          if (!chatMessages) return;
+          if (!chatMessages.contains(e.target) && !(e.target.closest && e.target.closest('#chatMsgDropdown'))) {
+            closeChatMsgDropdown();
+            return;
+          }
+          var bubble = e.target.closest && e.target.closest('.chat-msg__bubble');
+          if (bubble && !e.target.closest('.chat-msg__link')) {
+            openChatMsgDropdown(bubble);
+            return;
+          }
           var btn = e.target.closest && e.target.closest('.chat-msg__action-btn');
           if (btn) {
             e.preventDefault();
@@ -923,6 +1030,7 @@
             openLinkConfirmDropdown(linkEl);
             return;
           }
+          if (!e.target.closest('#chatMsgDropdown')) closeChatMsgDropdown();
         }, true);
 
         if (chatLinkConfirmGo) chatLinkConfirmGo.addEventListener('click', function () {
@@ -941,6 +1049,19 @@
             e.stopPropagation();
             var action = dropItem.getAttribute('data-action');
             if (action) runDropdownAction(action);
+          });
+        }
+
+        var chatPinnedUnpinBtn = document.getElementById('chatPinnedUnpinBtn');
+        if (chatPinnedUnpinBtn) {
+          chatPinnedUnpinBtn.addEventListener('click', function () {
+            fetch('/api/admin/chat/pinned', { method: 'DELETE', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) { lastMessageCount = 0; fetchChat(); }
+                else if (data.message) alert(data.message);
+              })
+              .catch(function () {});
           });
         }
 

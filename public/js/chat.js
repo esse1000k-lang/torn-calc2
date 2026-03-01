@@ -646,7 +646,7 @@
           chatImage.addEventListener('change', function () {
             var file = chatImage.files && chatImage.files[0];
             if (!file || !file.type.match(/^image\/(jpeg|png|gif|webp)$/)) return;
-            if (file.size > 2 * 1024 * 1024) { alert('이미지는 2MB 이하로 선택해 주세요.'); chatImage.value = ''; return; }
+            if (file.size > 5 * 1024 * 1024) { alert('이미지는 5MB 이하로 선택해 주세요.'); chatImage.value = ''; return; }
             pendingChatFile = file;
             if (chatPreviewWrap && chatPreviewImg) {
               var url = URL.createObjectURL(file);

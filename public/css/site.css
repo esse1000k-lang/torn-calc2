@@ -2772,7 +2772,7 @@ body::before {
 .chat-pinned-inner {
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   gap: 0.5rem 0.75rem;
   align-items: start;
   position: relative;
@@ -2787,7 +2787,7 @@ body::before {
 }
 .chat-pinned-text {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 2;
   min-width: 0;
   margin: 0;
   font-size: 0.95rem;
@@ -2801,7 +2801,7 @@ body::before {
 }
 .chat-pinned-meta {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   justify-self: end;
   font-size: 0.7rem;
   font-weight: 600;
@@ -2809,6 +2809,24 @@ body::before {
   text-transform: uppercase;
   color: rgba(0, 255, 136, 0.9);
   text-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+}
+.chat-pinned-unpin-btn {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 200, 100, 0.95);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 200, 100, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.chat-pinned-unpin-btn:hover {
+  background: rgba(255, 200, 100, 0.15);
+  border-color: rgba(255, 200, 100, 0.6);
 }
 
 .chat-pin-modal {
@@ -2890,6 +2908,144 @@ body::before {
 .chat-pin-modal__btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* 메시지 수정 모달 */
+.chat-edit-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.chat-edit-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+.chat-edit-modal__box {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  padding: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.chat-edit-modal__title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.chat-edit-modal__input {
+  width: 100%;
+  margin: 0 0 1rem 0;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+.chat-edit-modal__input:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+.chat-edit-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.chat-edit-modal__btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+.chat-edit-modal__btn--cancel:hover {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+.chat-edit-modal__btn--confirm {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+.chat-edit-modal__btn--confirm:hover:not(:disabled) {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+.chat-edit-modal__btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 메시지 삭제 확인 모달 */
+.chat-delete-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.chat-delete-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+.chat-delete-modal__box {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  padding: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.chat-delete-modal__title {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+.chat-delete-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.chat-delete-modal__btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+.chat-delete-modal__btn--cancel:hover {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+.chat-delete-modal__btn--confirm {
+  background: #e53935;
+  border-color: #e53935;
+  color: #fff;
+}
+.chat-delete-modal__btn--confirm:hover {
+  background: #c62828;
+  border-color: #c62828;
 }
 
 .chat-messages-area {
@@ -3145,33 +3301,12 @@ body::before {
   padding-left: 0;
   padding-right: 0.15rem;
 }
-.chat-msg--other .chat-msg__bubble {
+.chat-msg__bubble {
   cursor: pointer;
 }
+/* 말풍선 클릭 시 세로 메뉴로 동작하므로 인라인 버튼 영역 제거(템플릿에서 비움) */
 .chat-msg__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-top: 0.35rem;
-  align-items: center;
-}
-.chat-msg--mine .chat-msg__actions {
-  justify-content: flex-end;
-}
-.chat-msg__action-btn {
-  margin: 0;
-  padding: 0.2rem 0.5rem;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.chat-msg__action-btn:hover {
-  background: rgba(0, 255, 136, 0.12);
-  color: var(--neon);
+  display: none;
 }
 
 /* 하트 보내기 2차 확인 커스텀 모달 */
@@ -3391,7 +3526,7 @@ body::before {
   position: fixed;
   z-index: 100;
   min-width: 8.5rem;
-  padding: 0.5rem 0.5rem;
+  padding: 0.375rem 0.25rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -3401,21 +3536,23 @@ body::before {
 .chat-msg-dropdown__item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
   margin: 0;
   border: none;
   border-radius: 6px;
   background: transparent;
   color: var(--text);
   font-size: 0.875rem;
+  line-height: 1.25;
   text-align: left;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
 .chat-msg-dropdown__item + .chat-msg-dropdown__item {
-  margin-top: 0.125rem;
+  margin-top: 0.0625rem;
 }
 .chat-msg-dropdown__item:hover {
   background: rgba(0, 255, 136, 0.12);
@@ -3423,9 +3560,20 @@ body::before {
 }
 
 .chat-msg-dropdown__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
   font-size: 1rem;
   line-height: 1;
-  opacity: 0.9;
+  text-align: center;
+  opacity: 0.95;
+}
+.chat-msg-dropdown__icon--copy svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
 }
 .chat-msg-dropdown [data-action="sendHeart"] {
   display: none;
@@ -3436,6 +3584,9 @@ body::before {
 .chat-msg-dropdown.is-other [data-action="edit"],
 .chat-msg-dropdown.is-other [data-action="delete"] {
   display: none;
+}
+.chat-msg-dropdown.is-admin.is-other [data-action="delete"] {
+  display: flex;
 }
 
 /* 채팅 메시지 내 링크 */
@@ -3545,6 +3696,10 @@ body::before {
   color: var(--neon);
 }
 
+.chat-msg__img-wrap {
+  display: block;
+  margin-bottom: 0.25rem;
+}
 .chat-msg__img {
   display: block;
   max-width: 100%;
@@ -3552,10 +3707,17 @@ body::before {
   width: auto;
   height: auto;
   border-radius: 8px;
-  margin-bottom: 0.25rem;
   object-fit: contain;
 }
-.chat-msg__bubble:has(.chat-msg__img) {
+.chat-msg__img-fallback {
+  display: block;
+  padding: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+.chat-msg__bubble:has(.chat-msg__img-wrap) {
   padding-bottom: 1.5rem;
 }
 

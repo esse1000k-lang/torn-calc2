@@ -34,9 +34,9 @@
       <div id="chatWrap" class="chat-wrap">
         <div id="chatPanel" class="chat-panel">
           <div id="chatMsgDropdown" class="chat-msg-dropdown" style="display:none;">
-            <button type="button" class="chat-msg-dropdown__item" data-action="sendHeart"><span class="chat-msg-dropdown__icon">❤️</span> 보내기</button>
+            <button type="button" class="chat-msg-dropdown__item" data-action="sendHeart"><span class="chat-msg-dropdown__icon">❤️</span> 전송</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="reply"><span class="chat-msg-dropdown__icon">↩</span> 답장</button>
-            <button type="button" class="chat-msg-dropdown__item" data-action="copy"><span class="chat-msg-dropdown__icon">📄</span> 복사</button>
+            <button type="button" class="chat-msg-dropdown__item" data-action="copy"><span class="chat-msg-dropdown__icon chat-msg-dropdown__icon--copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span> 복사</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="edit"><span class="chat-msg-dropdown__icon">✏</span> 수정</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="delete"><span class="chat-msg-dropdown__icon">🗑</span> 삭제</button>
           </div>
@@ -69,6 +69,7 @@
           <div id="chatPinnedWrap" class="chat-pinned-wrap" style="display:none;">
             <div class="chat-pinned-inner">
               <span class="chat-pinned-icon" aria-hidden="true">📌</span>
+              <button type="button" id="chatPinnedUnpinBtn" class="chat-pinned-unpin-btn" style="display:none;" title="고정 메시지 해제(관리자)">고정 해제</button>
               <p id="chatPinnedText" class="chat-pinned-text"></p>
               <span id="chatPinnedMeta" class="chat-pinned-meta"></span>
             </div>
@@ -112,6 +113,27 @@
               <div class="chat-pin-modal__actions">
                 <button type="button" id="chatPinModalCancel" class="chat-pin-modal__btn chat-pin-modal__btn--cancel">취소</button>
                 <button type="button" id="chatPinModalConfirm" class="chat-pin-modal__btn chat-pin-modal__btn--confirm">확인</button>
+              </div>
+            </div>
+          </div>
+          <div id="chatEditModal" class="chat-edit-modal" role="dialog" aria-labelledby="chatEditModalTitle" aria-modal="true" style="display:none;">
+            <div class="chat-edit-modal__backdrop"></div>
+            <div class="chat-edit-modal__box">
+              <p id="chatEditModalTitle" class="chat-edit-modal__title">✏ 메시지 수정</p>
+              <textarea id="chatEditModalInput" class="chat-edit-modal__input" placeholder="내용 입력 (최대 500자)" maxlength="500" rows="4"></textarea>
+              <div class="chat-edit-modal__actions">
+                <button type="button" id="chatEditModalCancel" class="chat-edit-modal__btn chat-edit-modal__btn--cancel">취소</button>
+                <button type="button" id="chatEditModalConfirm" class="chat-edit-modal__btn chat-edit-modal__btn--confirm">확인</button>
+              </div>
+            </div>
+          </div>
+          <div id="chatDeleteModal" class="chat-delete-modal" role="dialog" aria-labelledby="chatDeleteModalTitle" aria-modal="true" style="display:none;">
+            <div class="chat-delete-modal__backdrop"></div>
+            <div class="chat-delete-modal__box">
+              <p id="chatDeleteModalTitle" class="chat-delete-modal__title">이 메시지를 삭제할까요?</p>
+              <div class="chat-delete-modal__actions">
+                <button type="button" id="chatDeleteModalCancel" class="chat-delete-modal__btn chat-delete-modal__btn--cancel">취소</button>
+                <button type="button" id="chatDeleteModalConfirm" class="chat-delete-modal__btn chat-delete-modal__btn--confirm">삭제</button>
               </div>
             </div>
           </div>

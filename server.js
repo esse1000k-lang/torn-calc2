@@ -121,7 +121,8 @@ const TORN_DECIMALS = 18;
 // 게시글 이미지 업로드: 서버 로컬 저장, 2MB·5장 제한
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 const CHAT_UPLOADS_DIR = path.join(__dirname, 'public', 'uploads', 'chat');
-const IMAGE_MAX_SIZE = 2 * 1024 * 1024; // 2MB (게시글·채팅 이미지)
+const IMAGE_MAX_SIZE = 2 * 1024 * 1024; // 2MB (게시글·피드 이미지)
+const CHAT_IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5MB (채팅 전용 — 움짤 등, 초기화되므로 여유)
 const PROFILE_AVATAR_MAX_SIZE = 1 * 1024 * 1024; // 1MB (프로필 사진)
 const PROFILE_AVATAR_MAX_DIM = 400; // 프로필 사진 권장 최대 변 400px, 정사각형
 const IMAGE_MAX_COUNT = 5;
@@ -195,7 +196,7 @@ const uploadPostImages = multer({
 
 const uploadChatImage = multer({
   storage: storageChatImage,
-  limits: { fileSize: IMAGE_MAX_SIZE },
+  limits: { fileSize: CHAT_IMAGE_MAX_SIZE },
   fileFilter: fileFilterImages,
 }).single('image');
 
@@ -221,33 +222,35 @@ const uploadProfileAvatar = multer({
   fileFilter: fileFilterImages,
 }).single('avatar');
 
-// 세션: connect-mongo로 MongoDB Atlas에만 저장 (로컬 메모리/파일 사용 금지)
+// 세션: MONGODB_URI 있으면 connect-mongo(MongoDB), 없으면 메모리 스토어(재시작 시 세션 소멸)
 const SESSION_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24시간 (1000 * 60 * 60 * 24)
 const isProduction = process.env.NODE_ENV === 'production';
 const MONGODB_URI = (process.env.MONGODB_URI || '').trim();
-const sessionStore = MongoStore.create({
-  mongoUrl: MONGODB_URI || undefined,
-  ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
-  touchAfter: 24 * 3600, // 24시간 동안 touch 생략 → 불필요한 DB 업데이트·세션 유실 가능성 감소
-});
-// touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시하고 성공 처리 (store.on 등 그대로 사용)
-const originalTouch = sessionStore.touch.bind(sessionStore);
-sessionStore.touch = function (sid, session, cb) {
-  originalTouch(sid, session, (err) => {
-    if (err && err.message && err.message.includes('Unable to find the session to touch')) {
-      if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', typeof sid === 'string' ? sid.slice(0, 8) + '...' : '');
-      return typeof cb === 'function' ? cb() : undefined;
-    }
-    if (typeof cb === 'function') cb(err);
+let sessionStore = undefined;
+if (MONGODB_URI) {
+  sessionStore = MongoStore.create({
+    mongoUrl: MONGODB_URI,
+    ttl: 24 * 60 * 60, // 24시간(초) — 쿠키 maxAge와 맞춤
+    touchAfter: 24 * 3600, // 24시간 동안 touch 생략 → 불필요한 DB 업데이트·세션 유실 가능성 감소
   });
-};
-if (isProduction && !MONGODB_URI) {
-  console.warn('[session] Production without MONGODB_URI: sessions will not persist. Set MONGODB_URI for MongoDB Atlas.');
+  // touch 실패 시 세션 파괴 방지: "Unable to find the session to touch" 시 무시하고 성공 처리
+  const originalTouch = sessionStore.touch.bind(sessionStore);
+  sessionStore.touch = function (sid, session, cb) {
+    originalTouch(sid, session, (err) => {
+      if (err && err.message && err.message.includes('Unable to find the session to touch')) {
+        if (process.env.NODE_ENV === 'production') console.warn('[session] touch skipped (session not in store), not destroying:', typeof sid === 'string' ? sid.slice(0, 8) + '...' : '');
+        return typeof cb === 'function' ? cb() : undefined;
+      }
+      if (typeof cb === 'function') cb(err);
+    });
+  };
+} else {
+  if (isProduction) console.warn('[session] MONGODB_URI 없음 — 세션은 메모리에만 저장되며, 서버 재시작 시 사라집니다.');
 }
 app.use(
   session({
     name: 'connect.sid',
-    store: sessionStore,
+    ...(sessionStore && { store: sessionStore }),
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
@@ -1611,12 +1614,12 @@ app.get('/api/chat', async (req, res) => {
   const messages = await db.readChatMessages();
   const users = await db.readUsersFresh();
   const enriched = messages.map((m, i) => {
-    const u = m.userId ? users.find((u) => u.id === m.userId) : null;
+    const u = m.userId ? users.find((u) => String(u.id) === String(m.userId)) : null;
     const profileImageUrl = (u && u.profileImageUrl) ? u.profileImageUrl : null;
     const level = u ? getMemberLevel(u) : null;
     const isAdmin = !!(u && (u.levelAdmin || u.boardAdmin));
-    const id = (m.id != null && m.id !== '') ? m.id : 'idx-' + i;
-    return { ...m, id, profileImageUrl, level, isAdmin };
+    const id = String((m.id != null && m.id !== '') ? m.id : 'idx-' + i);
+    return { ...m, id, userId: String(m.userId ?? ''), profileImageUrl, level, isAdmin };
   });
   const payload = { ok: true, messages: enriched };
   const pinned = await db.readPinned();
@@ -1633,7 +1636,9 @@ app.get('/api/chat', async (req, res) => {
   }
   if (req.user) {
     const me = users.find((u) => String(u.id) === String(req.user.id));
-    payload.me = me ? { id: me.id, displayName: me.displayName || '' } : { id: req.user.id, displayName: req.user.displayName || '' };
+    const myIdStr = me ? String(me.id) : String(req.user.id ?? '');
+    const isAdmin = req.user.isAdmin === true || req.session?.isAdmin === true || !!(me && (me.levelAdmin || me.boardAdmin));
+    payload.me = me ? { id: myIdStr, displayName: me.displayName || '', isAdmin: !!isAdmin } : { id: myIdStr, displayName: req.user.displayName || '', isAdmin: !!isAdmin };
     payload.myHearts = typeof me?.points === 'number' ? me.points : 0;
     payload.myShopItems = me?.shopItems && typeof me.shopItems === 'object' ? me.shopItems : {};
     res.setHeader('X-Chat-Auth', req.user.id || '1');
@@ -1646,7 +1651,10 @@ app.get('/api/chat', async (req, res) => {
 app.post('/api/chat', rateLimitWrites, authMiddleware, function (req, res) {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 채팅할 수 있습니다.' });
   uploadChatImage(req, res, async function (err) {
-    if (err) return res.status(400).json({ ok: false, message: err.message || '이미지 업로드에 실패했습니다.' });
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ ok: false, message: '채팅 이미지는 5MB 이하여야 합니다.' });
+      return res.status(400).json({ ok: false, message: err.message || '이미지 업로드에 실패했습니다.' });
+    }
     const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
     const hasImage = req.file && req.file.filename;
     if (hasImage && req.file.path) {
@@ -1819,7 +1827,7 @@ app.patch('/api/chat/:messageId', rateLimitWrites, async (req, res) => {
   const messageId = String(req.params.messageId || '').trim();
   const text = typeof req.body?.text === 'string' ? req.body.text.trim().slice(0, 500) : '';
   if (!messageId || !text) return res.status(400).json({ ok: false, message: '메시지 ID와 수정할 내용을 보내 주세요.' });
-  const updated = await db.updateChatMessage(messageId, req.user.id, { text });
+  const updated = await db.updateChatMessage(messageId, String(req.user.id ?? ''), { text });
   if (!updated) return res.status(403).json({ ok: false, message: '본인의 메시지만 수정할 수 있습니다.' });
   res.json({ ok: true, message: updated });
 });
@@ -1829,8 +1837,23 @@ app.delete('/api/chat/:messageId', rateLimitWrites, async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   const messageId = String(req.params.messageId || '').trim();
   if (!messageId) return res.status(400).json({ ok: false, message: '메시지 ID가 필요합니다.' });
-  const deleted = await db.deleteChatMessage(messageId, req.user.id);
+  const deleted = await db.deleteChatMessage(messageId, String(req.user.id ?? ''));
   if (!deleted) return res.status(403).json({ ok: false, message: '본인의 메시지만 삭제할 수 있습니다.' });
+  res.json({ ok: true, message: '삭제되었습니다.' });
+});
+
+// 관리자: 고정 메시지 해제 — 반드시 :messageId 라우트보다 위에 두기 (그렇지 않으면 'pinned'가 messageId로 매칭됨)
+app.delete('/api/admin/chat/pinned', adminOnlyMiddleware, async (req, res) => {
+  await db.writePinned({});
+  res.json({ ok: true, message: '고정 메시지가 해제되었습니다.' });
+});
+
+// 관리자: 채팅 메시지 삭제 (타인 메시지 포함)
+app.delete('/api/admin/chat/:messageId', adminOnlyMiddleware, async (req, res) => {
+  const messageId = String(req.params.messageId || '').trim();
+  if (!messageId) return res.status(400).json({ ok: false, message: '메시지 ID가 필요합니다.' });
+  const deleted = await db.deleteChatMessageByAdmin(messageId);
+  if (!deleted) return res.status(404).json({ ok: false, message: '메시지를 찾을 수 없습니다.' });
   res.json({ ok: true, message: '삭제되었습니다.' });
 });
 
@@ -1848,7 +1871,14 @@ app.post('/api/chat/:messageId/send-heart', async (req, res) => {
   const amount = Math.max(1, Math.min(100, parseInt(req.body?.amount, 10) || 1));
   if (!messageId) return res.status(400).json({ ok: false, message: '메시지 ID가 필요합니다.' });
   const messages = await db.readChatMessages();
-  const msg = messages.find((m) => m.id === messageId);
+  let msg;
+  if (messageId.indexOf('idx-') === 0) {
+    const index = parseInt(messageId.slice(4), 10);
+    if (Number.isNaN(index) || index < 0 || index >= messages.length) msg = null;
+    else msg = messages[index];
+  } else {
+    msg = messages.find((m) => String(m.id || '') === messageId);
+  }
   if (!msg || !msg.userId) return res.status(404).json({ ok: false, message: '메시지를 찾을 수 없습니다.' });
   if (String(msg.userId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 메시지에는 하트를 보낼 수 없습니다.' });
   const users = await db.readUsers();
