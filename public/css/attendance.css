@@ -2,20 +2,9 @@
 .attendance-page {
   max-width: 560px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  padding: 1rem 1rem 3rem;
   position: relative;
   z-index: 1;
-}
-
-.attendance-back {
-  display: inline-block;
-  margin-bottom: 1rem;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.9rem;
-}
-.attendance-back:hover {
-  color: var(--neon);
 }
 
 /* 히어로: 따뜻하고 맞이하는 분위기 */

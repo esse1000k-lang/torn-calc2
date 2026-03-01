@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
   <style>
-    .admin-page { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem; position: relative; z-index: 1; box-sizing: border-box; overflow-x: hidden; overflow-y: visible; }
+    .admin-page { max-width: 960px; margin: 0 auto; padding: 1rem 1rem; position: relative; z-index: 1; box-sizing: border-box; overflow-x: hidden; overflow-y: visible; }
     .admin-header { margin-bottom: 1.25rem; }
     .admin-header .back-link { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text-muted); text-decoration: none; font-size: 0.875rem; margin-bottom: 0.5rem; transition: color 0.2s ease; }
     .admin-header .back-link:hover { color: var(--neon); }
@@ -117,7 +117,6 @@
     .admin-search-wrap .admin-search-icon { position: absolute; left: 0.625rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.875rem; line-height: 1; pointer-events: none; }
     .admin-summary { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 8px; margin-bottom: 1rem !important; border: 1px solid var(--border); border-left: 3px solid var(--neon); font-size: 0.875rem; box-sizing: border-box; }
     .admin-summary strong { color: var(--neon); font-weight: 600; }
-
     .admin-msg { font-size: 0.875rem; }
     .admin-denied-box { max-width: 360px; margin: 0 auto; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2); }
     .admin-denied { text-align: center; padding: 3rem 1.25rem; color: var(--text-muted); }
@@ -187,7 +186,7 @@
     .admin-nav-dropdown-menu a:hover { background: rgba(0, 255, 136, 0.1); }
     .admin-panel { display: none; margin-bottom: 0; }
     .admin-panel.is-active { display: block; }
-    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminForceWithdrawSection, #adminDeletedFeedSection, #adminDeletedFeedCommentsSection { scroll-margin-top: 0.5rem; }
+    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminForceWithdrawSection, #adminDeletedFeedSection { scroll-margin-top: 0.5rem; }
     #adminUsersSection .admin-btn { min-height: 18px; height: 18px; padding: 0 0.4375rem; border-radius: 4px; font-size: 0.8125rem; }
     #adminUsersSection .admin-section-body { padding: 1.25rem 1.25rem 1.5rem; }
     #adminUsersSection .admin-create-user-wrap {
@@ -391,13 +390,7 @@
           <a href="#" class="admin-nav-link" data-panel="adminForceWithdrawSection">🚫 강제 탈퇴</a>
         </div>
       </div>
-      <div class="admin-nav-dropdown-wrap">
-        <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedSection">피드</a>
-        <div class="admin-nav-dropdown-menu">
-          <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedSection">🗑️ 삭제된 피드</a>
-          <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedCommentsSection">💬 삭제된 댓글</a>
-        </div>
-      </div>
+      <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedSection">🗑️ 삭제된 피드</a>
       <a href="#" class="admin-nav-link" data-panel="adminTornadoNewsSection">📰 뉴스 소스 · 수집</a>
     </nav>
 
@@ -543,49 +536,24 @@
     <section id="adminDeletedFeedSection" class="admin-section admin-panel">
       <div class="admin-section-header">
         <h2>삭제된 피드</h2>
-        <p class="admin-section-desc">관리자가 삭제한 피드 글이 여기로 이동됩니다. 최근 500건만 보관됩니다. 유형이 「피드 글」인 항목만 표시됩니다.</p>
+        <p class="admin-section-desc">피드 글·댓글·답글 삭제 기록입니다. 유형별로 정리되어 있으며, 최근 500건만 보관됩니다. 복구는 해당 API가 지원하는 항목만 가능합니다.</p>
       </div>
       <div class="admin-section-body">
-        <p id="deletedFeedNone" class="text-muted" style="font-size:0.9rem; display:none;">삭제된 피드가 없습니다.</p>
+        <p id="deletedFeedNone" class="text-muted" style="font-size:0.9rem; display:none;">삭제된 내역이 없습니다.</p>
         <div class="admin-table-wrap" id="deletedFeedTableWrap" style="display:none;">
           <table id="deletedFeedTable" class="admin-table">
             <thead>
               <tr>
                 <th>유형</th>
                 <th>작성자</th>
-                <th>본문 요약</th>
+                <th>내용 요약</th>
+                <th>원글 ID</th>
                 <th>삭제 일시</th>
-                <th>삭제한 관리자</th>
+                <th>삭제한 사람</th>
                 <th style="width:72px; text-align:center;">복구</th>
               </tr>
             </thead>
             <tbody id="deletedFeedTbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="adminDeletedFeedCommentsSection" class="admin-section admin-panel">
-      <div class="admin-section-header">
-        <h2>삭제된 댓글</h2>
-        <p class="admin-section-desc">관리자가 삭제한 피드 댓글이 여기로 이동됩니다. 최근 500건만 보관됩니다. 유형이 「댓글」인 항목만 표시됩니다.</p>
-      </div>
-      <div class="admin-section-body">
-        <p id="deletedFeedCommentsNone" class="text-muted" style="font-size:0.9rem; display:none;">삭제된 댓글이 없습니다.</p>
-        <div class="admin-table-wrap" id="deletedFeedCommentsTableWrap" style="display:none;">
-          <table id="deletedFeedCommentsTable" class="admin-table">
-            <thead>
-              <tr>
-                <th>유형</th>
-                <th>원글 ID</th>
-                <th>작성자</th>
-                <th>댓글 요약</th>
-                <th>삭제 일시</th>
-                <th>삭제한 관리자</th>
-                <th style="width:72px; text-align:center;">복구</th>
-              </tr>
-            </thead>
-            <tbody id="deletedFeedCommentsTbody"></tbody>
           </table>
         </div>
       </div>
@@ -676,6 +644,7 @@
         <p id="forceWithdrawNone" class="text-muted" style="font-size:0.9rem; display:none;">강제 탈퇴된 회원이 없습니다.</p>
       </div>
     </section>
+
     </div>
   </div>
 
@@ -837,7 +806,7 @@
       var WALLET_EMOJI = '\uD83D\uDCB0'; // 👛
       function renderWalletCell(walletDisplay) {
         var hasWallet = walletDisplay && walletDisplay !== '—';
-        var dropdownHtml = hasWallet ? '<div class="admin-dropdown admin-wallet-dropdown" hidden>' + (walletDisplay.replace(/</g, '&lt;')) + '</div>' : '';
+        var dropdownHtml = hasWallet ? '<div class="admin-dropdown admin-wallet-dropdown" hidden>' + (walletDisplay.replace(new RegExp('<', 'g'), '&lt;')) + '</div>' : '';
         var title = hasWallet ? '마우스를 대면 지갑 주소' : '지갑 없음';
         return '<td class="admin-cell-wallet"><div class="admin-dropdown-wrap" title="' + title + '">' +
           '<span class="admin-dropdown-trigger">' + WALLET_EMOJI + '</span>' +
@@ -1534,10 +1503,6 @@
           var accountMain = dropdownWraps[0].querySelector('.admin-nav-link');
           if (accountMain) accountMain.classList.add('is-active');
         }
-        if (dropdownWraps[1] && (panelId === 'adminDeletedFeedSection' || panelId === 'adminDeletedFeedCommentsSection')) {
-          var feedMain = dropdownWraps[1].querySelector('.admin-nav-link');
-          if (feedMain) feedMain.classList.add('is-active');
-        }
         if (panelId === 'adminAccountSection') {
           loadAdminAccount();
         }
@@ -1548,10 +1513,7 @@
           loadForceWithdrawn();
         }
         if (panelId === 'adminDeletedFeedSection') {
-          loadDeletedFeed();
-        }
-        if (panelId === 'adminDeletedFeedCommentsSection') {
-          loadDeletedFeedComments();
+          loadDeletedFeedAll();
         }
         if (panelId === 'adminTornadoNewsSection') {
           loadTornadoNewsSources();
@@ -1560,111 +1522,93 @@
         }
       }
 
-      function loadDeletedFeed() {
+      function loadDeletedFeedAll() {
         var tbody = document.getElementById('deletedFeedTbody');
         var wrap = document.getElementById('deletedFeedTableWrap');
         var noneEl = document.getElementById('deletedFeedNone');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">불러오는 중…</td></tr>';
-        if (wrap) wrap.style.display = 'block';
-        if (noneEl) noneEl.style.display = 'none';
-        fetch('/api/admin/deleted-feed', { credentials: 'same-origin' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (!data.ok || !Array.isArray(data.posts)) {
-              tbody.innerHTML = '<tr><td colspan="6" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
-              return;
-            }
-            var posts = data.posts;
-            if (posts.length === 0) {
-              tbody.innerHTML = '';
-              if (wrap) wrap.style.display = 'none';
-              if (noneEl) noneEl.style.display = 'block';
-              return;
-            }
-            if (noneEl) noneEl.style.display = 'none';
-            if (wrap) wrap.style.display = 'block';
-            tbody.innerHTML = posts.map(function (p) {
-              var author = (p.authorDisplayName || p.authorId || '—').toString();
-              var bodyPreview = (p.body || '').slice(0, 80);
-              if ((p.body || '').length > 80) bodyPreview += '…';
-              var deletedAt = p.deletedAt ? new Date(p.deletedAt).toLocaleString('ko-KR') : '—';
-              var deletedBy = (p.deletedByDisplayName || p.deletedBy || '—').toString();
-              var postId = (p.id || '').toString();
-              return '<tr data-post-id="' + escapeHtmlTn(postId) + '"><td>피드 글</td><td>' + escapeHtmlTn(author) + '</td><td style="max-width:280px; overflow:hidden; text-overflow:ellipsis;" title="' + escapeHtmlTn(p.body || '') + '">' + escapeHtmlTn(bodyPreview) + '</td><td>' + escapeHtmlTn(deletedAt) + '</td><td>' + escapeHtmlTn(deletedBy) + '</td><td style="text-align:center;"><button type="button" class="admin-btn admin-btn--outline admin-deleted-feed-restore" data-post-id="' + escapeHtmlTn(postId) + '" style="padding:0.3rem 0.5rem; font-size:0.75rem;">복구</button></td></tr>';
-            }).join('');
-            tbody.querySelectorAll('.admin-deleted-feed-restore').forEach(function (btn) {
-              btn.addEventListener('click', function () {
-                var id = this.getAttribute('data-post-id');
-                if (!id || !confirm('이 피드 글을 복구할까요?')) return;
-                var row = this.closest('tr');
-                if (row) row.style.opacity = '0.5';
-                fetch('/api/admin/deleted-feed/' + encodeURIComponent(id) + '/restore', { method: 'POST', credentials: 'same-origin' })
-                  .then(function (r) { return r.json(); })
-                  .then(function (res) {
-                    if (res.ok) { loadDeletedFeed(); } else { alert(res.message || '복구에 실패했습니다.'); if (row) row.style.opacity = '1'; }
-                  })
-                  .catch(function () { alert('복구 요청에 실패했습니다.'); if (row) row.style.opacity = '1'; });
-              });
-            });
-          })
-          .catch(function () {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
-          });
-      }
-
-      function loadDeletedFeedComments() {
-        var tbody = document.getElementById('deletedFeedCommentsTbody');
-        var wrap = document.getElementById('deletedFeedCommentsTableWrap');
-        var noneEl = document.getElementById('deletedFeedCommentsNone');
-        if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="7" class="text-muted">불러오는 중…</td></tr>';
         if (wrap) wrap.style.display = 'block';
         if (noneEl) noneEl.style.display = 'none';
-        fetch('/api/admin/deleted-feed-comments', { credentials: 'same-origin' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (!data.ok || !Array.isArray(data.comments)) {
-              tbody.innerHTML = '<tr><td colspan="7" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
-              return;
-            }
-            var comments = data.comments;
-            if (comments.length === 0) {
-              tbody.innerHTML = '';
-              if (wrap) wrap.style.display = 'none';
-              if (noneEl) noneEl.style.display = 'block';
-              return;
-            }
-            if (noneEl) noneEl.style.display = 'none';
-            if (wrap) wrap.style.display = 'block';
-            tbody.innerHTML = comments.map(function (c) {
-              var author = (c.authorDisplayName || c.authorId || '—').toString();
-              var bodyPreview = (c.body || '').slice(0, 60);
-              if ((c.body || '').length > 60) bodyPreview += '…';
-              var deletedAt = c.deletedAt ? new Date(c.deletedAt).toLocaleString('ko-KR') : '—';
-              var deletedBy = (c.deletedByDisplayName || c.deletedBy || '—').toString();
-              var commentId = (c.id || '').toString();
-              var postId = (c.postId || '—').toString();
-              return '<tr data-comment-id="' + escapeHtmlTn(commentId) + '"><td>댓글</td><td>' + escapeHtmlTn(postId) + '</td><td>' + escapeHtmlTn(author) + '</td><td style="max-width:200px; overflow:hidden; text-overflow:ellipsis;" title="' + escapeHtmlTn(c.body || '') + '">' + escapeHtmlTn(bodyPreview) + '</td><td>' + escapeHtmlTn(deletedAt) + '</td><td>' + escapeHtmlTn(deletedBy) + '</td><td style="text-align:center;"><button type="button" class="admin-btn admin-btn--outline admin-deleted-comment-restore" data-comment-id="' + escapeHtmlTn(commentId) + '" style="padding:0.3rem 0.5rem; font-size:0.75rem;">복구</button></td></tr>';
-            }).join('');
-            tbody.querySelectorAll('.admin-deleted-comment-restore').forEach(function (btn) {
-              btn.addEventListener('click', function () {
-                var id = this.getAttribute('data-comment-id');
-                if (!id || !confirm('이 댓글을 복구할까요?')) return;
-                var row = this.closest('tr');
-                if (row) row.style.opacity = '0.5';
-                fetch('/api/admin/deleted-feed-comments/' + encodeURIComponent(id) + '/restore', { method: 'POST', credentials: 'same-origin' })
-                  .then(function (r) { return r.json(); })
-                  .then(function (res) {
-                    if (res.ok) { loadDeletedFeedComments(); } else { alert(res.message || '복구에 실패했습니다.'); if (row) row.style.opacity = '1'; }
-                  })
-                  .catch(function () { alert('복구 요청에 실패했습니다.'); if (row) row.style.opacity = '1'; });
+        Promise.all([
+          fetch('/api/admin/deleted-feed', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+          fetch('/api/admin/deleted-feed-comments', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        ]).then(function (results) {
+          var feedData = results[0];
+          var commentsData = results[1];
+          var list = [];
+          if (feedData.ok && Array.isArray(feedData.posts)) {
+            feedData.posts.forEach(function (p) {
+              list.push({
+                kind: 'feed',
+                id: (p.id || '').toString(),
+                typeLabel: '피드',
+                author: (p.authorDisplayName || p.authorId || '—').toString(),
+                bodyPreview: (p.body || '').slice(0, 80) + ((p.body || '').length > 80 ? '…' : ''),
+                bodyFull: p.body || '',
+                postId: (p.id || '').toString(),
+                deletedAt: p.deletedAt,
+                deletedBy: (p.deletedByDisplayName || p.deletedBy || '—').toString()
               });
             });
-          })
-          .catch(function () {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
+          }
+          if (commentsData.ok && Array.isArray(commentsData.comments)) {
+            commentsData.comments.forEach(function (c) {
+              var typeLabel = (c.replyToCommentId && c.replyToCommentId !== '') ? '답글' : '댓글';
+              list.push({
+                kind: 'comment',
+                id: (c.id || '').toString(),
+                typeLabel: typeLabel,
+                author: (c.authorDisplayName || c.authorId || '—').toString(),
+                bodyPreview: (c.body || '').slice(0, 80) + ((c.body || '').length > 80 ? '…' : ''),
+                bodyFull: c.body || '',
+                postId: (c.postId || '—').toString(),
+                deletedAt: c.deletedAt,
+                deletedBy: (c.deletedByDisplayName || c.deletedBy || '—').toString()
+              });
+            });
+          }
+          list.sort(function (a, b) {
+            var tA = a.deletedAt ? new Date(a.deletedAt).getTime() : 0;
+            var tB = b.deletedAt ? new Date(b.deletedAt).getTime() : 0;
+            return tB - tA;
           });
+          if (list.length === 0) {
+            tbody.innerHTML = '';
+            if (wrap) wrap.style.display = 'none';
+            if (noneEl) noneEl.style.display = 'block';
+            return;
+          }
+          if (noneEl) noneEl.style.display = 'none';
+          if (wrap) wrap.style.display = 'block';
+          tbody.innerHTML = list.map(function (row) {
+            var deletedAtStr = row.deletedAt ? new Date(row.deletedAt).toLocaleString('ko-KR') : '—';
+            var restoreBtn = '<button type="button" class="admin-btn admin-btn--outline admin-deleted-restore-btn" data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '" style="padding:0.3rem 0.5rem; font-size:0.75rem;">복구</button>';
+            return '<tr data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '"><td>' + escapeHtmlTn(row.typeLabel) + '</td><td>' + escapeHtmlTn(row.author) + '</td><td style="max-width:260px; overflow:hidden; text-overflow:ellipsis;" title="' + escapeHtmlTn(row.bodyFull) + '">' + escapeHtmlTn(row.bodyPreview) + '</td><td>' + escapeHtmlTn(row.postId) + '</td><td>' + escapeHtmlTn(deletedAtStr) + '</td><td>' + escapeHtmlTn(row.deletedBy) + '</td><td style="text-align:center;">' + restoreBtn + '</td></tr>';
+          }).join('');
+          tbody.querySelectorAll('.admin-deleted-restore-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var kind = this.getAttribute('data-kind');
+              var id = this.getAttribute('data-id');
+              if (!id) return;
+              var label = kind === 'feed' ? '피드 글' : '댓글';
+              if (!confirm('이 ' + label + '을(를) 복구할까요?')) return;
+              var row = this.closest('tr');
+              if (row) row.style.opacity = '0.5';
+              var url = kind === 'feed'
+                ? '/api/admin/deleted-feed/' + encodeURIComponent(id) + '/restore'
+                : '/api/admin/deleted-feed-comments/' + encodeURIComponent(id) + '/restore';
+              fetch(url, { method: 'POST', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                  if (res.ok) { loadDeletedFeedAll(); } else { alert(res.message || '복구에 실패했습니다.'); if (row) row.style.opacity = '1'; }
+                })
+                .catch(function () { alert('복구 요청에 실패했습니다.'); if (row) row.style.opacity = '1'; });
+            });
+          });
+      }).catch(function () {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
+      });
       }
 
       function escapeHtmlTn(s) {
@@ -2151,6 +2095,8 @@
         if (user && user.isAdmin) {
           adminDenied.style.display = 'none';
           adminPage.style.display = 'block';
+          adminPinGate.style.display = 'block';
+          adminContent.style.display = 'none';
           var nac = document.getElementById('navAdminCenter');
           var navMenuBtn = document.getElementById('navMenuBtn');
           if (navMenuBtn) navMenuBtn.style.display = 'none';

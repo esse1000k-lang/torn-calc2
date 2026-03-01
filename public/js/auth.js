@@ -35,7 +35,8 @@
   window.TornFiAuth = {
     onUser: function (fn) {
       listeners.push(fn);
-      if (currentUser !== undefined) fn(currentUser);
+      // 등록 시점의 현재 유저로 한 번 즉시 호출 (fetchMe 완료 전이면 null)
+      fn(currentUser);
     },
     getUser: function () { return currentUser; },
     setUser: function (user) {

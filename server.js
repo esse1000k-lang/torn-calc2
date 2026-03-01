@@ -32,6 +32,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const https = require('https');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
@@ -3217,8 +3218,9 @@ app.post('/api/admin/deleted-feed/:postId/restore', adminMiddleware, async (req,
   res.json({ ok: true, postId: created.id, message: '피드 글이 복구되었습니다.' });
 });
 
-// 관리자: 피드 댓글 삭제 (삭제된 댓글 목록으로 이동)
-app.delete('/api/feed/:postId/comments/:commentId', adminMiddleware, async (req, res) => {
+// 피드 댓글 삭제 — 본인 댓글: 로그인 후 삭제 가능. 타인 댓글: 관리자만(PIN 필요). 삭제된 댓글 목록으로 이동
+app.delete('/api/feed/:postId/comments/:commentId', authMiddleware, async (req, res) => {
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 삭제할 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   const commentId = String(req.params.commentId || '').trim();
   if (!postId || !commentId) return res.status(400).json({ ok: false, message: '글 ID와 댓글 ID가 필요합니다.' });
@@ -3226,6 +3228,12 @@ app.delete('/api/feed/:postId/comments/:commentId', adminMiddleware, async (req,
   if (!post) return res.status(404).json({ ok: false, message: '글을 찾을 수 없습니다.' });
   const comment = (post.comments || []).find((c) => String(c.id) === commentId);
   if (!comment) return res.status(404).json({ ok: false, message: '댓글을 찾을 수 없습니다.' });
+  const isCommentAuthor = String(comment.authorId) === String(req.user.id);
+  const isAdmin = !!req.user.isAdmin;
+  if (!isCommentAuthor && !isAdmin) return res.status(403).json({ ok: false, message: '본인 댓글만 삭제할 수 있습니다.' });
+  if (!isCommentAuthor && isAdmin && req.user.adminPinVerified !== true) {
+    return res.status(403).json({ ok: false, needPin: true, message: '관리자 비밀번호를 입력해 주세요.' });
+  }
   const deletedEntry = {
     ...comment,
     postId,
@@ -3502,6 +3510,17 @@ app.post('/api/tornado-news/translate-existing', adminMiddleware, async (req, re
 function onServerListen(listenPort) {
   ensureDataDir();
   ensureUploadsDir();
+  // 모바일 같은 네트워크 접속용 로컬 IP 안내
+  const nets = os.networkInterfaces();
+  const localIps = [];
+  for (const name of Object.keys(nets)) {
+    for (const n of nets[name]) {
+      if (n.family === 'IPv4' && !n.internal) localIps.push(n.address);
+    }
+  }
+  if (localIps.length) {
+    console.log('모바일 접속: 같은 Wi-Fi에서 http://' + localIps[0] + ':' + listenPort);
+  }
   // 세션 스토어(MongoDB Atlas) 연결 검증 로그
   if (process.env.MONGODB_URI) {
     MongoClient.connect(process.env.MONGODB_URI)

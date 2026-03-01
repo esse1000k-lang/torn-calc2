@@ -26,7 +26,8 @@
     return d.toLocaleDateString('ko-KR');
   }
 
-  function renderComment(c, myId, pid, isAdmin) {
+  function renderComment(c, myId, pid, isAdmin, opts) {
+    opts = opts || {};
     var name = (c && c.authorDisplayName) ? c.authorDisplayName : '—';
     var isMine = !!(myId && c && c.authorId === myId);
     var hearts = (c && (c.heartsReceived || 0) > 0) ? c.heartsReceived : 0;
@@ -36,16 +37,22 @@
       ? '<img class="feed-comment__avatar feed-card__avatar--img" src="' + escapeHtml(c.authorProfileImageUrl) + '" alt="" loading="lazy">'
       : '<span class="feed-comment__avatar" aria-hidden="true">' + (name.charAt(0) || '?') + '</span>';
     var dateStr = formatDate(c && c.createdAt);
-    var replyToLine = (c && c.replyToCommentId && c.replyToDisplayName)
+    var replyToLine = (opts.showReplyTo && c && c.replyToCommentId && c.replyToDisplayName)
       ? '<div class="feed-comment__reply-to">답글: <span class="feed-comment__reply-to-name">@' + escapeHtml(c.replyToDisplayName) + '</span></div>'
       : '';
     var heartRow = '';
     if (hearts > 0) heartRow += '<span class="feed-comment__hearts">❤️ ' + hearts + '</span>';
-    if (!isMine && myId && pid) heartRow += '<button type="button" class="feed-comment-heart-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '">❤️ 보내기</button>';
-    if (myId && pid) heartRow += '<button type="button" class="feed-comment-reply-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '">답글</button>';
+    else if (!isMine && myId && pid) heartRow += '<button type="button" class="feed-comment-heart-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+    if (myId && pid && opts.showReplyBtn !== false) heartRow += '<button type="button" class="feed-comment-reply-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '">답글</button>';
+    if (opts.replyCount != null && opts.replyCount > 0) {
+      var threadUrl = 'feed-post.html?id=' + encodeURIComponent(pid) + '&thread=' + encodeURIComponent(c.id);
+      heartRow += '<a href="' + threadUrl + '" class="feed-comment__reply-count">답글 ' + opts.replyCount + '</a>';
+    }
     if (heartRow) heartRow = '<div class="feed-comment__footer">' + heartRow + '</div>';
-    var adminDeleteHtml = (isAdmin && pid && c && c.id) ? '<div class="feed-comment-admin-outer"><button type="button" class="feed-card__admin-delete feed-comment-admin-delete" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" aria-label="댓글 삭제">🗑 삭제</button></div>' : '';
-    return '<li class="feed-comment" data-comment-id="' + escapeHtml(c.id) + '">' + avatar +
+    var canDeleteComment = (isAdmin || isMine) && pid && c && c.id;
+    var adminDeleteHtml = canDeleteComment ? '<div class="feed-comment-admin-outer"><button type="button" class="feed-card__admin-delete feed-comment-admin-delete" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" aria-label="댓글 삭제">🗑 삭제</button></div>' : '';
+    var liClass = 'feed-comment' + (opts.isThreadHead ? ' feed-comment--thread-head' : '');
+    return '<li class="' + liClass + '" data-comment-id="' + escapeHtml(c.id) + '">' + avatar +
       '<div class="feed-comment__body">' + replyToLine +
       '<span class="feed-comment__author">' + escapeHtml(name) + '</span>' +
       (levelEmoji ? ' <span class="feed-card__level" aria-hidden="true">' + levelEmoji + '</span>' : '') +
@@ -53,13 +60,37 @@
       '<p class="feed-comment__text">' + escapeHtml((c && c.body) ? c.body : '') + '</p>' + heartRow + '</div>' + adminDeleteHtml + '</li>';
   }
 
-  function renderPost(p) {
+  function renderPost(p, threadId) {
     if (!root || !p || !p.id) return;
     var author = (p.authorDisplayName != null && p.authorDisplayName !== '') ? p.authorDisplayName : '—';
     var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
     var myId = me ? (me.id || null) : null;
     var isAdmin = !!(me && me.isAdmin);
     var comments = Array.isArray(p.comments) ? p.comments : [];
+    var topLevel = comments.filter(function (c) { return !c.replyToCommentId || c.replyToCommentId === ''; });
+    var threadComments = [];
+    var commentsListHtml = '';
+    var inThreadView = false;
+    if (threadId) {
+      var parent = comments.find(function (c) { return c.id === threadId; });
+      if (parent) {
+        inThreadView = true;
+        var replies = comments.filter(function (c) { return c.replyToCommentId === threadId; }).sort(function (a, b) { return new Date(a.createdAt) - new Date(b.createdAt); });
+        threadComments = [parent].concat(replies);
+        commentsListHtml = threadComments.map(function (c, idx) {
+          var isFirst = idx === 0;
+          return renderComment(c, myId, p.id, isAdmin, { showReplyTo: false, showReplyBtn: false, isThreadHead: isFirst });
+        }).join('');
+      } else {
+        threadId = '';
+      }
+    }
+    if (!threadId) {
+      commentsListHtml = topLevel.map(function (c) {
+        var replyCount = comments.filter(function (r) { return r.replyToCommentId === c.id; }).length;
+        return renderComment(c, myId, p.id, isAdmin, { replyCount: replyCount });
+      }).join('');
+    }
     var postLv = (p.authorLevel >= 1 && p.authorLevel <= 6) ? p.authorLevel : 0;
     var postLevelEmoji = LEVEL_EMOJI[postLv] || '';
     var avatarHtml = (p.authorProfileImageUrl && String(p.authorProfileImageUrl).trim())
@@ -72,14 +103,21 @@
     var isMine = !!(myId && p.authorId === myId);
     var footer = '<div class="feed-card__footer">';
     if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
+    else if (!isMine && myId) footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
     footer += '</div>';
-    var topActionsHtml = (!isMine && myId) ? '<div class="feed-card__top-actions"><button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '">❤️ 보내기</button></div>' : '';
-    var commentsHtml = '<div class="feed-card__comments-title">댓글 ' + comments.length + '</div>' +
-      '<ul class="feed-card__comments-list">' + comments.map(function (c) { return renderComment(c, myId, p.id, isAdmin); }).join('') + '</ul>';
-    if (myId) commentsHtml += '<div class="feed-card__comment-form" data-post-id="' + escapeHtml(p.id) + '">' +
-      '<div class="feed-card__reply-to-chip" style="display:none;">답글: <span class="feed-card__reply-to-name"></span> <button type="button" class="feed-card__reply-to-cancel">취소</button></div>' +
-      '<input type="text" class="feed-card__comment-input" placeholder="댓글을 입력하세요..." maxlength="1000" data-post-id="' + escapeHtml(p.id) + '">' +
-      '<button type="button" class="feed-card__comment-submit">댓글</button></div>';
+    var commentsCountLabel = inThreadView ? ('답글 ' + threadComments.length) : ('댓글 ' + comments.length);
+    var commentFormReplyAttrs = '';
+    if (inThreadView && threadId && myId) {
+      var parentComment = comments.find(function (c) { return c.id === threadId; });
+      var parentName = parentComment && parentComment.authorDisplayName ? parentComment.authorDisplayName : '';
+      commentFormReplyAttrs = ' data-reply-to-comment-id="' + escapeHtml(threadId) + '" data-reply-to-display-name="' + escapeHtml(parentName) + '" data-thread-view="1"';
+    }
+    var commentFormHtml = myId ? '<div class="feed-card__comment-form" data-post-id="' + escapeHtml(p.id) + '"' + commentFormReplyAttrs + '>' +
+      (inThreadView ? '' : '<div class="feed-card__reply-to-chip" style="display:none;">답글: <span class="feed-card__reply-to-name"></span> <button type="button" class="feed-card__reply-to-cancel">취소</button></div>') +
+      '<input type="text" class="feed-card__comment-input" placeholder="' + (inThreadView ? '답글 입력...' : '댓글을 입력하세요...') + '" maxlength="1000" data-post-id="' + escapeHtml(p.id) + '">' +
+      '<button type="button" class="feed-card__comment-submit">' + (inThreadView ? '답글' : '댓글') + '</button></div>' : '';
+    var commentsHtml = commentFormHtml +
+      '<ul class="feed-card__comments-list">' + commentsListHtml + '</ul>';
     currentPost = p;
     var cardInner = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
       '<div class="feed-card__link">' +
@@ -92,16 +130,30 @@
                   (postLevelEmoji ? '<span class="feed-card__level" aria-hidden="true">' + postLevelEmoji + '</span>' : '') +
                 '</span><span class="feed-card__meta-sep" aria-hidden="true">·</span>' +
                 '<time class="feed-card__date" datetime="' + (p.createdAt || '') + '">' + dateStr + '</time>' +
-              '</div>' + topActionsHtml + '</div>' +
+              '</div></div>' +
             (bodyHtml ? '<div class="feed-card__body"><p class="feed-card__excerpt feed-card__body-full">' + bodyHtml + '</p></div>' : '') +
             (img ? '<div class="feed-card__thumb-wrap">' + img + '</div>' : '') +
-            '<div class="feed-card__actions">' + footer + '</div>' +
+            '<div class="feed-card__actions">' + footer + '<span class="feed-card__comments-count">' + commentsCountLabel + '</span></div>' +
           '</div></div></div>' +
       '<div class="feed-card__comments">' + commentsHtml + '</div></article>';
     root.innerHTML = cardInner;
   }
 
+  function showFeedAlert(msg) {
+    var layer = document.getElementById('feedAlertLayer');
+    var msgEl = document.getElementById('feedAlertMessage');
+    if (msgEl) msgEl.textContent = msg || '';
+    if (layer) layer.style.display = 'flex';
+  }
+  window.showFeedAlert = showFeedAlert;
+
   function attachHandlers() {
+    var feedAlertLayer = document.getElementById('feedAlertLayer');
+    var feedAlertOk = document.getElementById('feedAlertOk');
+    if (feedAlertOk && feedAlertLayer) {
+      feedAlertOk.addEventListener('click', function () { feedAlertLayer.style.display = 'none'; });
+      feedAlertLayer.addEventListener('click', function (e) { if (e.target === feedAlertLayer) feedAlertLayer.style.display = 'none'; });
+    }
     var feedSendHeartLayer = document.getElementById('feedSendHeartLayer');
     var feedSendHeartMessage = document.getElementById('feedSendHeartMessage');
     var feedSendHeartMyHearts = document.getElementById('feedSendHeartMyHearts');
@@ -165,10 +217,10 @@
                 }
               }
             }
-            if (data.message) alert(data.message);
-          } else if (data.message) alert(data.message);
+            if (data.message) showFeedAlert(data.message);
+          } else if (data.message) showFeedAlert(data.message);
         })
-        .catch(function () { feedSendHeartOk.disabled = false; alert('하트 전송 중 오류가 발생했습니다.'); });
+        .catch(function () { feedSendHeartOk.disabled = false; showFeedAlert('하트 전송 중 오류가 발생했습니다.'); });
     });
     if (feedSendHeartLayer && feedSendHeartLayer.querySelector('.feed-send-heart-box')) {
       feedSendHeartLayer.addEventListener('click', function (e) { if (e.target === feedSendHeartLayer) closeHeartModal(); });
@@ -210,19 +262,22 @@
           .then(function (data) {
             if (data.ok) {
               if (li && li.parentNode) li.parentNode.removeChild(li);
-              var titleEl = root.querySelector('.feed-card__comments-title');
-              if (titleEl) titleEl.textContent = '댓글 ' + root.querySelectorAll('.feed-comment').length;
+              var countEl = root.querySelector('.feed-card__comments-count');
+              if (countEl) {
+                var inThread = root.querySelector('.feed-card__comment-form[data-thread-view="1"]');
+                countEl.textContent = (inThread ? '답글 ' : '댓글 ') + root.querySelectorAll('.feed-comment').length;
+              }
               pendingCommentDelete = null;
             } else if (data.needPin && feedAdminPinLayer) {
               feedAdminPinLayer.style.display = 'flex';
               if (feedAdminPinInput) { feedAdminPinInput.value = ''; feedAdminPinInput.focus(); }
               if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
             } else {
-              alert(data.message || '댓글 삭제에 실패했습니다.');
+              showFeedAlert(data.message || '댓글 삭제에 실패했습니다.');
               pendingCommentDelete = null;
             }
           })
-          .catch(function () { alert('댓글 삭제 요청에 실패했습니다.'); pendingCommentDelete = null; });
+          .catch(function () { showFeedAlert('댓글 삭제 요청에 실패했습니다.'); pendingCommentDelete = null; });
       }
 
       function submitFeedAdminPin() {
@@ -391,7 +446,7 @@
         var authorName = heartBtn.getAttribute('data-author-name') || '이 사용자';
         if (!pid) return;
         var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
-        if (!me.id) { alert('로그인 후 하트를 보낼 수 있습니다.'); return; }
+        if (!me.id) { showFeedAlert('로그인 후 하트를 보낼 수 있습니다.'); return; }
         openHeartModal(pid, authorName, null);
         return;
       }
@@ -404,7 +459,7 @@
         var authorName = commentHeartBtn.getAttribute('data-author-name') || '이 사용자';
         if (!pid || !cid) return;
         var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
-        if (!me.id) { alert('로그인 후 하트를 보낼 수 있습니다.'); return; }
+        if (!me.id) { showFeedAlert('로그인 후 하트를 보낼 수 있습니다.'); return; }
         openHeartModal(pid, authorName, cid);
         return;
       }
@@ -413,10 +468,17 @@
         e.preventDefault();
         var formWrap = replyToCancel.closest('.feed-card__comment-form');
         if (formWrap) {
+          if (formWrap.dataset.threadView === '1') {
+            var pid = formWrap.getAttribute('data-post-id');
+            if (pid) window.location.href = 'feed-post.html?id=' + encodeURIComponent(pid);
+            return;
+          }
           formWrap.dataset.replyToCommentId = '';
           formWrap.dataset.replyToDisplayName = '';
           var chip = formWrap.querySelector('.feed-card__reply-to-chip');
           if (chip) chip.style.display = 'none';
+          var input = formWrap.querySelector('.feed-card__comment-input');
+          if (input) input.placeholder = '댓글을 입력하세요...';
         }
         return;
       }
@@ -425,19 +487,7 @@
         e.preventDefault();
         var pid = replyBtn.getAttribute('data-post-id');
         var cid = replyBtn.getAttribute('data-comment-id');
-        var authorName = replyBtn.getAttribute('data-author-name') || '';
-        if (!pid || !cid) return;
-        var card = replyBtn.closest('.feed-card');
-        var formWrap = card && card.querySelector('.feed-card__comment-form');
-        if (formWrap) {
-          formWrap.dataset.replyToCommentId = cid;
-          formWrap.dataset.replyToDisplayName = authorName;
-          var chip = formWrap.querySelector('.feed-card__reply-to-chip');
-          var nameSpan = formWrap.querySelector('.feed-card__reply-to-name');
-          if (chip) { chip.style.display = 'inline-flex'; if (nameSpan) nameSpan.textContent = authorName || '—'; }
-          var input = formWrap.querySelector('.feed-card__comment-input');
-          if (input) { input.focus(); input.placeholder = (authorName ? '@' + authorName + '에게 답글...' : '답글 입력...'); }
-        }
+        if (pid && cid) window.location.href = 'feed-post.html?id=' + encodeURIComponent(pid) + '&thread=' + encodeURIComponent(cid);
         return;
       }
       var commentSubmit = e.target.closest && e.target.closest('.feed-card__comment-submit');
@@ -471,18 +521,24 @@
                 if (input) input.placeholder = '댓글을 입력하세요...';
               }
               var list = root.querySelector('.feed-card__comments-list');
-              var titleEl = root.querySelector('.feed-card__comments-title');
+              var countEl = root.querySelector('.feed-card__comments-count');
               if (list) {
                 var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
                 var myId = me ? me.id : null;
                 var isAdmin = !!(me && me.isAdmin);
-                var html = renderComment(data.comment, myId, pid, isAdmin);
+                var isReply = !!(data.comment.replyToCommentId && data.comment.replyToCommentId !== '');
+                var opts = { showReplyTo: isReply };
+                if (window.location.search.indexOf('thread=') !== -1) opts.showReplyBtn = false;
+                var html = renderComment(data.comment, myId, pid, isAdmin, opts);
                 list.insertAdjacentHTML('beforeend', html);
               }
-              if (titleEl) titleEl.textContent = '댓글 ' + root.querySelectorAll('.feed-comment').length;
-            } else if (data.message) alert(data.message);
+              if (countEl) {
+                var inThread = root.querySelector('.feed-card__comment-form[data-thread-view="1"]');
+                countEl.textContent = (inThread ? '답글 ' : '댓글 ') + root.querySelectorAll('.feed-comment').length;
+              }
+            } else if (data.message) showFeedAlert(data.message);
           })
-          .catch(function () { commentSubmit.disabled = false; alert('댓글 전송에 실패했습니다.'); });
+          .catch(function () { commentSubmit.disabled = false; showFeedAlert('댓글 전송에 실패했습니다.'); });
       }
     });
     root.addEventListener('keydown', function (e) {
@@ -532,11 +588,18 @@
     initNav();
     var params = new URLSearchParams(window.location.search);
     var postId = (params.get('id') || '').trim();
+    var threadId = (params.get('thread') || '').trim();
     root = document.getElementById('feedPostRoot');
     if (!root) return;
     if (!postId) {
       showError('글을 찾을 수 없습니다.');
       return;
+    }
+    var fab = document.getElementById('feedPostFab');
+    if (fab && threadId) {
+      fab.href = 'feed-post.html?id=' + encodeURIComponent(postId);
+      fab.textContent = '← 댓글';
+      fab.setAttribute('aria-label', '댓글 목록으로');
     }
 
     var cached = null;
@@ -549,7 +612,7 @@
     }
 
     if (cached && cached.id) {
-      renderPost(cached);
+      renderPost(cached, threadId);
       attachHandlers();
     }
 
@@ -557,7 +620,7 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data && data.ok && data.post) {
-          renderPost(data.post);
+          renderPost(data.post, threadId);
           if (!cached || !cached.id) attachHandlers();
         } else if (!cached || !cached.id) {
           showError(data && data.message ? data.message : '글을 불러올 수 없습니다.');

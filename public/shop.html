@@ -15,9 +15,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
   <style>
-    .shop-page { max-width: 900px; margin: 0 auto; padding: 0.5rem 1rem 3rem; position: relative; z-index: 1; }
+    .shop-page { max-width: 900px; margin: 0 auto; padding: 1.25rem 1.5rem 4rem; position: relative; z-index: 1; }
     .shop-hero {
-      text-align: center; margin-bottom: 2rem;
+      text-align: center; margin-bottom: 1.5rem;
       background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(0, 255, 136, 0.06) 50%, transparent 100%);
       border: 1px solid rgba(255, 215, 0, 0.2);
       border-radius: 16px;
@@ -42,7 +42,7 @@
     }
     .shop-hero h1 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0 0 0.5rem 0; }
     .shop-hero p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
-    .shop-balance-row { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .shop-balance-row { display: flex; align-items: stretch; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
     .shop-balance-box, .shop-items-box {
       display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem;
       padding: 1rem 1.25rem;
@@ -68,19 +68,17 @@
     .shop-balance-box__label, .shop-items-box__label { color: var(--text-muted); font-weight: 500; margin-right: 0.25rem; }
     .shop-balance { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; }
     .shop-balance .heart { color: #ff6b9d; }
-    .shop-section-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem 0; }
-    .shop-category { margin-bottom: 2rem; }
-    .shop-category:last-child { margin-bottom: 0; }
+    .shop-category { margin-bottom: 0; }
     .shop-item-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 0.75rem;
+      gap: 1rem;
     }
     .shop-item-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 0.75rem;
+      padding: 1rem;
       min-height: 140px;
-      display: flex; flex-direction: column; align-items: stretch; gap: 0.4rem;
+      display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem;
       box-sizing: border-box;
     }
     .shop-item-name { font-size: 0.85rem; font-weight: 700; color: var(--neon); margin: 0; line-height: 1.25; }
@@ -97,8 +95,23 @@
     .shop-login-msg a { color: var(--neon); text-decoration: none; }
     .shop-items-wrap { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 0.75rem; margin: 0; padding: 0; font-size: inherit; }
     .shop-items-list { display: inline-flex; flex-wrap: wrap; gap: 0 0.75rem; color: var(--text); }
-    .shop-items-list .shop-item-badge { display: inline-flex; align-items: center; gap: 0.2rem; }
+    .shop-items-list .shop-item-badge { display: inline-flex; align-items: center; gap: 0.2rem; flex-shrink: 0; }
     .shop-items-empty { color: var(--text-muted); font-size: 0.9rem; font-weight: 400; }
+    /* 보유 아이템이 많을 때 가로 스와이프/스크롤 (데스크톱·모바일 공통) */
+    .shop-items-box { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: thin; touch-action: pan-x; }
+    .shop-items-box .shop-items-list { flex-wrap: nowrap; white-space: nowrap; }
+    @media (max-width: 768px) {
+      .shop-page { padding: 1rem 1rem 4rem; }
+      .shop-hero { margin-bottom: 1.25rem; padding: 1.25rem 1rem; }
+      .shop-balance-row { flex-wrap: nowrap; gap: 0.5rem; margin-bottom: 1.25rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+      .shop-item-grid { gap: 0.75rem; }
+      .shop-item-card { padding: 0.85rem; gap: 0.4rem; }
+      .shop-balance-box, .shop-items-box { flex-wrap: nowrap; padding: 0.65rem 0.85rem; font-size: 0.9rem; gap: 0.35rem 0.5rem; }
+      .shop-balance-box__label, .shop-items-box__label { display: none; }
+      .shop-balance-box { flex-shrink: 0; }
+      .shop-items-box { flex: 1 1 0; min-width: 0; }
+      .shop-items-list { gap: 0 0.5rem; }
+    }
     .shop-buy-modal { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
     .shop-buy-modal.is-open { display: flex; }
     .shop-buy-modal__box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; min-width: 280px; max-width: 90vw; }
@@ -209,8 +222,7 @@
       로그인하면 보유 하트를 확인하고 아이템을 구매할 수 있습니다. <a href="/login.html">로그인</a>
     </p>
 
-    <section class="shop-category" aria-labelledby="shop-category-chat">
-      <h2 id="shop-category-chat" class="shop-section-title">채팅</h2>
+    <section class="shop-category" aria-label="채팅 아이템">
       <div id="shopItemList" class="shop-item-grid">
         <div class="shop-item-card" data-item-id="pinMessage" data-cost="15">
           <p class="shop-item-name">고정 메시지</p>
@@ -265,7 +277,7 @@
 
   <a href="/chat.html" class="shop-float-chat" aria-label="채팅방으로 이동">
     <span class="shop-float-chat__icon" aria-hidden="true">💬</span>
-    <span>채팅방으로</span>
+    <span>GO</span>
   </a>
 
   <script src="js/auth.js"></script>

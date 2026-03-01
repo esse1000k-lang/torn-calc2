@@ -64,7 +64,7 @@
       z-index: 1;
       max-width: 560px;
       margin: 0 auto;
-      padding: 2rem 1.5rem;
+      padding: 1rem 1.5rem;
     }
 
     header {
@@ -451,6 +451,9 @@
       margin-bottom: 1rem;
       border-bottom: 1px solid var(--border);
     }
+    .dividend-swipe-area {
+      touch-action: manipulation;
+    }
     .dividend-tab {
       flex: 1;
       padding: 0.6rem 0.5rem;
@@ -648,19 +651,6 @@
         padding: 1rem 0.5rem;
       }
     }
-    .calc-back {
-      position: relative;
-      z-index: 1;
-      padding: 0.5rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      background: rgba(10, 10, 11, 0.95);
-    }
-    .calc-back a {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-decoration: none;
-    }
-    .calc-back a:hover { color: var(--neon); }
   </style>
 </head>
 <body>
@@ -674,9 +664,6 @@
       <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
     </div>
   </nav>
-  <div class="calc-back">
-    <a href="/">← TornFi 홈</a>
-  </div>
   <div class="container">
     <header>
       <img src="favicon.ico" alt="" class="header-logo" onerror="this.src='./logo.png'">
@@ -764,7 +751,7 @@
       </div>
     </div>
 
-    <div class="card card-dividend">
+    <div class="card card-dividend dividend-swipe-area">
       <div class="card-title">🌪️ 배당</div>
       <div class="share-block">
         <div class="share-header">
@@ -1494,19 +1481,57 @@
       }
 
       (function initDividendTabs() {
+        var TAB_ORDER = ['eth', 'wbtc', 'usd'];
         var tabs = document.querySelectorAll('.dividend-tab');
         var panels = document.querySelectorAll('.result-panel');
-        tabs.forEach(function (tab) {
-          tab.addEventListener('click', function () {
-            var tabName = tab.getAttribute('data-tab');
-            tabs.forEach(function (t) { t.classList.remove('dividend-tab--active'); t.setAttribute('aria-selected', 'false'); });
-            panels.forEach(function (p) { p.classList.remove('result-panel--active'); });
-            tab.classList.add('dividend-tab--active');
-            tab.setAttribute('aria-selected', 'true');
-            var panel = document.querySelector('.result-panel[data-panel="' + tabName + '"]');
-            if (panel) panel.classList.add('result-panel--active');
+
+        function switchToTab(tabName) {
+          tabs.forEach(function (t) {
+            t.classList.remove('dividend-tab--active');
+            t.setAttribute('aria-selected', 'false');
+            if (t.getAttribute('data-tab') === tabName) {
+              t.classList.add('dividend-tab--active');
+              t.setAttribute('aria-selected', 'true');
+            }
           });
+          panels.forEach(function (p) {
+            p.classList.remove('result-panel--active');
+            if (p.getAttribute('data-panel') === tabName) p.classList.add('result-panel--active');
+          });
+        }
+
+        tabs.forEach(function (tab) {
+          tab.addEventListener('click', function () { switchToTab(tab.getAttribute('data-tab')); });
         });
+
+        var swipeStartX = 0;
+        var swipeStartY = 0;
+        var swipeThreshold = 40;
+        function onSwipeStart(e) {
+          if (!e.touches || !e.touches.length) return;
+          swipeStartX = e.touches[0].clientX;
+          swipeStartY = e.touches[0].clientY;
+        }
+        function onSwipeEnd(e) {
+          if (!e.changedTouches || !e.changedTouches.length) return;
+          var dx = e.changedTouches[0].clientX - swipeStartX;
+          var dy = e.changedTouches[0].clientY - swipeStartY;
+          if (Math.abs(dx) < swipeThreshold) return;
+          if (Math.abs(dy) > Math.abs(dx)) return;
+          var activeTab = document.querySelector('.dividend-tab--active');
+          if (!activeTab) return;
+          var currentId = activeTab.getAttribute('data-tab');
+          var idx = TAB_ORDER.indexOf(currentId);
+          if (idx === -1) return;
+          if (dx < 0) idx = (idx + 1) % TAB_ORDER.length;
+          else idx = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+          switchToTab(TAB_ORDER[idx]);
+        }
+        var swipeArea = document.querySelector('.dividend-swipe-area');
+        if (swipeArea) {
+          swipeArea.addEventListener('touchstart', onSwipeStart, { passive: true });
+          swipeArea.addEventListener('touchend', onSwipeEnd, { passive: true });
+        }
       })();
 
       if (walletAddressInput) {
