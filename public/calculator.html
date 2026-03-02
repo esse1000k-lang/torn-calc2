@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>출금 시 배당 계산기 | Tornado Cash</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    :root {
+      --bg-dark: #0a0a0b;
+      --bg-card: #111113;
+      --border: #1a1a1e;
+      --neon: #00ff88;
+      --neon-dim: #00cc6a;
+      --neon-glow: rgba(0, 255, 136, 0.35);
+      --text: #e0e0e0;
+      --text-muted: #6b7280;
+      --danger: #ff3366;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .header-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--neon);
+      text-shadow: 0 0 20px var(--neon-glow);
+      letter-spacing: 0.08em;
+      margin-bottom: 0;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .subtitle-telegram {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: none;
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--neon);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .input-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .input-group:last-of-type {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.05em;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--neon);
+      box-shadow: 0 0 0 2px var(--neon-glow);
+    }
+
+    input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .input-group--wallet-address {
+      padding: 1rem;
+      margin-left: -1rem;
+      margin-right: -1rem;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.06) 0%, transparent 50%);
+      border: 1px solid rgba(0, 255, 136, 0.25);
+      border-radius: 8px;
+    }
+    .input-group--wallet-address label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--neon);
+      letter-spacing: 0.06em;
+      margin-bottom: 0.5rem;
+    }
+    .input-group--wallet-address input {
+      border-color: rgba(0, 255, 136, 0.4);
+      background: var(--bg-dark);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .input-group--wallet-address input::placeholder {
+      opacity: 0.8;
+    }
+    .input-group--wallet-address input:focus {
+      border-color: var(--neon);
+      box-shadow: 0 0 0 2px var(--neon-glow), 0 0 20px rgba(0, 255, 136, 0.15);
+    }
+
+    .hint {
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .hint--row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .value-krw {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .data-value--row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .data-value--row .value-krw {
+      font-size: 0.8em;
+    }
+
+    .data-value--input input {
+      flex: 1;
+      min-width: 0;
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: #fff;
+      font-weight: inherit;
+    }
+
+    .data-value--input input:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .data-value--input input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .data-value {
+      padding: 0.85rem 1rem;
+      min-height: 2.95rem;
+      font-size: 1rem;
+      font-weight: 700;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--neon);
+    }
+
+    .input-group label + .price-cols {
+      margin-top: 0.5rem;
+    }
+    .price-cols {
+      display: flex;
+      align-items: stretch;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .price-col-arrow {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      color: var(--neon);
+      opacity: 0.7;
+      font-size: 0.55rem;
+      line-height: 1;
+      user-select: none;
+      padding: 0 0.15rem;
+    }
+    .price-col-arrow--red {
+      color: var(--danger);
+    }
+    .price-col {
+      flex: 1;
+      min-width: 6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+    .price-col-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.4rem 0.25rem 0.25rem;
+      width: 100%;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .price-col .data-value {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      width: 100%;
+      flex: 1;
+      min-height: 2.75rem;
+      padding: 0.4rem 0.5rem 0.6rem;
+      font-size: 0.95rem;
+    }
+    .price-cols .price-col:first-child .data-value,
+    .price-cols .price-col:last-child .data-value {
+      color: #fff;
+    }
+    .price-col-krw {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      padding: 0.25rem 0 0;
+      text-align: center;
+      width: 100%;
+    }
+
+    .data-value.loading {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .data-value.loading #unclaimedRewardDisplay,
+    .data-value.loading #walletTornBalanceDisplay {
+      color: var(--text-muted);
+    }
+
+    .data-value.loading .data-value--input input::placeholder {
+      color: var(--text-muted);
+    }
+
+    #walletStakedRow.loading {
+      color: var(--text-muted);
+    }
+
+    #unclaimedRewardDisplay,
+    #walletTornBalanceDisplay {
+      color: #fff;
+    }
+
+    .data-value.error {
+      color: var(--danger);
+    }
+
+    .data-value--total-pool input {
+      flex: 1;
+      min-width: 0;
+      padding: 0;
+      margin: 0;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      font-weight: inherit;
+      cursor: default;
+    }
+    .data-value--total-pool input:focus {
+      outline: none;
+      box-shadow: none;
+    }
+    .data-value--total-pool input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .card-dividend .share-block {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .share-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .share-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .share-percent {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--danger);
+    }
+
+    .share-bar-wrap {
+      margin: 0;
+      height: 6px;
+      background: var(--bg-dark);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .share-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-dim), var(--neon));
+      border-radius: 2px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 10px var(--neon-glow);
+    }
+
+    .results {
+      margin-top: 0;
+    }
+
+    .dividend-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dividend-swipe-area {
+      touch-action: manipulation;
+    }
+    .dividend-tab {
+      flex: 1;
+      padding: 0.6rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .dividend-tab:hover {
+      color: var(--text);
+    }
+    .dividend-tab--active {
+      color: var(--neon);
+      border-bottom-color: var(--neon);
+    }
+    .result-panel {
+      display: none;
+    }
+    .result-panel--active {
+      display: block;
+    }
+
+    .result-section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--neon);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      padding-top: 0.25rem;
+    }
+    .result-section-title .result-section-price {
+      text-transform: none;
+      letter-spacing: 0;
+      margin-left: 0.35em;
+      font-weight: 400;
+      font-size: 0.75em;
+      color: var(--text-muted);
+    }
+
+    .result-section-divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--border), var(--neon-dim), var(--border), transparent);
+      margin: 1.25rem 0 1rem;
+      border-radius: 1px;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      gap: 1rem;
+    }
+
+    .result-row:last-child {
+      border-bottom: none;
+    }
+
+    .result-label {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      flex-shrink: 0;
+      padding-top: 0.1rem;
+    }
+
+    .result-value-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      font-size: 0.9rem;
+      min-width: 0;
+    }
+
+    .result-value {
+      color: var(--neon);
+      font-weight: 700;
+      text-shadow: 0 0 10px var(--neon-glow);
+      font-size: 0.9rem;
+    }
+
+    .result-krw {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 2rem;
+      line-height: 1.6;
+    }
+
+    .footer-note a {
+      color: var(--neon);
+      text-decoration: none;
+    }
+
+    .footer-note a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 1rem 0.75rem;
+        max-width: 100%;
+      }
+      header {
+        margin-bottom: 1.5rem;
+        gap: 0.75rem;
+      }
+      .header-logo {
+        width: 40px;
+        height: 40px;
+      }
+      .logo {
+        font-size: 1.35rem;
+      }
+      .subtitle {
+        font-size: 0.65rem;
+        line-height: 1.4;
+      }
+      .card {
+        padding: 1rem 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+      .card-title {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+      }
+      .input-group {
+        margin-bottom: 1rem;
+      }
+      .input-group--wallet-address {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        padding: 0.75rem;
+      }
+      .price-cols {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0.25rem;
+        flex-wrap: nowrap;
+      }
+      .price-col-arrow {
+        font-size: 0.5rem;
+        padding: 0 0.05rem;
+      }
+      .price-col {
+        min-width: 0;
+        flex: 1;
+      }
+      .price-col-label {
+        font-size: 0.68rem;
+        padding: 0.2rem 0.1rem 0.15rem;
+      }
+      .price-col .data-value {
+        min-height: 2rem;
+        padding: 0.25rem 0.2rem 0.35rem;
+        font-size: 0.88rem;
+      }
+      .price-col-krw {
+        font-size: 0.7rem;
+        padding: 0.15rem 0 0;
+      }
+      .hint {
+        font-size: 0.6rem;
+        line-height: 1.5;
+        word-break: keep-all;
+        overflow-wrap: break-word;
+        padding-right: 0.25rem;
+      }
+      .data-value--row {
+        flex-wrap: wrap;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 1rem 0.5rem;
+      }
+      .card {
+        padding: 1rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+  <div class="container">
+    <header>
+      <img src="favicon.ico" alt="" class="header-logo" onerror="this.src='./logo.png'">
+      <div class="header-text">
+        <div class="logo">Tornado Cash Reward</div>
+        <div class="subtitle subtitle-telegram">토네이도 캐시 정보, 조회, 배당 v2 - TornFi.com</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="card-title">🌪️ 정보</div>
+      <div class="input-group">
+        <label>현재 가격</label>
+        <div class="data-value data-value--row price-cols" id="priceDisplayWrap">
+          <div class="price-col">
+            <span class="price-col-label">유니스왑</span>
+            <span class="data-value" id="priceDisplayLeft">— 로딩 중</span>
+            <span class="price-col-krw" id="priceDisplayLeftKrw"></span>
+          </div>
+          <span class="price-col-arrow price-col-arrow--red" aria-hidden="true">▶</span>
+          <div class="price-col">
+            <span class="price-col-label">마켓 평균 가격</span>
+            <span class="data-value" id="priceDisplayCenter">— 로딩 중</span>
+            <span class="price-col-krw" id="priceDisplayCenterKrw"></span>
+          </div>
+          <span class="price-col-arrow price-col-arrow--red" aria-hidden="true">◀</span>
+          <div class="price-col">
+            <span class="price-col-label">MEXC</span>
+            <span class="data-value" id="priceDisplayRight">— 로딩 중</span>
+            <span class="price-col-krw" id="priceDisplayRightKrw"></span>
+          </div>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>현재 김치프리미엄</label>
+        <div class="data-value" id="kimchiPremiumDisplay">— 로딩 중</div>
+      </div>
+      <div class="input-group">
+        <label for="totalPool">총 스테이킹 수량</label>
+        <div class="data-value data-value--row data-value--total-pool">
+          <input type="text" id="totalPool" placeholder="예: 2,610,453" value="" inputmode="numeric" autocomplete="off" readonly>
+          <span class="value-krw" id="totalPoolKrw"></span>
+        </div>
+      </div>
+      <p class="hint">* 달러 = USDT 가격, 김치 프리미엄은 국내·해외 비트코인을 기준으로 자동 반영됩니다. ( TORN 토큰 국내 미상장 )</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌪️ 조회</div>
+      <div class="input-group input-group--wallet-address">
+        <label for="walletAddress">내 지갑 주소</label>
+        <input type="text" id="walletAddress" placeholder="예: 0x1234...abcd" value="" spellcheck="false" autocomplete="off">
+        <p class="hint hint--row" id="walletStakedRow">
+          <span id="walletStakedDisplay"></span>
+          <span class="value-krw" id="walletStakedKrw"></span>
+        </p>
+      </div>
+      <div class="input-group">
+        <label for="userTorn">내 TORN 스테이킹</label>
+        <div class="data-value data-value--row data-value--input">
+          <input type="number" id="userTorn" placeholder="" min="0" step="any" value="">
+          <span class="value-krw" id="userTornKrw"></span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>미 출금 리워드</label>
+        <div class="data-value data-value--row">
+          <span id="unclaimedRewardDisplay"></span>
+          <span class="value-krw" id="unclaimedRewardKrw"></span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>지갑 TORN 보유</label>
+        <div class="data-value data-value--row">
+          <span id="walletTornBalanceDisplay"></span>
+          <span class="value-krw" id="walletTornBalanceKrw"></span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>합계 (스테이킹+리워드+지갑)</label>
+        <div class="data-value data-value--row">
+          <span id="totalHoldingsSumDisplay"></span>
+          <span class="value-krw" id="totalHoldingsSumKrw"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-dividend dividend-swipe-area">
+      <div class="card-title">🌪️ 배당</div>
+      <div class="share-block">
+        <div class="share-header">
+          <span class="share-label">내 스테이킹 지분</span>
+          <span class="share-percent" id="shareText">0%</span>
+        </div>
+        <div class="share-bar-wrap">
+          <div class="share-bar" id="shareBar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="dividend-tabs" role="tablist">
+        <button type="button" class="dividend-tab dividend-tab--active" role="tab" aria-selected="true" data-tab="eth">ETH</button>
+        <button type="button" class="dividend-tab" role="tab" aria-selected="false" data-tab="wbtc">WBTC</button>
+        <button type="button" class="dividend-tab" role="tab" aria-selected="false" data-tab="usd">USD</button>
+      </div>
+      <div class="results">
+        <div class="result-panel result-panel--active" data-panel="eth" role="tabpanel">
+          <div class="result-section-title">ETH <span class="result-section-price" id="dividendEthPriceDisplay">—</span></div>
+          <div class="result-row">
+            <span class="result-label">0.1 ETH 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="div01">0 TORN</span>
+              <span class="result-krw" id="krw01">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">1 ETH 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="div1">0 TORN</span>
+              <span class="result-krw" id="krw1">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">10 ETH 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="div10">0 TORN</span>
+              <span class="result-krw" id="krw10">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">100 ETH 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="div100">0 TORN</span>
+              <span class="result-krw" id="krw100">— 원</span>
+            </div>
+          </div>
+        </div>
+        <div class="result-panel" data-panel="wbtc" role="tabpanel">
+          <div class="result-section-title">WBTC <span class="result-section-price" id="dividendWbtcPriceDisplay">—</span></div>
+          <div class="result-row">
+            <span class="result-label">0.1 WBTC 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divWbtc01">0 TORN</span>
+              <span class="result-krw" id="krwWbtc01">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">1 WBTC 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divWbtc1">0 TORN</span>
+              <span class="result-krw" id="krwWbtc1">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">10 WBTC 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divWbtc10">0 TORN</span>
+              <span class="result-krw" id="krwWbtc10">— 원</span>
+            </div>
+          </div>
+        </div>
+        <div class="result-panel" data-panel="usd" role="tabpanel">
+          <div class="result-section-title">USD <span class="result-section-price" id="dividendUsdPriceDisplay">—</span></div>
+          <div class="result-row">
+            <span class="result-label">100 USD 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divUsd100">0 TORN</span>
+              <span class="result-krw" id="krwUsd100">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">1,000 USD 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divUsd1000">0 TORN</span>
+              <span class="result-krw" id="krwUsd1000">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">10,000 USD 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divUsd10000">0 TORN</span>
+              <span class="result-krw" id="krwUsd10000">— 원</span>
+            </div>
+          </div>
+          <div class="result-row">
+            <span class="result-label">100,000 USD 출금 시</span>
+            <div class="result-value-wrap">
+              <span class="result-value" id="divUsd100000">0 TORN</span>
+              <span class="result-krw" id="krwUsd100000">— 원</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-note">
+      <a href="https://ipfs.io/ipfs/bafybeib4rg5gx7plrvzasrrqa3tcb3tnzm2goxhteaxsbem6hjpzsgihbu/" target="_blank" rel="noopener">토네이도 캐시 웹사이트</a>에서 스테이킹 및 청구가 가능합니다. <span class="hint">기타 문의는 <a href="https://t.me/koreatornadocash" target="_blank" rel="noopener">한국 텔레그램 방</a>으로 부탁드립니다.</span><br><br>
+      Copyright 2025-2026 TornFi. All rights reserved.
+    </p>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js"></script>
+  <script>
+    (function () {
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      function updateNav(user) {
+        if (user) {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+        }
+      }
+      if (window.TornFiAuth) {
+        window.TornFiAuth.onUser(updateNav);
+        if (window.TornFiAuth.getUser()) updateNav(window.TornFiAuth.getUser());
+        else window.TornFiAuth.init().then(function () { updateNav(window.TornFiAuth.getUser()); });
+      }
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      const ETHERSCAN_API_KEY = 'DSPENWH1HPF4H8P3WZNM6HCFT3G4238JM6';
+      const TORN_TOKEN_ADDRESS = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
+      const GOVERNANCE_CONTRACT_ADDRESS = '0x2F50508a8a3D323B91336FA3eA6ae50E55f32185';
+      const STAKING_CONTRACT_ADDRESS = '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce';
+      const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
+      const STAKING_RPC_URL = 'https://mainnet.infura.io/v3/fa141c0488f14212b912c04114f23f84';
+      const TORN_DECIMALS = 18;
+      const FEE_RATE = 0.003;
+      const REFRESH_INTERVAL_MS = 60 * 1000;
+      const NETWORK_ERR_MSG = '네트워크 오류';
+      const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
+      const WITHDRAW_AMOUNTS = [0.1, 1, 10, 100];
+      const WITHDRAW_WBTC_AMOUNTS = [0.1, 1, 10];
+      const WITHDRAW_USD_AMOUNTS = [100, 1000, 10000, 100000];
+      const userTornInput = document.getElementById('userTorn');
+      const totalPoolInput = document.getElementById('totalPool');
+      const totalPoolKrwEl = document.getElementById('totalPoolKrw');
+      const shareBar = document.getElementById('shareBar');
+      const shareText = document.getElementById('shareText');
+      const divEls = { 0.1: document.getElementById('div01'), 1: document.getElementById('div1'), 10: document.getElementById('div10'), 100: document.getElementById('div100') };
+      const krwEls = { 0.1: document.getElementById('krw01'), 1: document.getElementById('krw1'), 10: document.getElementById('krw10'), 100: document.getElementById('krw100') };
+      const divElsWbtc = { 0.1: document.getElementById('divWbtc01'), 1: document.getElementById('divWbtc1'), 10: document.getElementById('divWbtc10') };
+      const krwElsWbtc = { 0.1: document.getElementById('krwWbtc01'), 1: document.getElementById('krwWbtc1'), 10: document.getElementById('krwWbtc10') };
+      const divElsUsd = { 100: document.getElementById('divUsd100'), 1000: document.getElementById('divUsd1000'), 10000: document.getElementById('divUsd10000'), 100000: document.getElementById('divUsd100000') };
+      const krwElsUsd = { 100: document.getElementById('krwUsd100'), 1000: document.getElementById('krwUsd1000'), 10000: document.getElementById('krwUsd10000'), 100000: document.getElementById('krwUsd100000') };
+      const totalStakedDisplay = document.getElementById('totalStakedDisplay');
+      const priceDisplayWrap = document.getElementById('priceDisplayWrap');
+      const priceDisplayLeft = document.getElementById('priceDisplayLeft');
+      const priceDisplayCenter = document.getElementById('priceDisplayCenter');
+      const priceDisplayRight = document.getElementById('priceDisplayRight');
+      const priceDisplayLeftKrw = document.getElementById('priceDisplayLeftKrw');
+      const priceDisplayCenterKrw = document.getElementById('priceDisplayCenterKrw');
+      const priceDisplayRightKrw = document.getElementById('priceDisplayRightKrw');
+      const dividendEthPriceDisplay = document.getElementById('dividendEthPriceDisplay');
+      const dividendWbtcPriceDisplay = document.getElementById('dividendWbtcPriceDisplay');
+      const dividendUsdPriceDisplay = document.getElementById('dividendUsdPriceDisplay');
+      const kimchiPremiumDisplay = document.getElementById('kimchiPremiumDisplay');
+      const userTornKrwEl = document.getElementById('userTornKrw');
+      const walletAddressInput = document.getElementById('walletAddress');
+      const walletStakedDisplay = document.getElementById('walletStakedDisplay');
+      const unclaimedRewardDisplay = document.getElementById('unclaimedRewardDisplay');
+      const walletTornBalanceDisplay = document.getElementById('walletTornBalanceDisplay');
+      const totalHoldingsSumDisplay = document.getElementById('totalHoldingsSumDisplay');
+      const walletStakedKrwEl = document.getElementById('walletStakedKrw');
+      const unclaimedRewardKrwEl = document.getElementById('unclaimedRewardKrw');
+      const walletTornBalanceKrwEl = document.getElementById('walletTornBalanceKrw');
+      const totalHoldingsSumKrwEl = document.getElementById('totalHoldingsSumKrw');
+
+      function parseDisplayNum(text) {
+        if (!text || text === '—' || text === '조회 중…') return 0;
+        var n = parseFloat(String(text).replace(/,/g, '').replace(/\s/g, ''));
+        return isNaN(n) || n < 0 ? 0 : n;
+      }
+
+      function updateTotalHoldingsSum() {
+        if (!totalHoldingsSumDisplay) return;
+        var raw = (walletAddressInput && walletAddressInput.value) ? walletAddressInput.value.trim() : '';
+        var loading = unclaimedRewardDisplay && unclaimedRewardDisplay.textContent === '조회 중…';
+        if (!raw || loading) {
+          if (totalHoldingsSumDisplay) totalHoldingsSumDisplay.textContent = '';
+          if (totalHoldingsSumKrwEl) totalHoldingsSumKrwEl.textContent = '';
+          updateWalletKrwDisplays();
+          return;
+        }
+        var userTorn = parseNum(userTornInput ? userTornInput.value : '');
+        var reward = parseDisplayNum(unclaimedRewardDisplay ? unclaimedRewardDisplay.textContent : '');
+        var walletBal = parseDisplayNum(walletTornBalanceDisplay ? walletTornBalanceDisplay.textContent : '');
+        var sum = userTorn + reward + walletBal;
+        totalHoldingsSumDisplay.textContent = formatTorn2Decimals(sum);
+        updateWalletKrwDisplays();
+      }
+
+      var stakingAbi = ['function lockedBalance(address account) view returns (uint256)'];
+      var rewardAbi = ['function checkReward(address account) view returns (uint256 rewards)'];
+      var erc20Abi = ['function balanceOf(address account) view returns (uint256)'];
+
+      function fetchStakedBalanceAndReward(walletAddress) {
+        if (!window.ethers || !ethers.isAddress(walletAddress)) return Promise.resolve({ tornStr: null, rewardStr: null, walletTornStr: null });
+        var provider = new ethers.JsonRpcProvider(STAKING_RPC_URL);
+        var stakingContract = new ethers.Contract(STAKING_CONTRACT_ADDRESS, stakingAbi, provider);
+        var rewardContract = new ethers.Contract(REWARD_CONTRACT_ADDRESS, rewardAbi, provider);
+        var tornToken = new ethers.Contract(TORN_TOKEN_ADDRESS, erc20Abi, provider);
+        return Promise.all([
+          stakingContract.lockedBalance(walletAddress).then(function (wei) { return ethers.formatUnits(wei, TORN_DECIMALS); }),
+          rewardContract.checkReward(walletAddress).then(function (wei) { return ethers.formatUnits(wei, TORN_DECIMALS); }).catch(function () { return null; }),
+          tornToken.balanceOf(walletAddress).then(function (wei) { return ethers.formatUnits(wei, TORN_DECIMALS); }).catch(function () { return '0'; })
+        ]).then(function (results) {
+          return { tornStr: results[0], rewardStr: results[1], walletTornStr: results[2] };
+        });
+      }
+
+      function formatTorn2Decimals(numOrStr) {
+        var n = typeof numOrStr === 'number' ? numOrStr : parseFloat(numOrStr);
+        if (isNaN(n) || n < 0) return '0';
+        return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      }
+
+      var walletQueryTimer = null;
+      function setWalletSection(staked, reward, balance, sum, krw) {
+        if (walletStakedDisplay) walletStakedDisplay.textContent = staked;
+        if (walletStakedKrwEl) walletStakedKrwEl.textContent = krw;
+        if (unclaimedRewardDisplay) unclaimedRewardDisplay.textContent = reward;
+        if (unclaimedRewardKrwEl) unclaimedRewardKrwEl.textContent = krw;
+        if (walletTornBalanceDisplay) walletTornBalanceDisplay.textContent = balance;
+        if (walletTornBalanceKrwEl) walletTornBalanceKrwEl.textContent = krw;
+        if (totalHoldingsSumDisplay) totalHoldingsSumDisplay.textContent = sum;
+        if (totalHoldingsSumKrwEl) totalHoldingsSumKrwEl.textContent = krw;
+      }
+
+      function setWalletLoading(loading) {
+        var walletStakedRow = document.getElementById('walletStakedRow');
+        if (walletStakedRow) walletStakedRow.classList.toggle('loading', !!loading);
+        if (userTornInput && userTornInput.parentElement) userTornInput.parentElement.classList.toggle('loading', !!loading);
+        if (unclaimedRewardDisplay && unclaimedRewardDisplay.parentElement) unclaimedRewardDisplay.parentElement.classList.toggle('loading', !!loading);
+        if (walletTornBalanceDisplay && walletTornBalanceDisplay.parentElement) walletTornBalanceDisplay.parentElement.classList.toggle('loading', !!loading);
+        if (totalHoldingsSumDisplay && totalHoldingsSumDisplay.parentElement) totalHoldingsSumDisplay.parentElement.classList.toggle('loading', !!loading);
+      }
+
+      function onWalletAddressChange() {
+        var raw = (walletAddressInput && walletAddressInput.value) ? walletAddressInput.value.trim() : '';
+        if (!raw) {
+          setWalletSection('', '', '', '', '');
+          if (userTornInput) { userTornInput.value = ''; userTornInput.placeholder = ''; }
+          if (userTornKrwEl) userTornKrwEl.textContent = '';
+          setWalletLoading(false);
+          calculate();
+          return;
+        }
+        if (!window.ethers || !ethers.isAddress(raw)) {
+          setWalletSection('', '', '', '', '');
+          if (userTornInput) { userTornInput.value = ''; userTornInput.placeholder = ''; }
+          if (userTornKrwEl) userTornKrwEl.textContent = '';
+          setWalletLoading(false);
+          calculate();
+          return;
+        }
+        setWalletSection('조회 중…', '조회 중…', '조회 중…', '조회 중…', '');
+        if (userTornInput) { userTornInput.value = ''; userTornInput.placeholder = '조회 중…'; }
+        setWalletLoading(true);
+        if (walletQueryTimer) clearTimeout(walletQueryTimer);
+        walletQueryTimer = setTimeout(function () {
+          walletQueryTimer = null;
+          fetchStakedBalanceAndReward(raw)
+            .then(function (data) {
+              var tornStr = data.tornStr;
+              var rewardStr = data.rewardStr;
+              var walletTornStr = data.walletTornStr;
+              if (tornStr == null) {
+                setWalletSection('', '', '', '', '');
+                if (userTornInput) userTornInput.placeholder = '';
+                setWalletLoading(false);
+                return;
+              }
+              try { localStorage.setItem(WALLET_ADDRESS_KEY, raw); } catch (e) {}
+              setWalletLoading(false);
+              var n = parseFloat(tornStr);
+              if (isNaN(n)) n = 0;
+              if (walletStakedDisplay) walletStakedDisplay.textContent = formatTorn2Decimals(n) + ' 스테이킹됨';
+              if (userTornInput) {
+                userTornInput.placeholder = '';
+                userTornInput.value = n >= 1 ? Math.floor(n) : (n > 0 ? n : '');
+                calculate();
+              }
+              if (unclaimedRewardDisplay) unclaimedRewardDisplay.textContent = rewardStr != null ? formatTorn2Decimals(rewardStr) : '—';
+              if (walletTornBalanceDisplay) {
+                var walletTornNum = walletTornStr != null ? parseFloat(walletTornStr) : 0;
+                walletTornBalanceDisplay.textContent = formatTorn2Decimals(isNaN(walletTornNum) || walletTornNum < 0 ? 0 : walletTornNum);
+              }
+              updateTotalHoldingsSum();
+            })
+            .catch(function (err) {
+              var msg = (err && err.message) ? err.message : '조회 실패';
+              if (msg.indexOf('fetch') !== -1 || msg.indexOf('network') !== -1) msg = '네트워크 오류';
+              setWalletSection('— ' + msg, '', '', '', '');
+              if (userTornInput) userTornInput.placeholder = '';
+              setWalletLoading(false);
+            });
+        }, 400);
+      }
+
+      function fetchTotalStaked() {
+        const url = 'https://api.etherscan.io/v2/api?' + new URLSearchParams({
+          chainid: '1',
+          module: 'account',
+          action: 'tokenbalance',
+          contractaddress: TORN_TOKEN_ADDRESS,
+          address: GOVERNANCE_CONTRACT_ADDRESS,
+          tag: 'latest',
+          apikey: ETHERSCAN_API_KEY
+        });
+        return fetch(url)
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data.status !== '1' || data.message !== 'OK') {
+              var errMsg = (typeof data.result === 'string' && data.result !== 'NOTOK')
+                ? data.result
+                : (data.message === 'NOTOK' ? 'Etherscan API 거부 (키/제한 확인)' : (data.result || data.message || 'Etherscan API 오류'));
+              throw new Error(errMsg);
+            }
+            const raw = data.result;
+            const balanceWei = typeof raw === 'string' ? raw : String(raw);
+            var totalStaked = 0;
+            if (balanceWei && balanceWei !== '0') {
+              var len = balanceWei.length;
+              if (len <= TORN_DECIMALS) {
+                totalStaked = parseFloat('0.' + balanceWei.padStart(TORN_DECIMALS, '0'));
+              } else {
+                var intPart = balanceWei.slice(0, len - TORN_DECIMALS);
+                var decPart = balanceWei.slice(-TORN_DECIMALS);
+                totalStaked = parseFloat(intPart + '.' + decPart);
+              }
+            }
+            return totalStaked;
+          });
+      }
+
+      var tornPriceUsd = 0;
+      var tornPriceUsdDex = 0;
+      var tornPriceUsdCenter = 0;
+      var tornPriceUsdCex = 0;
+      var ethPriceUsd = 0;
+      var btcPriceUsd = 0;
+      var tornPriceKrw = 0;
+      var kimchiPremiumAuto = null;
+
+      var DEFILLAMA_COINS = 'ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C,ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599';
+
+      var UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
+      var WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+      var uniswapFactoryAbi = ['function getPair(address tokenA, address tokenB) view returns (address pair)'];
+      var uniswapPairAbi = ['function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)', 'function token0() view returns (address)', 'function token1() view returns (address)'];
+
+      function fetchTornPriceFromUniswap(ethPriceUsd) {
+        if (!window.ethers || !ethPriceUsd || ethPriceUsd <= 0) return Promise.resolve(null);
+        var provider = new ethers.JsonRpcProvider(STAKING_RPC_URL);
+        var factory = new ethers.Contract(UNISWAP_V2_FACTORY, uniswapFactoryAbi, provider);
+        return factory.getPair(TORN_TOKEN_ADDRESS, WETH_ADDRESS)
+          .then(function (pairAddress) {
+            if (!pairAddress || pairAddress === ethers.ZeroAddress) return null;
+            var pair = new ethers.Contract(pairAddress, uniswapPairAbi, provider);
+            return Promise.all([pair.getReserves(), pair.token0()]).then(function (results) {
+              var reserve0 = results[0].reserve0;
+              var reserve1 = results[0].reserve1;
+              var token0 = String(results[1]).toLowerCase();
+              var tornLower = TORN_TOKEN_ADDRESS.toLowerCase();
+              var reserveTorn = token0 === tornLower ? reserve0 : reserve1;
+              var reserveWeth = token0 === tornLower ? reserve1 : reserve0;
+              if (reserveTorn === 0n) return null;
+              var tornPriceInEth = Number(reserveWeth) / Number(reserveTorn);
+              return tornPriceInEth * ethPriceUsd;
+            });
+          })
+          .catch(function () { return null; });
+      }
+
+      function fetchPrices() {
+        var usdPromise = fetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS)
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            var coins = data && data.coins ? data.coins : {};
+            var tornCoin = coins['ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C'];
+            var ethCoin = coins['ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'];
+            var btcCoin = coins['ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'];
+            var defiLlamaTorn = (tornCoin && typeof tornCoin.price === 'number') ? tornCoin.price : 0;
+            if (ethCoin && typeof ethCoin.price === 'number') ethPriceUsd = ethCoin.price;
+            if (btcCoin && typeof btcCoin.price === 'number') btcPriceUsd = btcCoin.price;
+            return { defiLlamaTorn: defiLlamaTorn, ethPriceUsd: ethPriceUsd };
+          });
+        var krwPromise = fetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin&vs_currencies=krw')
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data && data['tornado-cash'] && typeof data['tornado-cash'].krw === 'number') tornPriceKrw = data['tornado-cash'].krw;
+            return data && data.bitcoin && typeof data.bitcoin.krw === 'number' ? data.bitcoin.krw : null;
+          });
+        var mexcUrl = 'https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT';
+        function parseMexcResponse(text) {
+          try {
+            var data = typeof text === 'string' ? JSON.parse(text) : text;
+            if (data && data.price != null) {
+              var p = parseFloat(data.price);
+              return isNaN(p) ? null : p;
+            }
+          } catch (e) {}
+          return null;
+        }
+        function fetchViaProxy(proxyUrl) {
+          return fetch(proxyUrl)
+            .then(function (res) { return res.ok ? res.text() : Promise.reject(); })
+            .then(parseMexcResponse)
+            .catch(function () { return null; });
+        }
+        function tryMexcWithFallbacks() {
+          var proxy1 = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(mexcUrl);
+          var proxy2 = 'https://corsproxy.io/?' + encodeURIComponent(mexcUrl);
+          return fetch(mexcUrl)
+            .then(function (res) { return res.ok ? res.text() : Promise.reject(); })
+            .then(parseMexcResponse)
+            .catch(function () { return fetchViaProxy(proxy1); })
+            .then(function (price) {
+              if (price != null && price > 0) return price;
+              return fetchViaProxy(proxy2);
+            })
+            .then(function (price) {
+              if (price != null && price > 0) return price;
+              return fetchViaProxy(proxy1);
+            })
+            .catch(function () { return null; });
+        }
+        var mexcPromise = tryMexcWithFallbacks();
+        return usdPromise.then(function (llama) {
+          tornPriceUsdCenter = llama.defiLlamaTorn > 0 ? llama.defiLlamaTorn : 0;
+          var uniswapPromise = fetchTornPriceFromUniswap(llama.ethPriceUsd);
+          return Promise.all([Promise.resolve(llama), uniswapPromise, krwPromise, mexcPromise]);
+        }).then(function (results) {
+          var llama = results[0];
+          var uniswapTornUsd = results[1];
+          var btcKrw = results[2];
+          var mexcTornUsd = results[3];
+          tornPriceUsdDex = (typeof uniswapTornUsd === 'number' && uniswapTornUsd > 0) ? uniswapTornUsd : 0;
+          if (typeof mexcTornUsd === 'number' && mexcTornUsd > 0) tornPriceUsdCex = mexcTornUsd;
+          if (tornPriceUsdDex > 0) tornPriceUsd = tornPriceUsdDex;
+          else if (tornPriceUsdCenter > 0) tornPriceUsd = tornPriceUsdCenter;
+          else if (tornPriceUsdCex > 0) tornPriceUsd = tornPriceUsdCex;
+          return { btcKrw: btcKrw };
+        });
+      }
+
+      function fetchKimchiPremium(btcKrwGlobal) {
+        if (!btcKrwGlobal || btcKrwGlobal <= 0) return Promise.resolve(null);
+        return fetch('https://api.upbit.com/v1/ticker?markets=KRW-BTC')
+          .then(function (res) { return res.json(); })
+          .then(function (arr) {
+            if (!Array.isArray(arr) || !arr[0] || typeof arr[0].trade_price !== 'number') return null;
+            var upbitBtcKrw = arr[0].trade_price;
+            var premium = ((upbitBtcKrw - btcKrwGlobal) / btcKrwGlobal) * 100;
+            return Math.round(premium * 100) / 100;
+          })
+          .catch(function () { return null; });
+      }
+
+      function setDataLoading(el, loading) {
+        if (!el || !loading) return;
+        el.classList.add('loading');
+        el.classList.remove('error');
+      }
+
+      function setDataError(el, msg) {
+        el.textContent = msg || '— 오류';
+        el.classList.add('error');
+        el.classList.remove('loading');
+      }
+
+      function updateMarketData() {
+        if (totalStakedDisplay) setDataLoading(totalStakedDisplay, true);
+        if (priceDisplayWrap) priceDisplayWrap.classList.add('loading');
+        if (priceDisplayLeft) priceDisplayLeft.textContent = '— 로딩 중';
+        if (priceDisplayCenter) priceDisplayCenter.textContent = '— 로딩 중';
+        if (priceDisplayRight) priceDisplayRight.textContent = '— 로딩 중';
+        if (dividendEthPriceDisplay) dividendEthPriceDisplay.textContent = '—';
+        if (dividendWbtcPriceDisplay) dividendWbtcPriceDisplay.textContent = '—';
+        if (dividendUsdPriceDisplay) dividendUsdPriceDisplay.textContent = '—';
+        if (priceDisplayLeftKrw) priceDisplayLeftKrw.textContent = '';
+        if (priceDisplayCenterKrw) priceDisplayCenterKrw.textContent = '';
+        if (priceDisplayRightKrw) priceDisplayRightKrw.textContent = '';
+        if (kimchiPremiumDisplay) {
+          kimchiPremiumDisplay.textContent = '— 로딩 중';
+          kimchiPremiumDisplay.classList.add('loading');
+        }
+
+        fetchTotalStaked()
+          .then(function (totalStaked) {
+            const formatted = totalStaked >= 1
+              ? Math.floor(totalStaked).toLocaleString('en') + ' TORN'
+              : '0 TORN';
+            if (totalStakedDisplay) {
+              totalStakedDisplay.textContent = formatted;
+              totalStakedDisplay.classList.remove('loading');
+            }
+            if (!totalPoolInput.value || parseFloat(String(totalPoolInput.value).replace(/,/g, '')) === 0) {
+              totalPoolInput.value = Math.floor(totalStaked).toLocaleString('en');
+              calculate();
+            }
+          })
+          .catch(function (err) {
+            var msg = err.message || '조회 실패';
+            if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1 || msg.indexOf('Load failed') !== -1) msg = NETWORK_ERR_MSG;
+            if (totalStakedDisplay) setDataError(totalStakedDisplay, '— ' + msg);
+          });
+
+        function formatUsd(price) {
+          if (price == null || price <= 0) return '—';
+          return '$' + (price < 0.01 ? price.toFixed(6) : price.toFixed(2));
+        }
+        fetchPrices()
+          .then(function (data) {
+            if (priceDisplayWrap) priceDisplayWrap.classList.remove('loading');
+            if (priceDisplayLeft) priceDisplayLeft.textContent = formatUsd(tornPriceUsdDex);
+            var dexCexAvg = (tornPriceUsdDex > 0 && tornPriceUsdCex > 0) ? (tornPriceUsdDex + tornPriceUsdCex) / 2 : (tornPriceUsdDex > 0 ? tornPriceUsdDex : (tornPriceUsdCex > 0 ? tornPriceUsdCex : null));
+            if (priceDisplayCenter) priceDisplayCenter.textContent = formatUsd(dexCexAvg);
+            if (priceDisplayRight) priceDisplayRight.textContent = formatUsd(tornPriceUsdCex);
+            if (priceDisplayLeftKrw) priceDisplayLeftKrw.textContent = '';
+            if (priceDisplayCenterKrw) priceDisplayCenterKrw.textContent = '';
+            if (priceDisplayRightKrw) priceDisplayRightKrw.textContent = '';
+            var btcKrwForKrw = data && data.btcKrw ? data.btcKrw : null;
+            return fetchKimchiPremium(btcKrwForKrw).then(function (premium) {
+              return { premium: premium, btcKrw: btcKrwForKrw, dexCexAvg: dexCexAvg };
+            });
+          })
+          .then(function (res) {
+            var premium = res.premium;
+            kimchiPremiumAuto = premium;
+            if (kimchiPremiumDisplay) {
+              kimchiPremiumDisplay.classList.remove('loading');
+              if (premium != null) kimchiPremiumDisplay.textContent = premium + '%';
+              else kimchiPremiumDisplay.textContent = '—';
+            }
+            var krwPerUsd = (btcPriceUsd > 0 && res.btcKrw > 0) ? res.btcKrw / btcPriceUsd : 0;
+            if (krwPerUsd > 0 && premium != null) krwPerUsd = krwPerUsd * (1 + premium / 100);
+            function formatKrwFromUsd(usd) {
+              if (usd == null || usd <= 0 || krwPerUsd <= 0) return '';
+              return Math.floor(usd * krwPerUsd).toLocaleString('ko-KR') + ' 원';
+            }
+            if (priceDisplayLeftKrw) priceDisplayLeftKrw.textContent = formatKrwFromUsd(tornPriceUsdDex);
+            if (priceDisplayCenterKrw) priceDisplayCenterKrw.textContent = formatKrwFromUsd(res.dexCexAvg);
+            if (priceDisplayRightKrw) priceDisplayRightKrw.textContent = formatKrwFromUsd(tornPriceUsdCex);
+            var ethKrw = (ethPriceUsd > 0 && krwPerUsd > 0) ? ethPriceUsd * krwPerUsd : 0;
+            if (dividendEthPriceDisplay) {
+              var usdStr = ethPriceUsd > 0 ? '$' + Math.floor(ethPriceUsd).toLocaleString('en') : '—';
+              var ethKrwStr = ethKrw > 0 ? ' (' + Math.floor(ethKrw).toLocaleString('ko-KR') + ' 원)' : '';
+              dividendEthPriceDisplay.textContent = usdStr + ethKrwStr;
+            }
+            var wbtcKrw = (btcPriceUsd > 0 && krwPerUsd > 0) ? btcPriceUsd * krwPerUsd : 0;
+            if (dividendWbtcPriceDisplay) {
+              var wbtcUsdStr = btcPriceUsd > 0 ? '$' + Math.floor(btcPriceUsd).toLocaleString('en') : '—';
+              var wbtcKrwStr = wbtcKrw > 0 ? ' (' + Math.floor(wbtcKrw).toLocaleString('ko-KR') + ' 원)' : '';
+              dividendWbtcPriceDisplay.textContent = wbtcUsdStr + wbtcKrwStr;
+            }
+            if (dividendUsdPriceDisplay && krwPerUsd > 0) {
+              dividendUsdPriceDisplay.textContent = '$1 (' + Math.floor(krwPerUsd).toLocaleString('ko-KR') + ' 원)';
+            } else if (dividendUsdPriceDisplay) {
+              dividendUsdPriceDisplay.textContent = '—';
+            }
+            calculate();
+          })
+          .catch(function (err) {
+            var msg = err.message || '조회 실패';
+            if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1 || msg.indexOf('Load failed') !== -1) msg = NETWORK_ERR_MSG;
+            if (priceDisplayWrap) { priceDisplayWrap.classList.remove('loading'); priceDisplayWrap.classList.add('error'); }
+            if (priceDisplayLeft) priceDisplayLeft.textContent = '— ' + msg;
+            if (priceDisplayCenter) priceDisplayCenter.textContent = '— ' + msg;
+            if (priceDisplayRight) priceDisplayRight.textContent = '— ' + msg;
+            if (priceDisplayLeftKrw) priceDisplayLeftKrw.textContent = '';
+            if (priceDisplayCenterKrw) priceDisplayCenterKrw.textContent = '';
+            if (priceDisplayRightKrw) priceDisplayRightKrw.textContent = '';
+            if (kimchiPremiumDisplay) { kimchiPremiumDisplay.textContent = '—'; kimchiPremiumDisplay.classList.remove('loading'); }
+          });
+      }
+
+      function parseNum(value) {
+        const n = parseFloat(String(value).replace(/,/g, ''));
+        return isNaN(n) || n < 0 ? 0 : n;
+      }
+
+      function formatEth(n) {
+        if (n >= 1) return n.toFixed(4) + ' ETH';
+        if (n > 0) return n.toFixed(6) + ' ETH';
+        return '0 ETH';
+      }
+
+      function ethToTorn(ethAmount) {
+        if (!tornPriceUsd || tornPriceUsd <= 0 || !ethPriceUsd || ethPriceUsd <= 0) return null;
+        return (ethAmount * ethPriceUsd) / tornPriceUsd;
+      }
+
+      function btcToTorn(btcAmount) {
+        if (!tornPriceUsd || tornPriceUsd <= 0 || !btcPriceUsd || btcPriceUsd <= 0) return null;
+        return (btcAmount * btcPriceUsd) / tornPriceUsd;
+      }
+
+      function formatTorn(n) {
+        if (n == null) return '';
+        if (n >= 1e3) return n.toFixed(2) + ' TORN';
+        if (n >= 1) return n.toFixed(2) + ' TORN';
+        if (n > 0) return n.toFixed(4) + ' TORN';
+        return '0 TORN';
+      }
+
+      function formatKrw(n) {
+        if (n == null || n <= 0) return '— 원';
+        return Math.floor(n).toLocaleString('ko-KR') + ' 원';
+      }
+
+      function updateWalletKrwDisplays() {
+        function krwFromTorn(torn) {
+          if (torn == null || torn <= 0 || tornPriceKrw <= 0) return 0;
+          var krw = torn * tornPriceKrw;
+          if (kimchiPremiumAuto != null) krw = krw * (1 + kimchiPremiumAuto / 100);
+          return krw;
+        }
+        var staked = parseDisplayNum(walletStakedDisplay ? walletStakedDisplay.textContent : '');
+        var reward = parseDisplayNum(unclaimedRewardDisplay ? unclaimedRewardDisplay.textContent : '');
+        var walletBal = parseDisplayNum(walletTornBalanceDisplay ? walletTornBalanceDisplay.textContent : '');
+        var sum = parseDisplayNum(totalHoldingsSumDisplay ? totalHoldingsSumDisplay.textContent : '');
+        if (walletStakedKrwEl) walletStakedKrwEl.textContent = staked > 0 ? formatKrw(krwFromTorn(staked)) : '';
+        if (unclaimedRewardKrwEl) unclaimedRewardKrwEl.textContent = reward > 0 ? formatKrw(krwFromTorn(reward)) : '';
+        if (walletTornBalanceKrwEl) walletTornBalanceKrwEl.textContent = walletBal > 0 ? formatKrw(krwFromTorn(walletBal)) : '';
+        if (totalHoldingsSumKrwEl) totalHoldingsSumKrwEl.textContent = sum > 0 ? formatKrw(krwFromTorn(sum)) : '';
+      }
+
+      function calculate() {
+        const userTorn = parseNum(userTornInput.value);
+        const totalPool = parseNum(totalPoolInput.value);
+
+        var sharePercent = 0;
+        if (totalPool > 0 && userTorn > 0) {
+          sharePercent = Math.min(100, (userTorn / totalPool) * 100);
+        }
+
+        shareBar.style.width = sharePercent + '%';
+        shareText.textContent = sharePercent.toFixed(4) + '%';
+
+        updateTotalHoldingsSum();
+
+        if (totalPoolKrwEl) {
+          var poolKrw = (totalPool > 0 && tornPriceKrw > 0) ? totalPool * tornPriceKrw : 0;
+          if (poolKrw > 0 && kimchiPremiumAuto != null) poolKrw = poolKrw * (1 + kimchiPremiumAuto / 100);
+          totalPoolKrwEl.textContent = poolKrw > 0 ? formatKrw(poolKrw) : '';
+        }
+
+        if (userTornKrwEl) {
+          var userKrw = (userTorn > 0 && tornPriceKrw > 0) ? userTorn * tornPriceKrw : 0;
+          if (userKrw > 0 && kimchiPremiumAuto != null) userKrw = userKrw * (1 + kimchiPremiumAuto / 100);
+          userTornKrwEl.textContent = userKrw > 0 ? formatKrw(userKrw) : '';
+        }
+
+        function updateRow(ethAmount, el, krwEl) {
+          var totalFee = ethAmount * FEE_RATE;
+          var myDividendEth = totalPool > 0 && userTorn > 0 ? totalFee * (userTorn / totalPool) : 0;
+          var myDividendTorn = ethToTorn(myDividendEth);
+          if (el) el.textContent = myDividendTorn != null ? formatTorn(myDividendTorn) : formatEth(myDividendEth);
+          if (krwEl) {
+            var baseKrw = (myDividendTorn != null && tornPriceKrw > 0) ? myDividendTorn * tornPriceKrw : 0;
+            var premium = kimchiPremiumAuto != null ? kimchiPremiumAuto : 0;
+            if (baseKrw > 0 && premium !== 0) baseKrw = baseKrw * (1 + premium / 100);
+            krwEl.textContent = baseKrw > 0 ? formatKrw(baseKrw) : '— 원';
+          }
+        }
+
+        WITHDRAW_AMOUNTS.forEach(function (ethAmount) {
+          updateRow(ethAmount, divEls[ethAmount], krwEls[ethAmount]);
+        });
+
+        WITHDRAW_WBTC_AMOUNTS.forEach(function (wbtcAmount) {
+          var totalFeeBtc = wbtcAmount * FEE_RATE;
+          var myDividendBtc = totalPool > 0 && userTorn > 0 ? totalFeeBtc * (userTorn / totalPool) : 0;
+          var myDividendTorn = btcToTorn(myDividendBtc);
+          var el = divElsWbtc[wbtcAmount];
+          var krwEl = krwElsWbtc[wbtcAmount];
+          if (el) el.textContent = myDividendTorn != null ? formatTorn(myDividendTorn) : '0 TORN';
+          if (krwEl) {
+            var baseKrw = (myDividendTorn != null && tornPriceKrw > 0) ? myDividendTorn * tornPriceKrw : 0;
+            var premium = kimchiPremiumAuto != null ? kimchiPremiumAuto : 0;
+            if (baseKrw > 0 && premium !== 0) baseKrw = baseKrw * (1 + premium / 100);
+            krwEl.textContent = baseKrw > 0 ? formatKrw(baseKrw) : '— 원';
+          }
+        });
+
+        WITHDRAW_USD_AMOUNTS.forEach(function (usdAmount) {
+          var equivalentEth = ethPriceUsd > 0 ? usdAmount / ethPriceUsd : 0;
+          updateRow(equivalentEth, divElsUsd[usdAmount], krwElsUsd[usdAmount]);
+        });
+      }
+
+      function formatTotalPoolWithCommas() {
+        if (!totalPoolInput) return;
+        var raw = String(totalPoolInput.value).replace(/,/g, '').replace(/\s/g, '');
+        var num = parseFloat(raw);
+        if (!isNaN(num) && num >= 0) totalPoolInput.value = Math.floor(num).toLocaleString('en');
+      }
+      userTornInput.addEventListener('input', calculate);
+      userTornInput.addEventListener('change', calculate);
+      if (totalPoolInput) {
+        totalPoolInput.addEventListener('input', calculate);
+        totalPoolInput.addEventListener('blur', formatTotalPoolWithCommas);
+        totalPoolInput.addEventListener('change', function () {
+          formatTotalPoolWithCommas();
+          calculate();
+        });
+      }
+
+      (function initDividendTabs() {
+        var TAB_ORDER = ['eth', 'wbtc', 'usd'];
+        var tabs = document.querySelectorAll('.dividend-tab');
+        var panels = document.querySelectorAll('.result-panel');
+
+        function switchToTab(tabName) {
+          tabs.forEach(function (t) {
+            t.classList.remove('dividend-tab--active');
+            t.setAttribute('aria-selected', 'false');
+            if (t.getAttribute('data-tab') === tabName) {
+              t.classList.add('dividend-tab--active');
+              t.setAttribute('aria-selected', 'true');
+            }
+          });
+          panels.forEach(function (p) {
+            p.classList.remove('result-panel--active');
+            if (p.getAttribute('data-panel') === tabName) p.classList.add('result-panel--active');
+          });
+        }
+
+        tabs.forEach(function (tab) {
+          tab.addEventListener('click', function () { switchToTab(tab.getAttribute('data-tab')); });
+        });
+
+        var swipeStartX = 0;
+        var swipeStartY = 0;
+        var swipeThreshold = 40;
+        function onSwipeStart(e) {
+          if (!e.touches || !e.touches.length) return;
+          swipeStartX = e.touches[0].clientX;
+          swipeStartY = e.touches[0].clientY;
+        }
+        function onSwipeEnd(e) {
+          if (!e.changedTouches || !e.changedTouches.length) return;
+          var dx = e.changedTouches[0].clientX - swipeStartX;
+          var dy = e.changedTouches[0].clientY - swipeStartY;
+          if (Math.abs(dx) < swipeThreshold) return;
+          if (Math.abs(dy) > Math.abs(dx)) return;
+          var activeTab = document.querySelector('.dividend-tab--active');
+          if (!activeTab) return;
+          var currentId = activeTab.getAttribute('data-tab');
+          var idx = TAB_ORDER.indexOf(currentId);
+          if (idx === -1) return;
+          if (dx < 0) idx = (idx + 1) % TAB_ORDER.length;
+          else idx = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+          switchToTab(TAB_ORDER[idx]);
+        }
+        var swipeArea = document.querySelector('.dividend-swipe-area');
+        if (swipeArea) {
+          swipeArea.addEventListener('touchstart', onSwipeStart, { passive: true });
+          swipeArea.addEventListener('touchend', onSwipeEnd, { passive: true });
+        }
+      })();
+
+      if (walletAddressInput) {
+        walletAddressInput.addEventListener('input', onWalletAddressChange);
+        walletAddressInput.addEventListener('blur', onWalletAddressChange);
+        try {
+          var saved = localStorage.getItem(WALLET_ADDRESS_KEY);
+          if (saved && (saved = saved.trim())) {
+            walletAddressInput.value = saved;
+            onWalletAddressChange();
+          }
+        } catch (e) {}
+      }
+
+      updateMarketData();
+      calculate();
+      setInterval(updateMarketData, REFRESH_INTERVAL_MS);
+    })();
+  </script>
+</body>
+</html>

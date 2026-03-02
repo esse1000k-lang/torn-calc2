@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+
+# 민감 데이터·업로드 (절대 커밋 금지)
+data/
+public/uploads/

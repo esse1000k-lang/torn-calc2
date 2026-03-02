@@ -1,0 +1,11 @@
+const fs = require('fs');
+const path = require('path');
+const indexPath = path.join(__dirname, 'public', 'index.html');
+const outPath = path.join(__dirname, 'public', 'js', 'chat.js');
+const html = fs.readFileSync(indexPath, 'utf8');
+const lines = html.split(/\r?\n/);
+const start = 400;
+const end = 1244;
+const block = lines.slice(start, end).join('\n');
+fs.writeFileSync(outPath, block, 'utf8');
+console.log('Wrote', outPath);

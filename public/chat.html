@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TornFi 채팅">
+  <title>실시간 채팅 - TornFi 커뮤니티</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="favicon.ico">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="chat-page">
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <main class="site-main chat-page-main">
+    <section id="chat" class="section chat-section">
+      <div id="chatWrap" class="chat-wrap">
+        <div id="chatPanel" class="chat-panel">
+          <div id="chatMsgDropdown" class="chat-msg-dropdown" style="display:none;">
+            <button type="button" class="chat-msg-dropdown__item" data-action="sendHeart"><span class="chat-msg-dropdown__icon">❤️</span> 전송</button>
+            <button type="button" class="chat-msg-dropdown__item" data-action="reply"><span class="chat-msg-dropdown__icon">↩</span> 답장</button>
+            <button type="button" class="chat-msg-dropdown__item" data-action="copy"><span class="chat-msg-dropdown__icon chat-msg-dropdown__icon--copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span> 복사</button>
+            <button type="button" class="chat-msg-dropdown__item" data-action="edit"><span class="chat-msg-dropdown__icon">✏</span> 수정</button>
+            <button type="button" class="chat-msg-dropdown__item" data-action="delete"><span class="chat-msg-dropdown__icon">🗑</span> 삭제</button>
+          </div>
+          <div id="chatLinkConfirmDropdown" class="chat-link-confirm-dropdown" style="display:none;">
+            <p class="chat-link-confirm__text">모험을 떠날 준비가 되셨나요?</p>
+            <div class="chat-link-confirm__actions">
+              <button type="button" id="chatLinkConfirmGo" class="chat-link-confirm__btn chat-link-confirm__btn--go">이동</button>
+              <button type="button" id="chatLinkConfirmCancel" class="chat-link-confirm__btn chat-link-confirm__btn--cancel">취소</button>
+            </div>
+          </div>
+          <div id="chatItemUsedToast" class="chat-item-used-toast" aria-live="polite" style="display:none;"></div>
+          <div id="chatRewardPartyOverlay" class="reward-party-overlay" aria-hidden="true" style="display:none;"
+               data-helicopter-size="200" data-scatter-emoji="🌪️" data-fly-in-ms="2500" data-scatter-duration-ms="10000" data-fly-out-ms="2000" data-fade-out-ms="1000" data-scatter-interval-ms="180" data-scatter-fall-duration-s="6">
+            <div class="reward-party-helicopter"></div>
+            <div class="reward-party-scatter"></div>
+          </div>
+          <div id="chatRisePrayerOverlay" class="rise-prayer-overlay" aria-hidden="true" style="display:none;">
+            <div class="rise-prayer-inner">
+              <span class="rise-prayer-emoji" aria-hidden="true">🙏</span>
+              <p class="rise-prayer-text">TORN 떡상기원!!</p>
+              <span class="rise-prayer-up" aria-hidden="true">🚀</span>
+            </div>
+          </div>
+          <div id="chatBroomOverlay" class="broom-overlay" aria-hidden="true" style="display:none;">
+            <div class="broom-overlay__dust" aria-hidden="true">
+              <span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span><span class="broom-dust-particle"></span>
+            </div>
+            <div class="broom-overlay__broom" aria-hidden="true">🧹</div>
+          </div>
+          <div id="chatPinnedWrap" class="chat-pinned-wrap" style="display:none;">
+            <div class="chat-pinned-inner">
+              <span class="chat-pinned-icon" aria-hidden="true">📌</span>
+              <button type="button" id="chatPinnedUnpinBtn" class="chat-pinned-unpin-btn" style="display:none;" title="고정 메시지 해제(관리자)">고정 해제</button>
+              <p id="chatPinnedText" class="chat-pinned-text"></p>
+              <span id="chatPinnedMeta" class="chat-pinned-meta"></span>
+            </div>
+          </div>
+          <div class="chat-messages-area">
+            <div id="chatGuestNotice" class="chat-guest-notice" style="display:none;" aria-live="polite"></div>
+            <div id="chatMessages" class="chat-messages"></div>
+          </div>
+          <div id="chatReplyBar" class="chat-reply-bar" style="display:none;">
+            <span id="chatReplyText" class="chat-reply-bar__text"></span>
+            <button type="button" id="chatReplyCancel" class="chat-reply-bar__cancel">취소</button>
+          </div>
+          <div class="chat-input-wrap">
+            <input type="file" id="chatImage" class="chat-file-input" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="사진 첨부">
+            <button type="button" id="chatAttach" class="chat-attach-btn" title="사진 첨부" aria-label="사진 첨부">📷</button>
+            <input type="text" id="chatInput" class="chat-input" placeholder="메시지 입력 (로그인 후 전송)" maxlength="500" autocomplete="off">
+            <div id="chatItemSelectWrap" class="chat-item-dropdown" style="display:none;" aria-label="아이템 선택">
+              <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true">❤️</button>
+              <div class="chat-item-menu" id="chatItemMenu"></div>
+            </div>
+          <div id="chatShopConfirmLayer" class="chat-shop-confirm-layer" style="display:none;">
+            <div class="chat-shop-confirm-box">
+              <p class="chat-shop-confirm__text">상점으로 이동하시겠습니까?</p>
+              <div class="chat-shop-confirm__actions">
+                <button type="button" id="chatShopConfirmNo" class="chat-shop-confirm__btn chat-shop-confirm__btn--no">아니오</button>
+                <button type="button" id="chatShopConfirmYes" class="chat-shop-confirm__btn chat-shop-confirm__btn--yes">네</button>
+              </div>
+            </div>
+          </div>
+            <button type="button" id="chatSend" class="chat-send">전송</button>
+          </div>
+          <div id="chatPreviewWrap" class="chat-preview-wrap" style="display:none;">
+            <img id="chatPreviewImg" class="chat-preview-img" alt="첨부 미리보기">
+            <button type="button" id="chatPreviewRemove" class="chat-preview-remove" aria-label="첨부 취소">×</button>
+          </div>
+          <div id="chatPinModal" class="chat-pin-modal" role="dialog" aria-labelledby="chatPinModalTitle" aria-modal="true" style="display:none;">
+            <div class="chat-pin-modal__backdrop"></div>
+            <div class="chat-pin-modal__box">
+              <p id="chatPinModalTitle" class="chat-pin-modal__emoji" aria-label="고정 메시지">📌</p>
+              <textarea id="chatPinModalInput" class="chat-pin-modal__input" placeholder="고정할 메시지 입력 (최대 25자)" maxlength="25" rows="3"></textarea>
+              <div class="chat-pin-modal__actions">
+                <button type="button" id="chatPinModalCancel" class="chat-pin-modal__btn chat-pin-modal__btn--cancel">취소</button>
+                <button type="button" id="chatPinModalConfirm" class="chat-pin-modal__btn chat-pin-modal__btn--confirm">확인</button>
+              </div>
+            </div>
+          </div>
+          <div id="chatEditModal" class="chat-edit-modal" role="dialog" aria-labelledby="chatEditModalTitle" aria-modal="true" style="display:none;">
+            <div class="chat-edit-modal__backdrop"></div>
+            <div class="chat-edit-modal__box">
+              <p id="chatEditModalTitle" class="chat-edit-modal__title">✏ 메시지 수정</p>
+              <textarea id="chatEditModalInput" class="chat-edit-modal__input" placeholder="내용 입력 (최대 500자)" maxlength="500" rows="4"></textarea>
+              <div class="chat-edit-modal__actions">
+                <button type="button" id="chatEditModalCancel" class="chat-edit-modal__btn chat-edit-modal__btn--cancel">취소</button>
+                <button type="button" id="chatEditModalConfirm" class="chat-edit-modal__btn chat-edit-modal__btn--confirm">확인</button>
+              </div>
+            </div>
+          </div>
+          <div id="chatDeleteModal" class="chat-delete-modal" role="dialog" aria-labelledby="chatDeleteModalTitle" aria-modal="true" style="display:none;">
+            <div class="chat-delete-modal__backdrop"></div>
+            <div class="chat-delete-modal__box">
+              <p id="chatDeleteModalTitle" class="chat-delete-modal__title">이 메시지를 삭제할까요?</p>
+              <div class="chat-delete-modal__actions">
+                <button type="button" id="chatDeleteModalCancel" class="chat-delete-modal__btn chat-delete-modal__btn--cancel">취소</button>
+                <button type="button" id="chatDeleteModalConfirm" class="chat-delete-modal__btn chat-delete-modal__btn--confirm">삭제</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="chatSendHeartLayer" class="chat-send-heart-layer" style="display:none;">
+    <div class="chat-send-heart-box">
+      <h3 class="chat-send-heart-title">❤️ 하트 보내기</h3>
+      <p id="chatSendHeartMessage" class="chat-send-heart-message"></p>
+      <p id="chatSendHeartMyHearts" class="chat-send-heart-myhearts"></p>
+      <div class="chat-send-heart-actions">
+        <button type="button" id="chatSendHeartCancel" class="chat-send-heart-btn chat-send-heart-btn--cancel">취소</button>
+        <button type="button" id="chatSendHeartOk" class="chat-send-heart-btn chat-send-heart-btn--ok">보내기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      function updateNav(user) {
+        if (user) {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+        }
+      }
+      if (window.TornFiAuth && window.TornFiAuth.onUser) {
+        window.TornFiAuth.onUser(updateNav);
+      }
+
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = navMenuDropdown.classList.toggle('is-open');
+          navMenuBtn.setAttribute('aria-expanded', open);
+        });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () {
+          navMenuDropdown.classList.remove('is-open');
+          navMenuBtn.setAttribute('aria-expanded', 'false');
+        });
+      }
+    })();
+  </script>
+  <script src="js/chat-page.js"></script>
+  <script>
+    /* 오버레이/토스트가 클릭을 가로채는지 확인용 — 확인 후 이 블록 삭제 */
+    setTimeout(function () {
+      var ids = ['chatRewardPartyOverlay', 'chatRisePrayerOverlay', 'chatBroomOverlay', 'chatItemUsedToast'];
+      console.log('[채팅 오버레이 검사]');
+      ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) { console.log('  ' + id + ': 없음'); return; }
+        var s = window.getComputedStyle(el);
+        console.log('  ' + id + ':', 'display=' + s.display, 'pointerEvents=' + s.pointerEvents, 'visibility=' + s.visibility);
+      });
+    }, 2000);
+  </script>
+</body>
+</html>

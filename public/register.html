@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>회원가입 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <div class="auth-page auth-page--register">
+    <a href="/" class="back-link">← 홈으로</a>
+    <div class="auth-card auth-card--register">
+      <div class="auth-card-head">
+        <h1>회원가입</h1>
+        <p class="auth-desc">닉네임과 비밀번호로 간편히 가입하세요</p>
+      </div>
+      <p class="auth-error" id="authError"></p>
+      <form id="registerForm">
+        <section class="auth-form-section auth-form-section--card">
+          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">1</span>계정 정보</h3>
+          <div class="auth-form-section-inner">
+            <div class="auth-form-block">
+              <label for="displayName">닉네임 (영문, 숫자만 5~12자)</label>
+              <input type="text" id="displayName" name="displayName" required autocomplete="username" placeholder="영문·숫자 5~12자" minlength="5" maxlength="12" pattern="[a-zA-Z0-9]*" title="영문, 숫자만 5~12자">
+              <p class="nickname-validation" id="nicknameValidation" aria-live="polite" role="status"></p>
+            </div>
+            <div class="auth-form-block auth-form-block--password">
+              <span class="auth-form-block-title">비밀번호</span>
+              <label for="password">로그인 비밀번호</label>
+              <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="8자 이상, 영문·숫자 포함 (특수문자 권장)" minlength="8">
+              <p class="capslock-warning" id="passwordCapsWarning" aria-live="polite" role="status" style="display:none;">Caps Lock이 켜져 있습니다.</p>
+              <label for="passwordConfirm">비밀번호 확인</label>
+              <input type="password" id="passwordConfirm" name="passwordConfirm" required placeholder="동일하게 입력">
+              <p class="capslock-warning" id="passwordConfirmCapsWarning" aria-live="polite" role="status" style="display:none;">Caps Lock이 켜져 있습니다.</p>
+              <p class="password-confirm-validation" id="passwordConfirmValidation" aria-live="polite" role="status"></p>
+            </div>
+          </div>
+        </section>
+        <section class="auth-form-section auth-form-section--card">
+          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">2</span>추천인</h3>
+          <div class="auth-form-section-inner">
+            <label for="referrer">추천인 (선택사항)</label>
+            <input type="text" id="referrer" name="referrer" autocomplete="off" placeholder="선택 입력">
+          </div>
+        </section>
+        <div class="auth-submit-wrap">
+          <button type="submit" class="auth-submit-btn">가입하기</button>
+        </div>
+      </form>
+      <p class="auth-link">이미 계정이 있으신가요? <a href="/login.html">로그인</a></p>
+    </div>
+  </div>
+
+  <div id="registerWelcomeLayer" class="register-welcome-layer" style="display:none;">
+    <div class="register-welcome-card">
+      <div class="register-welcome-icon" aria-hidden="true">✨</div>
+      <h2 class="register-welcome-title">가입을 환영합니다</h2>
+      <p class="register-welcome-desc">가입 신청이 완료되었습니다.<br>관리자 승인 후 서비스를 이용하실 수 있습니다.<br><span class="register-welcome-time">(최소 1시간 ~ 최대 24시간)</span></p>
+      <p class="register-welcome-login"><span class="register-welcome-torn">Torn</span>Fi.com</p>
+      <a href="/" id="registerWelcomeBtn" class="register-welcome-btn">홈으로 돌아가기</a>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var form = document.getElementById('registerForm');
+      var errorEl = document.getElementById('authError');
+      var nicknameValidationEl = document.getElementById('nicknameValidation');
+
+      var nicknameRegex = /^[a-zA-Z0-9]{5,12}$/;
+      var nicknameCheckTimer = null;
+      var displayNameInput = document.getElementById('displayName');
+      if (displayNameInput) {
+        displayNameInput.addEventListener('input', function () {
+          var v = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+          if (v !== this.value) this.value = v;
+          nicknameValidationEl.textContent = '';
+          nicknameValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok');
+          if (v.length > 0 && v.length < 5) nicknameValidationEl.textContent = '닉네임은 5~12자입니다.';
+          else if (v.length > 0 && !nicknameRegex.test(v)) nicknameValidationEl.textContent = '영문, 숫자만 5~12자 가능합니다.';
+          else if (v.length >= 5 && !/[a-zA-Z]/.test(v)) nicknameValidationEl.textContent = '영문, 숫자만 5~12자 가능합니다.';
+          else if (v.length >= 5) {
+            if (nicknameCheckTimer) clearTimeout(nicknameCheckTimer);
+            nicknameCheckTimer = setTimeout(function () {
+              nicknameCheckTimer = null;
+              fetch('/api/public/check-nickname?displayName=' + encodeURIComponent(v))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                  if (displayNameInput.value.trim() !== v) return;
+                  if (data.available) {
+                    nicknameValidationEl.textContent = '사용 가능한 닉네임입니다.';
+                    nicknameValidationEl.classList.remove('wallet-validation--err');
+                    nicknameValidationEl.classList.add('wallet-validation--ok');
+                  } else {
+                    nicknameValidationEl.textContent = data.message || '이미 사용 중인 닉네임입니다.';
+                    nicknameValidationEl.classList.remove('wallet-validation--ok');
+                    nicknameValidationEl.classList.add('wallet-validation--err');
+                  }
+                })
+                .catch(function () {
+                  if (displayNameInput.value.trim() === v) nicknameValidationEl.textContent = '';
+                });
+            }, 400);
+          } else nicknameValidationEl.textContent = '';
+        });
+        displayNameInput.addEventListener('blur', function () {
+          var v = this.value.trim();
+          if (!v) { nicknameValidationEl.textContent = ''; nicknameValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok'); return; }
+          if (!nicknameRegex.test(v) || !/[a-zA-Z]/.test(v)) {
+            nicknameValidationEl.textContent = v.length < 5 ? '닉네임은 5~12자입니다.' : '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
+            nicknameValidationEl.classList.add('wallet-validation--err');
+            nicknameValidationEl.classList.remove('wallet-validation--ok');
+          } else {
+            fetch('/api/public/check-nickname?displayName=' + encodeURIComponent(v))
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (displayNameInput.value.trim() !== v) return;
+                if (data.available) {
+                  nicknameValidationEl.textContent = '사용 가능한 닉네임입니다.';
+                  nicknameValidationEl.classList.remove('wallet-validation--err');
+                  nicknameValidationEl.classList.add('wallet-validation--ok');
+                } else {
+                  nicknameValidationEl.textContent = data.message || '이미 사용 중인 닉네임입니다.';
+                  nicknameValidationEl.classList.remove('wallet-validation--ok');
+                  nicknameValidationEl.classList.add('wallet-validation--err');
+                }
+              })
+              .catch(function () {});
+          }
+        });
+      }
+
+      var passwordInput = document.getElementById('password');
+      var passwordConfirmInput = document.getElementById('passwordConfirm');
+      var passwordConfirmValidationEl = document.getElementById('passwordConfirmValidation');
+      function attachCapsLockWarning(inputEl, warningEl) {
+        if (!inputEl || !warningEl) return;
+        function updateCaps(e) {
+          var capsOn = e && typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
+          warningEl.style.display = capsOn ? 'block' : 'none';
+        }
+        inputEl.addEventListener('keydown', updateCaps);
+        inputEl.addEventListener('keyup', updateCaps);
+        inputEl.addEventListener('blur', function () { warningEl.style.display = 'none'; });
+      }
+      attachCapsLockWarning(passwordInput, document.getElementById('passwordCapsWarning'));
+      attachCapsLockWarning(passwordConfirmInput, document.getElementById('passwordConfirmCapsWarning'));
+      function checkPasswordMatch() {
+        if (!passwordConfirmValidationEl) return;
+        var p = passwordInput ? passwordInput.value : '';
+        var c = passwordConfirmInput ? passwordConfirmInput.value : '';
+        if (c.length === 0) {
+          passwordConfirmValidationEl.textContent = '';
+          passwordConfirmValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok');
+          return;
+        }
+        if (p !== c) {
+          passwordConfirmValidationEl.textContent = '비밀번호가 일치하지 않습니다.';
+          passwordConfirmValidationEl.classList.remove('wallet-validation--ok');
+          passwordConfirmValidationEl.classList.add('wallet-validation--err');
+        } else {
+          passwordConfirmValidationEl.textContent = '일치합니다.';
+          passwordConfirmValidationEl.classList.remove('wallet-validation--err');
+          passwordConfirmValidationEl.classList.add('wallet-validation--ok');
+        }
+      }
+      function clearTopError() {
+        if (errorEl) errorEl.textContent = '';
+      }
+      form.addEventListener('input', clearTopError);
+      form.addEventListener('change', clearTopError);
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearTopError();
+        var displayName = (document.getElementById('displayName').value || '').trim();
+        var password = (document.getElementById('password').value || '').trim();
+        var passwordConfirm = (document.getElementById('passwordConfirm').value || '').trim();
+        var referrer = (document.getElementById('referrer').value || '').trim() || undefined;
+        if (!displayName) {
+          errorEl.textContent = '닉네임을 입력해 주세요.';
+          return;
+        }
+        if (!nicknameRegex.test(displayName) || !/[a-zA-Z]/.test(displayName)) {
+          errorEl.textContent = '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
+          return;
+        }
+        if (password !== passwordConfirm) {
+          errorEl.textContent = '비밀번호가 일치하지 않습니다.';
+          return;
+        }
+        if (password.length < 8) {
+          errorEl.textContent = '비밀번호는 8자 이상이어야 합니다.';
+          return;
+        }
+        if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+          errorEl.textContent = '비밀번호는 영문과 숫자를 모두 포함해야 합니다.';
+          return;
+        }
+        window.TornFiAuth.register(displayName, password, referrer)
+          .then(function (data) {
+            clearTopError();
+            var welcomeLayer = document.getElementById('registerWelcomeLayer');
+            if (welcomeLayer) welcomeLayer.style.display = 'flex';
+          })
+          .catch(function (err) {
+            var msg = (err && err.message) ? String(err.message) : '가입에 실패했습니다.';
+            var isServerError = msg.indexOf('JSON') !== -1 || msg.indexOf('fetch') !== -1 || msg === '가입에 실패했습니다.';
+            errorEl.textContent = isServerError ? '가입에 실패했습니다. 잠시 후 다시 시도해 주세요.' : msg;
+          });
+      });
+      window.TornFiAuth.onUser(function (u) {
+        var nbtn = document.getElementById('navMenuBtn');
+        var nac = document.getElementById('navAdminCenter');
+        if (u) {
+          if (nbtn) nbtn.style.display = 'none';
+          if (nac) nac.style.display = u.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (nbtn) nbtn.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+        }
+      });
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+    })();
+  </script>
+</body>
+</html>

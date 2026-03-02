@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TornFi">
+  <title>TornFi 커뮤니티</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="favicon.ico">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css?v=3">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <main class="site-main site-main--home">
+    <div class="mobile-home-menu" id="mobileHomeMenu" aria-label="모바일 홈 메뉴">
+      <div class="mobile-home-menu__header">
+        <form class="home-search-bar" id="homeSearchForm" action="#" method="get" role="search">
+          <input type="text" name="q" id="homeSearchInput" class="home-search-bar__input" placeholder="글 검색" autocomplete="off" aria-label="글 검색">
+          <span class="home-search-bar__dropdown-icon" aria-hidden="true">▼</span>
+          <button type="submit" class="home-search-bar__submit" aria-label="검색"><span class="home-search-bar__submit-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span></button>
+        </form>
+      </div>
+      <nav class="mobile-home-menu__grid" aria-label="서비스 메뉴">
+        <a href="/chat.html" class="mobile-home-menu__item">
+          <span class="mobile-home-menu__icon" aria-hidden="true">💬</span>
+          <span class="mobile-home-menu__label">폭풍 수다</span>
+        </a>
+        <a href="/ranking.html" class="mobile-home-menu__item">
+          <span class="mobile-home-menu__icon" aria-hidden="true">🏆</span>
+          <span class="mobile-home-menu__label">랭킹</span>
+        </a>
+        <a href="/attendance.html" class="mobile-home-menu__item">
+          <span class="mobile-home-menu__icon" aria-hidden="true">📅</span>
+          <span class="mobile-home-menu__label">출석체크</span>
+        </a>
+        <a href="/member-grade.html" class="mobile-home-menu__item">
+          <span class="mobile-home-menu__icon" aria-hidden="true">🎖️</span>
+          <span class="mobile-home-menu__label">회원 등급</span>
+        </a>
+        <a href="/calculator.html" class="mobile-home-menu__item" aria-label="배당 조회">
+          <span class="mobile-home-menu__icon mobile-home-menu__icon--search" aria-hidden="true">🔍</span>
+          <span class="mobile-home-menu__label">배당 조회</span>
+        </a>
+        <a href="/tornado-news.html" class="mobile-home-menu__item">
+          <span class="mobile-home-menu__icon" aria-hidden="true">🌪️</span>
+          <span class="mobile-home-menu__label">뉴스</span>
+        </a>
+        <a href="/board.html" class="mobile-home-menu__item">
+          <span class="mobile-home-menu__icon" aria-hidden="true">✅</span>
+          <span class="mobile-home-menu__label">가이드</span>
+        </a>
+      </nav>
+      <div class="mobile-home-menu__actions">
+        <span class="mobile-home-menu__actions-guest">
+          <a href="/login.html" class="mobile-home-menu__btn mobile-home-menu__btn--primary" id="mobileHomeLogin">로그인</a>
+          <a href="/register.html" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeRegister">회원가입</a>
+        </span>
+        <span class="mobile-home-menu__actions-logged-in" id="mobileHomeLoggedInWrap" style="display:none;">
+          <a href="/profile.html" class="mobile-home-menu__btn mobile-home-menu__btn--primary" id="mobileHomeProfile">내 정보</a>
+          <button type="button" class="mobile-home-menu__btn mobile-home-menu__btn--secondary" id="mobileHomeLogout">로그아웃</button>
+        </span>
+      </div>
+    </div>
+    <div class="home-banner" id="homeBanner" aria-label="광고 배너">
+      <div class="home-banner__inner">
+        <span class="home-banner__emoji" aria-hidden="true">🌪️</span>
+        <p class="home-banner__text" id="homeBannerText">불러오는 중…</p>
+      </div>
+    </div>
+    <!-- ====== 안내 메시지 배너 (삭제 시 이 블록 전체를 제거하세요) ====== -->
+    <div id="announcementBanner" class="announcement-banner" role="alert">
+      <div class="announcement-banner__glow"></div>
+      <button type="button" class="announcement-banner__close" id="announcementClose" aria-label="닫기">&times;</button>
+      <div class="announcement-banner__icon">📢</div>
+      <div class="announcement-banner__body">
+        <p class="announcement-banner__title">안내</p>
+        <p class="announcement-banner__text">아직 오픈하지도 않았는데 꽤나 많은 관심 감사합니다.<br>2/28일 기준 <strong>20%</strong> 정도 완성했습니다. 최대한 서두르겠습니다.<br>배당 조회 항목은 회원 가입 없이도 이용 가능합니다.</p>
+        <p class="announcement-banner__sign">— TornFi —</p>
+      </div>
+    </div>
+    <style>
+      .announcement-banner{position:relative;margin:0 auto 1.25rem;max-width:600px;padding:1.25rem 2.5rem 1.25rem 1.25rem;background:linear-gradient(135deg,rgba(0,255,136,.07) 0%,rgba(17,17,19,.95) 50%,rgba(0,255,136,.04) 100%);border:1px solid rgba(0,255,136,.25);border-radius:12px;overflow:hidden;animation:announceFadeIn .5s ease}
+      .announcement-banner__glow{position:absolute;top:-40%;left:-20%;width:60%;height:180%;background:radial-gradient(ellipse,rgba(0,255,136,.08) 0%,transparent 70%);pointer-events:none}
+      .announcement-banner__close{position:absolute;top:.6rem;right:.7rem;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;line-height:1;padding:.25rem;border-radius:4px;transition:color .15s,background .15s;z-index:1}
+      .announcement-banner__close:hover{color:#fff;background:rgba(255,255,255,.1)}
+      .announcement-banner__icon{font-size:1.6rem;margin-bottom:.5rem}
+      .announcement-banner__body{position:relative;z-index:1}
+      .announcement-banner__title{font-size:.75rem;font-weight:700;color:var(--neon);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+      .announcement-banner__text{font-size:.88rem;font-weight:500;color:var(--text);line-height:1.7;word-break:keep-all}
+      .announcement-banner__text strong{color:var(--neon);font-weight:700}
+      .announcement-banner__sign{margin-top:.65rem;font-size:.8rem;font-weight:600;color:var(--neon-dim);letter-spacing:.06em;text-align:right}
+      @keyframes announceFadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+      @media(max-width:640px){.announcement-banner{margin:0 .5rem 1rem;padding:1rem 2.2rem 1rem 1rem;border-radius:10px}.announcement-banner__text{font-size:.82rem}}
+    </style>
+    <script>
+      (function(){
+        var banner=document.getElementById('announcementBanner');
+        var closeBtn=document.getElementById('announcementClose');
+        var STORAGE_KEY='tornfi-announcement-dismissed';
+        if(!banner)return;
+        try{if(localStorage.getItem(STORAGE_KEY)==='1'){banner.style.display='none';return;}}catch(e){}
+        if(closeBtn){closeBtn.addEventListener('click',function(){banner.style.display='none';try{localStorage.setItem(STORAGE_KEY,'1');}catch(e){}});}
+      })();
+    </script>
+    <script>
+      (function () {
+        var banner = document.getElementById('homeBanner');
+        var inner = banner && banner.querySelector('.home-banner__inner');
+        var textEl = document.getElementById('homeBannerText');
+        if (!inner) return;
+        fetch('/api/banner', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (data) {
+          var imageUrl = (data && data.ok && data.imageUrl) ? String(data.imageUrl).trim() : '';
+          if (imageUrl) {
+            inner.classList.add('has-image');
+            var img = document.createElement('img');
+            img.className = 'home-banner__img';
+            img.src = imageUrl;
+            img.alt = '';
+            inner.innerHTML = '';
+            inner.appendChild(img);
+          } else {
+            var text = (data && data.ok && data.text) ? data.text : '';
+            if (textEl) {
+              if (text) {
+                var div = document.createElement('div');
+                div.textContent = text;
+                textEl.innerHTML = div.innerHTML.replace(/\n/g, '<br>');
+                textEl.classList.add('home-banner__text--loaded');
+              } else {
+                textEl.textContent = '';
+              }
+            }
+          }
+        }).catch(function () { if (textEl) textEl.textContent = ''; });
+      })();
+    </script>
+    <!-- ====== /안내 메시지 배너 ====== -->
+
+    <section id="feedSection" class="section feed-section">
+      <div id="feedCompose" class="feed-compose" style="display:none;" aria-label="새 글 작성">
+        <div class="feed-compose__inner">
+          <div class="feed-compose__avatar-wrap" id="feedComposeAvatarWrap">
+          <img class="feed-compose__avatar-img" id="feedComposeAvatarImg" src="" alt="" style="display:none;">
+          <span class="feed-compose__avatar feed-compose__avatar--letter" id="feedComposeAvatar" aria-hidden="true">?</span>
+        </div>
+          <div class="feed-compose__body">
+            <textarea id="feedComposeText" class="feed-compose__input" placeholder="머선129...?" rows="3" maxlength="10000" aria-label="글 내용"></textarea>
+            <div class="feed-compose__actions">
+              <div class="feed-compose__actions-left">
+                <input type="file" id="feedComposeImage" accept="image/jpeg,image/png,image/gif,image/webp" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
+                <button type="button" class="feed-compose__action-btn" id="feedComposeImageBtn" aria-label="이미지 첨부">🖼️</button>
+              </div>
+              <div class="feed-compose__preview" id="feedComposePreview"></div>
+              <button type="button" class="feed-compose__submit" id="feedComposeSubmit" disabled>게시하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-muted feed-loading" id="feedLoading">불러오는 중…</p>
+      <div id="feedSearchHint" class="feed-search-hint" style="display:none;">검색: "<span id="feedSearchQueryText"></span>" <a href="#" id="feedSearchClear">전체 보기</a></div>
+      <p class="text-muted feed-empty" id="feedEmpty" style="display:none;">아직 글이 없습니다. 첫 글을 올려 보세요!</p>
+      <div id="feedList" class="feed-list" aria-live="polite"></div>
+      <div class="feed-more-wrap" id="feedMoreWrap" style="display:none;">
+        <button type="button" id="feedMoreBtn" class="feed-more-btn">더보기</button>
+      </div>
+    </section>
+
+    <div id="feedSendHeartLayer" class="feed-send-heart-layer" style="display:none;">
+      <div class="feed-send-heart-box">
+        <h3 class="feed-send-heart-title">❤️ 하트 보내기</h3>
+        <p id="feedSendHeartMessage" class="feed-send-heart-message"></p>
+        <p id="feedSendHeartMyHearts" class="feed-send-heart-myhearts"></p>
+        <div class="feed-send-heart-actions">
+          <button type="button" id="feedSendHeartCancel" class="feed-send-heart-btn feed-send-heart-btn--cancel">취소</button>
+          <button type="button" id="feedSendHeartOk" class="feed-send-heart-btn feed-send-heart-btn--ok">보내기</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="feedAuthorPopover" class="feed-author-popover" role="tooltip" aria-hidden="true" style="display:none;">
+      <div class="feed-author-popover__inner">
+        <div class="feed-author-popover__avatar-wrap"></div>
+        <div class="feed-author-popover__name"></div>
+        <div class="feed-author-popover__level"></div>
+        <div class="feed-author-popover__hearts"></div>
+        <p class="feed-author-popover__bio"></p>
+      </div>
+    </div>
+  </main>
+
+  <div class="page-bottom">
+    <p class="page-bottom__copy">© 2025-2026 TornFi. All rights reserved.</p>
+    <span class="page-bottom__withdraw-wrap" id="bottomWithdrawWrap" style="display:none;">
+      <button type="button" class="page-bottom__withdraw-btn js-open-withdraw">회원탈퇴</button>
+    </span>
+  </div>
+
+  <div id="feedDeleteConfirmLayer" class="feed-delete-confirm-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedDeleteConfirmTitle">
+    <div class="feed-delete-confirm-box">
+      <h3 id="feedDeleteConfirmTitle" class="feed-delete-confirm-title">피드 삭제</h3>
+      <p class="feed-delete-confirm-msg">이 피드 글을 삭제하시겠습니까?</p>
+      <div class="feed-delete-confirm-actions">
+        <button type="button" id="feedDeleteConfirmCancel" class="feed-delete-confirm-btn feed-delete-confirm-btn--cancel">취소</button>
+        <button type="button" id="feedDeleteConfirmOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedAdminPinLayer" class="feed-admin-pin-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedAdminPinTitle">
+    <div class="feed-admin-pin-box">
+      <h3 id="feedAdminPinTitle" class="feed-delete-confirm-title">관리자 비밀번호</h3>
+      <p class="feed-admin-pin-desc">피드 삭제를 위해 6자리 숫자를 입력하세요.</p>
+      <p id="feedAdminPinErr" class="feed-admin-pin-err" style="display:none;"></p>
+      <input type="password" id="feedAdminPinInput" class="feed-admin-pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="******" autocomplete="off" aria-label="관리자 비밀번호">
+      <div class="feed-delete-confirm-actions">
+        <button type="button" id="feedAdminPinCancel" class="feed-delete-confirm-btn feed-delete-confirm-btn--cancel">취소</button>
+        <button type="button" id="feedAdminPinOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedAlertLayer" class="feed-alert-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedAlertTitle">
+    <div class="feed-alert-box">
+      <h3 id="feedAlertTitle" class="feed-alert-title">알림</h3>
+      <p id="feedAlertMessage" class="feed-alert-message"></p>
+      <div class="feed-alert-actions">
+        <button type="button" id="feedAlertOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="withdrawConfirmLayer" class="withdraw-confirm-layer" style="display:none;">
+    <div class="withdraw-confirm-box">
+      <h3>회원탈퇴</h3>
+      <p class="withdraw-confirm-warn">탈퇴한 지갑으로는 재가입할 수 없습니다. 정말 탈퇴하시겠습니까?</p>
+      <label class="withdraw-confirm-pin-label" for="withdrawConfirmPassword">로그인 비밀번호</label>
+      <input type="password" id="withdrawConfirmPassword" placeholder="로그인 비밀번호" autocomplete="current-password" class="withdraw-confirm-pin-input" aria-label="로그인 비밀번호" style="letter-spacing:normal;">
+      <p id="withdrawConfirmPasswordErr" class="withdraw-confirm-pin-err" style="display:none;"></p>
+      <div class="withdraw-confirm-actions">
+        <button type="button" id="withdrawConfirmCancel" class="btn-cancel">취소</button>
+        <button type="button" id="withdrawConfirmOk" class="btn-confirm">탈퇴하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="withdrawnGoodbyeLayer" class="withdrawn-goodbye-layer" style="display:none;">
+    <div class="withdrawn-goodbye-card">
+      <div class="withdrawn-goodbye-icon" aria-hidden="true">👋</div>
+      <h2 class="withdrawn-goodbye-title">그동안 이용해 주셔서 감사합니다</h2>
+      <p class="withdrawn-goodbye-desc">TornFi 커뮤니티와 함께해 주셔서 감사했습니다.<br>앞으로도 좋은 일만 가득하시길 바랍니다.</p>
+      <p class="withdrawn-goodbye-bye">고맙습니다.</p>
+      <a href="/" id="withdrawnGoodbyeBtn" class="withdrawn-goodbye-btn">확인</a>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var mobileHomeLogin = document.getElementById('mobileHomeLogin');
+      var mobileHomeRegister = document.getElementById('mobileHomeRegister');
+      var mobileHomeLoggedInWrap = document.getElementById('mobileHomeLoggedInWrap');
+      var mobileHomeProfile = document.getElementById('mobileHomeProfile');
+      var mobileHomeLogout = document.getElementById('mobileHomeLogout');
+      var bottomWithdrawWrap = document.getElementById('bottomWithdrawWrap');
+      function updateNav(user) {
+        if (user) {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+          if (mobileHomeLogin) mobileHomeLogin.style.display = 'none';
+          if (mobileHomeRegister) mobileHomeRegister.style.display = 'none';
+          if (mobileHomeLoggedInWrap) mobileHomeLoggedInWrap.style.display = 'flex';
+          if (bottomWithdrawWrap) bottomWithdrawWrap.style.display = 'block';
+        } else {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+          if (mobileHomeLogin) mobileHomeLogin.style.display = 'block';
+          if (mobileHomeRegister) mobileHomeRegister.style.display = 'block';
+          if (mobileHomeLoggedInWrap) mobileHomeLoggedInWrap.style.display = 'none';
+          if (bottomWithdrawWrap) bottomWithdrawWrap.style.display = 'none';
+        }
+      }
+      window.TornFiAuth.onUser(updateNav);
+      updateNav(window.TornFiAuth && window.TornFiAuth.getUser());
+
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = navMenuDropdown.classList.toggle('is-open');
+          navMenuBtn.setAttribute('aria-expanded', open);
+        });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () {
+          navMenuDropdown.classList.remove('is-open');
+          navMenuBtn.setAttribute('aria-expanded', 'false');
+        });
+      }
+      if (mobileHomeLogout) {
+        mobileHomeLogout.addEventListener('click', function (e) {
+          e.preventDefault();
+          if (!confirm('로그아웃 하시겠습니까?')) return;
+          window.TornFiAuth.logout().then(function () { updateNav(null); window.location.href = '/'; });
+        });
+      }
+
+      (function setupWithdrawConfirm() {
+        var layer = document.getElementById('withdrawConfirmLayer');
+        var cancelBtn = document.getElementById('withdrawConfirmCancel');
+        var okBtn = document.getElementById('withdrawConfirmOk');
+        var passwordInput = document.getElementById('withdrawConfirmPassword');
+        var passwordErr = document.getElementById('withdrawConfirmPasswordErr');
+        if (!layer || !okBtn) return;
+        function openWithdrawModal() {
+          if (passwordInput) passwordInput.value = '';
+          if (passwordErr) { passwordErr.style.display = 'none'; passwordErr.textContent = ''; }
+          layer.style.display = 'flex';
+          if (passwordInput) passwordInput.focus();
+        }
+        document.querySelectorAll('.js-open-withdraw').forEach(function (el) {
+          el.addEventListener('click', openWithdrawModal);
+        });
+        cancelBtn.addEventListener('click', function () {
+          layer.style.display = 'none';
+        });
+        okBtn.addEventListener('click', function () {
+          var passwordVal = passwordInput ? passwordInput.value : '';
+          if (!passwordVal.trim()) {
+            if (passwordErr) { passwordErr.textContent = '로그인 비밀번호를 입력해 주세요.'; passwordErr.style.display = 'block'; }
+            return;
+          }
+          if (passwordErr) { passwordErr.style.display = 'none'; passwordErr.textContent = ''; }
+          okBtn.disabled = true;
+          fetch('/api/withdraw', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: passwordVal }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              okBtn.disabled = false;
+              if (data.ok) {
+                layer.style.display = 'none';
+                window.TornFiAuth.logout().then(function () {
+                  window.location.href = '/?withdrawn=1';
+                });
+              } else {
+                if (passwordErr) { passwordErr.textContent = data.message || '탈퇴 처리에 실패했습니다.'; passwordErr.style.display = 'block'; }
+              }
+            })
+            .catch(function () {
+              layer.style.display = 'none';
+              okBtn.disabled = false;
+              alert('요청 중 오류가 발생했습니다.');
+            });
+        });
+      })();
+
+      (function setupWithdrawnGoodbye() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('withdrawn') !== '1') return;
+        var layer = document.getElementById('withdrawnGoodbyeLayer');
+        var btn = document.getElementById('withdrawnGoodbyeBtn');
+        if (!layer) return;
+        layer.style.display = 'flex';
+        if (btn) {
+          btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            layer.style.display = 'none';
+            history.replaceState(null, '', window.location.pathname || '/');
+          });
+        }
+      })();
+
+      (function initFeed() {
+        var feedList = document.getElementById('feedList');
+        var feedLoading = document.getElementById('feedLoading');
+        var feedEmpty = document.getElementById('feedEmpty');
+        var feedMoreWrap = document.getElementById('feedMoreWrap');
+        var feedMoreBtn = document.getElementById('feedMoreBtn');
+        var feedSearchHint = document.getElementById('feedSearchHint');
+        var feedSearchQueryText = document.getElementById('feedSearchQueryText');
+        var feedSearchClear = document.getElementById('feedSearchClear');
+        var homeSearchForm = document.getElementById('homeSearchForm');
+        var homeSearchInput = document.getElementById('homeSearchInput');
+        var FEED_PAGE_SIZE = 10;
+        var currentOffset = 0;
+        var totalLoaded = 0;
+        var totalPosts = 0;
+        var currentSearchQuery = '';
+        var feedPostsById = {};
+        var feedAlertLayer = document.getElementById('feedAlertLayer');
+        var feedAlertMessage = document.getElementById('feedAlertMessage');
+        var feedAlertOk = document.getElementById('feedAlertOk');
+        function showFeedAlert(msg) {
+          if (feedAlertMessage) feedAlertMessage.textContent = msg || '';
+          if (feedAlertLayer) feedAlertLayer.style.display = 'flex';
+        }
+        if (feedAlertOk && feedAlertLayer) {
+          feedAlertOk.addEventListener('click', function () { feedAlertLayer.style.display = 'none'; });
+          feedAlertLayer.addEventListener('click', function (e) { if (e.target === feedAlertLayer) feedAlertLayer.style.display = 'none'; });
+        }
+
+        function escapeHtml(s) {
+          if (!s) return '';
+          var div = document.createElement('div');
+          div.textContent = s;
+          return div.innerHTML;
+        }
+        function excerpt(text, maxLen) {
+          if (!text) return '';
+          var plain = text.replace(/\s+/g, ' ').trim();
+          if (plain.length <= maxLen) return escapeHtml(plain);
+          return escapeHtml(plain.substring(0, maxLen)) + '…';
+        }
+        function formatDate(iso) {
+          if (!iso) return '';
+          var d = new Date(iso);
+          var now = new Date();
+          var diff = now - d;
+          if (diff < 60000) return '방금 전';
+          if (diff < 3600000) return Math.floor(diff / 60000) + '분 전';
+          if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
+          if (diff < 604800000) return Math.floor(diff / 86400000) + '일 전';
+          return d.toLocaleDateString('ko-KR');
+        }
+        var LEVEL_EMOJI = { 1: '🐚', 2: '🦐', 3: '🐡', 4: '🦭', 5: '🦈', 6: '🐋' };
+        var LEVEL_NAMES = { 1: '조개', 2: '새우', 3: '문어', 4: '물개', 5: '상어', 6: '고래' };
+        function renderCard(p, myId, isAdmin) {
+          var author = p.authorDisplayName || '—';
+          var isMine = !!(myId && p.authorId === myId);
+          var heartsReceived = (p.heartsReceived || 0) > 0 ? (p.heartsReceived || 0) : 0;
+          var comments = p.comments || [];
+          var lv = (p.authorLevel >= 1 && p.authorLevel <= 6) ? p.authorLevel : 0;
+          var levelEmoji = LEVEL_EMOJI[lv] || '';
+          var avatarHtml = (p.authorProfileImageUrl && p.authorProfileImageUrl.trim())
+            ? '<img class="feed-card__avatar feed-card__avatar--img" src="' + escapeHtml(p.authorProfileImageUrl) + '" alt="" loading="lazy">'
+            : '<span class="feed-card__avatar" aria-hidden="true">' + (author.charAt(0) || '?') + '</span>';
+          var bodyExcerpt = excerpt(p.body, 200);
+          var dateStr = formatDate(p.createdAt);
+          var img = (p.images && p.images[0]) ? '<img src="' + escapeHtml(p.images[0]) + '" alt="" class="feed-card__thumb" loading="lazy">' : '';
+          var footer = '<div class="feed-card__footer">';
+          if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
+          else if (!isMine) footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+          footer += '</div>';
+          var showDeleteBtn = isAdmin || isMine;
+          var deleteBtn = showDeleteBtn ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑 삭제</button></div>' : '';
+          var commentsHtml = '<div class="feed-card__comments">댓글 ' + comments.length + '</div>';
+          var cardInner =
+            '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '" data-author-id="' + escapeHtml(p.authorId || '') + '">' +
+              '<a href="feed-post.html?id=' + encodeURIComponent(p.id) + '" class="feed-card__link">' +
+                '<div class="feed-card__top">' +
+                  avatarHtml +
+                  '<div class="feed-card__content">' +
+                    '<div class="feed-card__meta-row">' +
+                      '<div class="feed-card__meta">' +
+                        '<span class="feed-card__meta-name">' +
+                          '<span class="feed-card__author">' + escapeHtml(author) + '</span>' +
+                          (levelEmoji ? '<span class="feed-card__level" aria-hidden="true">' + levelEmoji + '</span>' : '') +
+                        '</span>' +
+                        '<span class="feed-card__meta-sep" aria-hidden="true">·</span>' +
+                        '<time class="feed-card__date" datetime="' + (p.createdAt || '') + '">' + dateStr + '</time>' +
+                      '</div>' +
+                    '</div>' +
+                    (bodyExcerpt ? '<div class="feed-card__body"><p class="feed-card__excerpt">' + bodyExcerpt + '</p></div>' : '') +
+                    (img ? '<div class="feed-card__thumb-wrap">' + img + '</div>' : '') +
+                    '<div class="feed-card__actions">' + footer + commentsHtml + '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</a>' +
+            '</article>';
+          return showDeleteBtn ? '<div class="feed-card-wrap">' + cardInner + deleteBtn + '</div>' : cardInner;
+        }
+        function loadFeed(append, searchQuery) {
+          if (!append) { currentOffset = 0; totalLoaded = 0; currentSearchQuery = searchQuery || ''; }
+          var q = append ? currentSearchQuery : (searchQuery || '');
+          if (!append && feedLoading) feedLoading.style.display = 'block';
+          if (!append && feedEmpty) feedEmpty.style.display = 'none';
+          if (!append && feedSearchHint) feedSearchHint.style.display = q ? 'block' : 'none';
+          if (!append && q && feedSearchQueryText) feedSearchQueryText.textContent = q;
+          var url = '/api/feed?limit=' + FEED_PAGE_SIZE + '&offset=' + currentOffset;
+          if (q) url += '&q=' + encodeURIComponent(q);
+          fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (feedLoading) feedLoading.style.display = 'none';
+              if (!data.ok) {
+                if (feedEmpty) { feedEmpty.textContent = '불러오기에 실패했습니다.'; feedEmpty.style.display = 'block'; }
+                if (!append) {
+                  try {
+                    var savedYErr = sessionStorage.getItem('feedHomeScrollY');
+                    if (savedYErr !== null && savedYErr !== '') {
+                      sessionStorage.removeItem('feedHomeScrollY');
+                      var yErr = parseInt(savedYErr, 10);
+                      if (!isNaN(yErr) && yErr >= 0) {
+                        requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, yErr); }); });
+                      }
+                    }
+                  } catch (e) {}
+                }
+                return;
+              }
+              var posts = data.posts || [];
+              totalPosts = data.total != null ? data.total : totalLoaded + posts.length;
+              if (posts.length === 0 && !append) {
+                if (feedEmpty) {
+                  feedEmpty.textContent = currentSearchQuery ? '검색 결과가 없습니다.' : '아직 글이 없습니다. 첫 글을 올려 보세요!';
+                  feedEmpty.style.display = 'block';
+                }
+                try {
+                  var savedY0 = sessionStorage.getItem('feedHomeScrollY');
+                  if (savedY0 !== null && savedY0 !== '') {
+                    sessionStorage.removeItem('feedHomeScrollY');
+                    var y0 = parseInt(savedY0, 10);
+                    if (!isNaN(y0) && y0 >= 0) {
+                      requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, y0); }); });
+                    }
+                  }
+                } catch (err) {}
+                return;
+              }
+              if (feedEmpty) feedEmpty.style.display = 'none';
+              posts.forEach(function (p) { if (p && p.id) feedPostsById[p.id] = p; });
+              var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+              var myId = me ? (me.id || null) : null;
+              var isAdmin = !!(me && me.isAdmin);
+              var html = posts.map(function (p) { return renderCard(p, myId, isAdmin); }).join('');
+              if (append && feedList) {
+                var wrap = document.createElement('div');
+                wrap.className = 'feed-list__page';
+                wrap.innerHTML = html;
+                feedList.appendChild(wrap);
+              } else if (feedList) {
+                feedList.innerHTML = '<div class="feed-list__page">' + html + '</div>';
+              }
+              totalLoaded += posts.length;
+              currentOffset += posts.length;
+              if (feedMoreWrap) {
+                feedMoreWrap.style.display = (currentOffset < totalPosts) ? 'block' : 'none';
+              }
+              if (!append) {
+                try {
+                  var savedY = sessionStorage.getItem('feedHomeScrollY');
+                  if (savedY !== null && savedY !== '') {
+                    sessionStorage.removeItem('feedHomeScrollY');
+                    var y = parseInt(savedY, 10);
+                    if (!isNaN(y) && y >= 0) {
+                      requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, y); }); });
+                    }
+                  }
+                } catch (err) {}
+              }
+            })
+            .catch(function () {
+              if (feedLoading) feedLoading.style.display = 'none';
+              if (feedEmpty) { feedEmpty.textContent = '불러오기에 실패했습니다.'; feedEmpty.style.display = 'block'; }
+              try {
+                var savedYCatch = sessionStorage.getItem('feedHomeScrollY');
+                if (savedYCatch !== null && savedYCatch !== '') {
+                  sessionStorage.removeItem('feedHomeScrollY');
+                  var yCatch = parseInt(savedYCatch, 10);
+                  if (!isNaN(yCatch) && yCatch >= 0) {
+                    requestAnimationFrame(function () { requestAnimationFrame(function () { window.scrollTo(0, yCatch); }); });
+                  }
+                }
+              } catch (e) {}
+            });
+        }
+        var initialQ = (new URLSearchParams(window.location.search)).get('q') || '';
+        if (homeSearchInput && initialQ) homeSearchInput.value = initialQ;
+        currentSearchQuery = initialQ;
+        loadFeed(false, initialQ);
+
+        if (homeSearchForm && homeSearchInput) {
+          homeSearchForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var q = (homeSearchInput.value || '').trim();
+            var path = window.location.pathname || '/';
+            var newUrl = q ? path + '?q=' + encodeURIComponent(q) : path;
+            history.replaceState(null, '', newUrl);
+            currentSearchQuery = q;
+            loadFeed(false, q);
+          });
+        }
+        if (feedSearchClear) {
+          feedSearchClear.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (homeSearchInput) homeSearchInput.value = '';
+            history.replaceState(null, '', window.location.pathname || '/');
+            currentSearchQuery = '';
+            loadFeed(false);
+          });
+        }
+
+        if (feedList) {
+          var feedDeleteLayer = document.getElementById('feedDeleteConfirmLayer');
+          var feedDeleteCancel = document.getElementById('feedDeleteConfirmCancel');
+          var feedDeleteOk = document.getElementById('feedDeleteConfirmOk');
+          var pendingDeletePostId = null;
+          var pendingDeleteBtn = null;
+          function closeFeedDeleteModal() {
+            pendingDeletePostId = null;
+            pendingDeleteBtn = null;
+            if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+          }
+          var feedAdminPinLayer = document.getElementById('feedAdminPinLayer');
+          var feedAdminPinInput = document.getElementById('feedAdminPinInput');
+          var feedAdminPinErr = document.getElementById('feedAdminPinErr');
+          var feedAdminPinCancel = document.getElementById('feedAdminPinCancel');
+          var feedAdminPinOk = document.getElementById('feedAdminPinOk');
+
+          function closeFeedAdminPinModal() {
+            if (feedAdminPinLayer) feedAdminPinLayer.style.display = 'none';
+            if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+            if (feedAdminPinInput) feedAdminPinInput.value = '';
+            if (pendingDeleteBtn) pendingDeleteBtn.disabled = false;
+            pendingDeletePostId = null;
+            pendingDeleteBtn = null;
+          }
+
+          function doFeedDelete() {
+            if (!pendingDeletePostId || !pendingDeleteBtn) return;
+            var postId = pendingDeletePostId;
+            var btn = pendingDeleteBtn;
+            if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+            btn.disabled = true;
+            fetch('/api/feed/' + encodeURIComponent(postId), { method: 'DELETE', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  var wrap = btn.closest && btn.closest('.feed-card-wrap');
+                  var art = wrap || (btn.closest && btn.closest('.feed-card'));
+                  if (art && art.parentNode) art.parentNode.removeChild(art);
+                  pendingDeletePostId = null;
+                  pendingDeleteBtn = null;
+                } else if (data.needPin && feedAdminPinLayer) {
+                  if (feedDeleteLayer) feedDeleteLayer.style.display = 'none';
+                  feedAdminPinLayer.style.display = 'flex';
+                  if (feedAdminPinInput) { feedAdminPinInput.value = ''; feedAdminPinInput.focus(); }
+                  if (feedAdminPinErr) { feedAdminPinErr.style.display = 'none'; feedAdminPinErr.textContent = ''; }
+                } else {
+                  showFeedAlert(data.message || '삭제에 실패했습니다.');
+                  btn.disabled = false;
+                  pendingDeletePostId = null;
+                  pendingDeleteBtn = null;
+                }
+              })
+              .catch(function () {
+                showFeedAlert('삭제 요청에 실패했습니다.');
+                btn.disabled = false;
+                pendingDeletePostId = null;
+                pendingDeleteBtn = null;
+              });
+          }
+
+          function submitFeedAdminPin() {
+            var pin = (feedAdminPinInput && feedAdminPinInput.value) ? feedAdminPinInput.value.trim() : '';
+            if (pin.length !== 6 || !/^[0-9]+$/.test(pin)) {
+              if (feedAdminPinErr) { feedAdminPinErr.textContent = '숫자 6자리를 입력해 주세요.'; feedAdminPinErr.style.display = 'block'; }
+              return;
+            }
+            if (feedAdminPinErr) feedAdminPinErr.style.display = 'none';
+            fetch('/api/admin/verify-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ pin: pin }) })
+              .then(function (r) { return r.json(); })
+              .then(function (data) {
+                if (data.ok) {
+                  closeFeedAdminPinModal();
+                  doFeedDelete();
+                } else {
+                  if (feedAdminPinErr) { feedAdminPinErr.textContent = data.message || '비밀번호가 올바르지 않습니다.'; feedAdminPinErr.style.display = 'block'; }
+                }
+              })
+              .catch(function () {
+                if (feedAdminPinErr) { feedAdminPinErr.textContent = '요청에 실패했습니다.'; feedAdminPinErr.style.display = 'block'; }
+              });
+          }
+
+          if (feedDeleteCancel) feedDeleteCancel.addEventListener('click', closeFeedDeleteModal);
+          if (feedDeleteOk) feedDeleteOk.addEventListener('click', doFeedDelete);
+          if (feedDeleteLayer) {
+            feedDeleteLayer.addEventListener('click', function (e) { if (e.target === feedDeleteLayer) closeFeedDeleteModal(); });
+          }
+          if (feedAdminPinCancel) feedAdminPinCancel.addEventListener('click', closeFeedAdminPinModal);
+          if (feedAdminPinOk) feedAdminPinOk.addEventListener('click', submitFeedAdminPin);
+          if (feedAdminPinLayer) {
+            feedAdminPinLayer.addEventListener('click', function (e) { if (e.target === feedAdminPinLayer) closeFeedAdminPinModal(); });
+          }
+          if (feedAdminPinInput) {
+            feedAdminPinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitFeedAdminPin(); } });
+          }
+          feedList.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest && e.target.closest('.feed-card__admin-delete');
+            if (!btn) return;
+            var postId = btn.getAttribute('data-post-id');
+            if (!postId) return;
+            e.preventDefault();
+            e.stopPropagation();
+            pendingDeletePostId = postId;
+            pendingDeleteBtn = btn;
+            if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
+          });
+        }
+
+        var feedAuthorPopover = document.getElementById('feedAuthorPopover');
+        var popoverHideTimeout = null;
+        var popoverOpenedByClick = false;
+        function clearPopoverHideTimeout() {
+          if (popoverHideTimeout) { clearTimeout(popoverHideTimeout); popoverHideTimeout = null; }
+        }
+        function showAuthorPopover(post, triggerEl) {
+          if (!feedAuthorPopover || !post) return;
+          var name = post.authorDisplayName || '—';
+          var lv = (post.authorLevel >= 1 && post.authorLevel <= 6) ? post.authorLevel : 0;
+          var levelEmoji = LEVEL_EMOJI[lv] || '';
+          var levelName = LEVEL_NAMES[lv] ? LEVEL_NAMES[lv] + ' (Lv.' + lv + ')' : '';
+          var avatarWrap = feedAuthorPopover.querySelector('.feed-author-popover__avatar-wrap');
+          var nameEl = feedAuthorPopover.querySelector('.feed-author-popover__name');
+          var levelEl = feedAuthorPopover.querySelector('.feed-author-popover__level');
+          var bioEl = feedAuthorPopover.querySelector('.feed-author-popover__bio');
+          if (avatarWrap) {
+            avatarWrap.innerHTML = '';
+            if (post.authorProfileImageUrl && post.authorProfileImageUrl.trim()) {
+              var img = document.createElement('img');
+              img.src = post.authorProfileImageUrl;
+              img.alt = '';
+              avatarWrap.appendChild(img);
+            } else {
+              avatarWrap.textContent = name.charAt(0) || '?';
+            }
+          }
+          if (nameEl) nameEl.textContent = name;
+          if (levelEl) levelEl.textContent = levelEmoji ? levelEmoji + ' ' + levelName : '';
+          if (levelEl) levelEl.style.display = levelEmoji ? '' : 'none';
+          var heartsEl = feedAuthorPopover.querySelector('.feed-author-popover__hearts');
+          if (heartsEl) {
+            var pts = typeof post.authorPoints === 'number' ? post.authorPoints : 0;
+            heartsEl.textContent = '❤️ ' + pts + '개';
+            heartsEl.style.display = 'block';
+          }
+          if (bioEl) {
+            var bio = (post.authorBio && post.authorBio.trim()) ? post.authorBio.trim() : '';
+            bioEl.textContent = bio || '자기소개가 없습니다.';
+            bioEl.style.display = 'block';
+          }
+          var rect = triggerEl ? triggerEl.getBoundingClientRect() : null;
+          if (rect) {
+            feedAuthorPopover.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 280)) + 'px';
+            var top = rect.bottom + 8;
+            if (top + 120 > window.innerHeight - 8) top = rect.top - 120;
+            feedAuthorPopover.style.top = Math.max(8, top) + 'px';
+          }
+          feedAuthorPopover.style.display = 'block';
+          feedAuthorPopover.classList.add('is-open');
+          feedAuthorPopover.setAttribute('aria-hidden', 'false');
+        }
+        function hideAuthorPopover() {
+          if (!feedAuthorPopover) return;
+          feedAuthorPopover.classList.remove('is-open');
+          feedAuthorPopover.style.display = 'none';
+          feedAuthorPopover.setAttribute('aria-hidden', 'true');
+          popoverOpenedByClick = false;
+        }
+        if (feedList) {
+          feedList.addEventListener('mouseover', function (e) {
+            var trigger = e.target && e.target.closest && e.target.closest('.feed-card__avatar, .feed-card__author');
+            if (!trigger) return;
+            clearPopoverHideTimeout();
+            var card = trigger.closest('.feed-card');
+            var id = card && card.getAttribute('data-post-id');
+            var post = id ? feedPostsById[id] : null;
+            if (post) { popoverOpenedByClick = false; showAuthorPopover(post, trigger); }
+          });
+          feedList.addEventListener('mouseout', function (e) {
+            var trigger = e.target && e.target.closest && e.target.closest('.feed-card__avatar, .feed-card__author');
+            if (!trigger) return;
+            var related = e.relatedTarget;
+            if (related && feedAuthorPopover && (trigger.contains(related) || feedAuthorPopover.contains(related))) return;
+            popoverHideTimeout = setTimeout(hideAuthorPopover, 200);
+          });
+        }
+        if (feedAuthorPopover) {
+          feedAuthorPopover.addEventListener('mouseenter', clearPopoverHideTimeout);
+          feedAuthorPopover.addEventListener('mouseleave', function () {
+            popoverHideTimeout = setTimeout(hideAuthorPopover, 200);
+          });
+        }
+        document.addEventListener('click', function (e) {
+          if (!popoverOpenedByClick || !feedAuthorPopover || !feedAuthorPopover.classList.contains('is-open')) return;
+          if (feedAuthorPopover.contains(e.target)) return;
+          var trigger = e.target.closest && e.target.closest('.feed-card__avatar, .feed-card__author');
+          if (trigger && feedList && feedList.contains(trigger)) return;
+          hideAuthorPopover();
+        });
+
+        if (feedList) feedList.addEventListener('click', function (e) {
+          var authorTrigger = e.target && e.target.closest && e.target.closest('.feed-card__avatar, .feed-card__author');
+          if (authorTrigger) {
+            e.preventDefault();
+            e.stopPropagation();
+            var card = authorTrigger.closest('.feed-card');
+            var id = card && card.getAttribute('data-post-id');
+            var post = id ? feedPostsById[id] : null;
+            if (post) {
+              popoverOpenedByClick = true;
+              if (feedAuthorPopover && feedAuthorPopover.classList.contains('is-open')) {
+                hideAuthorPopover();
+              } else {
+                showAuthorPopover(post, authorTrigger);
+              }
+            }
+            return;
+          }
+          var link = e.target && e.target.closest && e.target.closest('a.feed-card__link');
+          if (!link) return;
+          if (e.target.closest('.feed-card-heart-btn')) return;
+          var card = link.closest('.feed-card');
+          var id = card && card.getAttribute('data-post-id');
+          if (!id) return;
+          var post = feedPostsById[id];
+          if (post) {
+            try {
+              sessionStorage.setItem('feedPost_' + id, JSON.stringify(post));
+              sessionStorage.setItem('feedHomeScrollY', String(window.scrollY || 0));
+            } catch (err) {}
+          }
+          e.preventDefault();
+          window.location.href = link.getAttribute('href') || ('feed-post.html?id=' + encodeURIComponent(id));
+        }, true);
+        if (feedMoreBtn) feedMoreBtn.addEventListener('click', function () { loadFeed(true); });
+
+        var feedSendHeartLayer = document.getElementById('feedSendHeartLayer');
+        var feedSendHeartMessage = document.getElementById('feedSendHeartMessage');
+        var feedSendHeartMyHearts = document.getElementById('feedSendHeartMyHearts');
+        var feedSendHeartCancel = document.getElementById('feedSendHeartCancel');
+        var feedSendHeartOk = document.getElementById('feedSendHeartOk');
+        var pendingFeedHeartPostId = null;
+        function openFeedSendHeartModal(postId, authorName) {
+          pendingFeedHeartPostId = postId;
+          if (feedSendHeartMessage) feedSendHeartMessage.textContent = (authorName || '이 사용자') + '님에게 하트 1개를 보내시겠습니까?';
+          fetch('/api/me', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (feedSendHeartMyHearts) feedSendHeartMyHearts.textContent = '보유 하트: ' + (data.ok && data.user && typeof data.user.points === 'number' ? data.user.points : 0) + '개';
+            });
+          if (feedSendHeartLayer) feedSendHeartLayer.style.display = 'flex';
+        }
+        function closeFeedSendHeartModal() {
+          pendingFeedHeartPostId = null;
+          if (feedSendHeartLayer) feedSendHeartLayer.style.display = 'none';
+        }
+        if (feedSendHeartCancel) feedSendHeartCancel.addEventListener('click', closeFeedSendHeartModal);
+        if (feedSendHeartOk) feedSendHeartOk.addEventListener('click', function () {
+          if (!pendingFeedHeartPostId) return;
+          var postId = pendingFeedHeartPostId;
+          feedSendHeartOk.disabled = true;
+          var url = '/api/feed/' + encodeURIComponent(postId) + '/send-heart';
+          fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              console.log('[feed/send-heart] response', data);
+              feedSendHeartOk.disabled = false;
+              closeFeedSendHeartModal();
+              if (data.ok) {
+                var card = feedList && feedList.querySelector('.feed-card[data-post-id="' + postId + '"]');
+                if (card) {
+                  var footer = card.querySelector('.feed-card__footer');
+                  if (footer) {
+                    var btn = footer.querySelector('.feed-card-heart-btn');
+                    if (btn) btn.remove();
+                    var heartsEl = footer.querySelector('.feed-card__hearts');
+                    var nextCount = data.heartsReceived || 0;
+                    if (heartsEl) heartsEl.textContent = '❤️ ' + nextCount;
+                    else if (nextCount > 0) {
+                      var span = document.createElement('span');
+                      span.className = 'feed-card__hearts';
+                      span.textContent = '❤️ ' + nextCount;
+                      footer.insertBefore(span, footer.firstChild);
+                    }
+                  }
+                }
+                if (data.message) showFeedAlert(data.message);
+              } else if (data.message) showFeedAlert(data.message);
+            })
+            .catch(function () { feedSendHeartOk.disabled = false; showFeedAlert('하트 전송 중 오류가 발생했습니다.'); });
+        });
+        if (feedSendHeartLayer && feedSendHeartLayer.querySelector('.feed-send-heart-box')) {
+          feedSendHeartLayer.addEventListener('click', function (e) {
+            if (e.target === feedSendHeartLayer) closeFeedSendHeartModal();
+          });
+        }
+        document.addEventListener('click', function (e) {
+          var heartBtn = e.target.closest && e.target.closest('.feed-card-heart-btn');
+          if (heartBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var postId = heartBtn.getAttribute('data-post-id');
+            var authorName = heartBtn.getAttribute('data-author-name') || '이 사용자';
+            if (!postId) return;
+            var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
+            if (!me.id) { showFeedAlert('로그인 후 하트를 보낼 수 있습니다.'); return; }
+            openFeedSendHeartModal(postId, authorName);
+            return;
+          }
+        });
+
+        /* 트위터 식 작성란: 피드에서 바로 게시 */
+        var feedCompose = document.getElementById('feedCompose');
+        var feedComposeAvatar = document.getElementById('feedComposeAvatar');
+        var feedComposeText = document.getElementById('feedComposeText');
+        var feedComposeImage = document.getElementById('feedComposeImage');
+        var feedComposeImageBtn = document.getElementById('feedComposeImageBtn');
+        var feedComposePreview = document.getElementById('feedComposePreview');
+        var feedComposeSubmit = document.getElementById('feedComposeSubmit');
+        var composeFiles = [];
+        var composeObjectUrls = [];
+        function updateComposePreview() {
+          composeObjectUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+          composeObjectUrls = [];
+          if (!feedComposePreview) return;
+          feedComposePreview.innerHTML = '';
+          composeFiles.forEach(function (file, i) {
+            var url = URL.createObjectURL(file);
+            composeObjectUrls.push(url);
+            var item = document.createElement('div');
+            item.className = 'feed-compose__preview-item';
+            item.innerHTML = '<img src="' + url + '" alt=""><button type="button" class="feed-compose__remove-img" data-index="' + i + '" aria-label="제거">×</button>';
+            feedComposePreview.appendChild(item);
+            item.querySelector('button').addEventListener('click', function () {
+              composeFiles.splice(parseInt(this.getAttribute('data-index'), 10), 1);
+              updateComposePreview();
+            });
+          });
+        }
+        if (feedCompose) {
+          var feedComposeAvatarImg = document.getElementById('feedComposeAvatarImg');
+          var feedComposeAvatarLetter = document.getElementById('feedComposeAvatar');
+          window.TornFiAuth.onUser(function (user) {
+            feedCompose.style.display = user ? 'block' : 'none';
+            if (user && user.profileImageUrl && user.profileImageUrl.trim()) {
+              if (feedComposeAvatarImg) { feedComposeAvatarImg.src = user.profileImageUrl; feedComposeAvatarImg.style.display = ''; }
+              if (feedComposeAvatarLetter) feedComposeAvatarLetter.style.display = 'none';
+            } else {
+              if (feedComposeAvatarImg) feedComposeAvatarImg.style.display = 'none';
+              if (feedComposeAvatarLetter) { feedComposeAvatarLetter.textContent = (user && user.displayName) ? user.displayName.charAt(0).toUpperCase() : '?'; feedComposeAvatarLetter.style.display = ''; }
+            }
+          });
+        }
+        if (feedComposeText && feedComposeSubmit) {
+          feedComposeText.addEventListener('input', function () {
+            feedComposeSubmit.disabled = !feedComposeText.value.trim();
+          });
+        }
+        if (feedComposeImageBtn && feedComposeImage) {
+          feedComposeImageBtn.addEventListener('click', function () { feedComposeImage.click(); });
+        }
+        if (feedComposeImage) {
+          feedComposeImage.addEventListener('change', function () {
+            composeFiles = Array.from(feedComposeImage.files || []).slice(0, 5);
+            updateComposePreview();
+          });
+        }
+        if (feedComposeSubmit && feedComposeText) {
+          feedComposeSubmit.addEventListener('click', function () {
+            var body = feedComposeText.value.trim();
+            if (!body) return;
+            var fd = new FormData();
+            fd.append('body', body);
+            composeFiles.forEach(function (f) { fd.append('images', f); });
+            feedComposeSubmit.disabled = true;
+            fetch('/api/feed', {
+              method: 'POST',
+              credentials: 'same-origin',
+              body: fd,
+            })
+              .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); })
+              .then(function (res) {
+                feedComposeSubmit.disabled = false;
+                if (res.ok && res.data.ok) {
+                  feedComposeText.value = '';
+                  composeFiles = [];
+                  if (feedComposeImage) feedComposeImage.value = '';
+                  updateComposePreview();
+                  loadFeed(false);
+                } else {
+                  showFeedAlert(res.data.message || '게시에 실패했습니다.');
+                }
+              })
+              .catch(function () {
+                feedComposeSubmit.disabled = false;
+                showFeedAlert('요청 중 오류가 발생했습니다.');
+              });
+          });
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

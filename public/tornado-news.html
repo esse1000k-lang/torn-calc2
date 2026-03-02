@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>뉴스 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .tn-page { max-width: 720px; margin: 0 auto; padding: 1rem 1rem; }
+    .tn-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .tn-list { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    a.tn-item { display: block; padding: 1rem; border-bottom: 1px solid var(--border); transition: background 0.2s; text-decoration: none; color: inherit; }
+    a.tn-item:last-child { border-bottom: none; }
+    a.tn-item:hover { background: rgba(0, 255, 136, 0.06); }
+    a.tn-item .title { font-weight: 500; color: var(--neon); margin-bottom: 0.35rem; line-height: 1.4; }
+    a.tn-item .summary { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 0.5rem; }
+    a.tn-item .meta { font-size: 0.8rem; }
+    a.tn-item .meta .source { color: var(--neon); }
+    a.tn-item .meta .date { color: var(--text); }
+    .tn-empty { padding: 2rem; text-align: center; color: var(--text-muted); }
+    .tn-form { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .tn-form h2 { font-size: 1rem; color: var(--neon); margin-bottom: 1rem; }
+    .tn-form input, .tn-form textarea { width: 100%; padding: 0.6rem; margin-bottom: 0.75rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; box-sizing: border-box; }
+    .tn-form textarea { min-height: 80px; resize: vertical; }
+    .tn-form .msg { font-size: 0.85rem; margin-top: 0.5rem; }
+    .tn-btn { padding: 0.5rem 1rem; font-size: 0.9rem; background: var(--neon); color: var(--bg-dark); border: none; border-radius: 4px; cursor: pointer; font-family: inherit; }
+    .tn-btn:hover { background: var(--neon-dim); color: var(--text); }
+    .tn-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tn-btn-outline { background: transparent; color: var(--neon); border: 1px solid var(--neon); }
+    .tn-btn-outline:hover { background: rgba(0, 255, 136, 0.1); }
+    .back-link { display: inline-block; margin-bottom: 1rem; color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+    .back-link:hover { color: var(--neon); }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <div class="tn-page">
+    <a href="/" class="back-link">← 홈으로</a>
+    <h1 style="font-size:1.25rem; margin-bottom:1rem;">뉴스</h1>
+    <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.5rem;">프라이버시·토네이도 캐시·TORN·해킹·세탁 관련 기사 요약입니다. 자동 수집된 기사입니다.</p>
+
+    <div class="tn-toolbar">
+      <span class="text-muted" id="tnTotal">뉴스 0건</span>
+    </div>
+    <div id="tnList" class="tn-list"></div>
+    <p id="tnEmpty" class="tn-empty" style="display:none;">아직 수집된 뉴스가 없습니다.</p>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      function escapeHtml(s) {
+        if (s == null) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      var tnList = document.getElementById('tnList');
+      var tnEmpty = document.getElementById('tnEmpty');
+      var tnTotal = document.getElementById('tnTotal');
+
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      var navAdminCenter = document.getElementById('navAdminCenter');
+
+      function updateNav(user) {
+        if (user) {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+        }
+      }
+      window.TornFiAuth.onUser(updateNav);
+
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+      function loadNews() {
+        fetch('/api/tornado-news?limit=50&offset=0', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) return;
+            var items = data.items || [];
+            var total = data.total != null ? data.total : items.length;
+            tnTotal.textContent = '뉴스 ' + total + '건';
+            if (items.length === 0) {
+              tnList.innerHTML = '';
+              tnEmpty.style.display = 'block';
+              return;
+            }
+            tnEmpty.style.display = 'none';
+            tnList.innerHTML = items.map(function (it) {
+              var date = it.createdAt ? new Date(it.createdAt).toLocaleString('ko-KR') : '';
+              var source = escapeHtml(it.sourceName || '—');
+              var displayTitle = it.titleKo || it.title || '';
+              var rawSummary = it.summaryKo || it.summary || '';
+              var displaySummary = rawSummary.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+              var summarySlice = displaySummary.slice(0, 220);
+              if (summarySlice.length < displaySummary.length) summarySlice += '…';
+              return '<a class="tn-item" href="' + escapeHtml(it.url || '#') + '" target="_blank" rel="noopener">' +
+                '<div class="title">' + escapeHtml(displayTitle) + '</div>' +
+                (summarySlice ? '<div class="summary">' + escapeHtml(summarySlice) + '</div>' : '') +
+                '<div class="meta"><span class="source">' + source + '</span> · <span class="date">' + date + '</span></div>' +
+                '</a>';
+            }).join('');
+          });
+      }
+
+      loadNews();
+      if (window.TornFiAuth.getUser()) {
+        updateNav(window.TornFiAuth.getUser());
+      } else {
+        window.TornFiAuth.init().then(function () {
+          updateNav(window.TornFiAuth.getUser());
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
