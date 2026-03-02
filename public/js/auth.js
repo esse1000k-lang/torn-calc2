@@ -61,6 +61,22 @@
           return Promise.reject(data);
         });
     },
+    loginWithRhythm: function (loginId, rhythmTimestamps) {
+      return fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ id: loginId, rhythm: rhythmTimestamps }),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            notify(data.user);
+            return data;
+          }
+          return Promise.reject(data);
+        });
+    },
     register: function (displayName, password, referrer) {
       return fetch('/api/register', {
         method: 'POST',
@@ -69,6 +85,23 @@
         body: JSON.stringify({
           displayName: displayName || undefined,
           password: password,
+          referrer: referrer || undefined,
+        }),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.ok) return data;
+          return Promise.reject(data);
+        });
+    },
+    registerWithRhythm: function (displayName, rhythmTimestamps, referrer) {
+      return fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          displayName: displayName || undefined,
+          rhythm: rhythmTimestamps,
           referrer: referrer || undefined,
         }),
       })

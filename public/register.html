@@ -27,80 +27,141 @@
     </div>
   </nav>
 
-  <div class="auth-page auth-page--register">
-    <a href="/" class="back-link">← 홈으로</a>
+  <div class="auth-page auth-page--register auth-page--steps">
     <div class="auth-card auth-card--register">
-      <div class="auth-card-head">
-        <h1>회원가입</h1>
-        <p class="auth-desc">닉네임과 비밀번호로 간편히 가입하세요</p>
-      </div>
-      <p class="auth-error" id="authError"></p>
-      <form id="registerForm">
-        <section class="auth-form-section auth-form-section--card">
-          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">1</span>계정 정보</h3>
-          <div class="auth-form-section-inner">
-            <div class="auth-form-block">
-              <label for="displayName">닉네임 (영문, 숫자만 5~12자)</label>
-              <input type="text" id="displayName" name="displayName" required autocomplete="username" placeholder="영문·숫자 5~12자" minlength="5" maxlength="12" pattern="[a-zA-Z0-9]*" title="영문, 숫자만 5~12자">
-              <p class="nickname-validation" id="nicknameValidation" aria-live="polite" role="status"></p>
-            </div>
-            <div class="auth-form-block auth-form-block--password">
-              <span class="auth-form-block-title">비밀번호</span>
-              <label for="password">로그인 비밀번호</label>
-              <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="8자 이상, 영문·숫자 포함 (특수문자 권장)" minlength="8">
-              <p class="capslock-warning" id="passwordCapsWarning" aria-live="polite" role="status" style="display:none;">Caps Lock이 켜져 있습니다.</p>
-              <label for="passwordConfirm">비밀번호 확인</label>
-              <input type="password" id="passwordConfirm" name="passwordConfirm" required placeholder="동일하게 입력">
-              <p class="capslock-warning" id="passwordConfirmCapsWarning" aria-live="polite" role="status" style="display:none;">Caps Lock이 켜져 있습니다.</p>
-              <p class="password-confirm-validation" id="passwordConfirmValidation" aria-live="polite" role="status"></p>
-            </div>
+      <div class="register-steps" id="registerSteps">
+        <!-- 1페이지: 아이디 -->
+        <div class="register-step" id="step1" data-step="1">
+          <p class="register-step-label">1</p>
+          <h2 class="register-step-title">아이디를 입력해 주세요!</h2>
+          <p class="register-step-desc">영문, 숫자만 5~12자</p>
+          <p class="auth-error" id="authError"></p>
+          <div class="register-step-inner">
+            <input type="text" id="displayName" autocomplete="username" placeholder="닉네임 입력" minlength="5" maxlength="12">
+            <p class="nickname-validation" id="nicknameValidation" aria-live="polite" role="status"></p>
+            <button type="button" id="btnNext1" class="auth-submit-btn register-step-btn" disabled>다음</button>
           </div>
-        </section>
-        <section class="auth-form-section auth-form-section--card">
-          <h3 class="auth-form-section-title"><span class="auth-section-icon" aria-hidden="true">2</span>추천인</h3>
-          <div class="auth-form-section-inner">
-            <label for="referrer">추천인 (선택사항)</label>
-            <input type="text" id="referrer" name="referrer" autocomplete="off" placeholder="선택 입력">
-          </div>
-        </section>
-        <div class="auth-submit-wrap">
-          <button type="submit" class="auth-submit-btn">가입하기</button>
+          <p class="auth-link auth-link--register">이미 계정이 있으신가요? <a href="/login.html">로그인</a></p>
         </div>
-      </form>
-      <p class="auth-link">이미 계정이 있으신가요? <a href="/login.html">로그인</a></p>
+
+        <!-- 2페이지: 나만의 박자 -->
+        <div class="register-step register-step--hidden" id="step2" data-step="2">
+          <p class="register-step-label">2</p>
+          <h2 class="register-step-title">나만의 박자를 만들어보세요.</h2>
+          <div class="register-step-rhythm-words" aria-hidden="true">
+            <span class="rhythm-word">둠-칫-둠-칫</span>
+            <span class="rhythm-word">쿵-치-팍-치</span>
+          </div>
+          <p class="auth-error" id="authErrorStep2"></p>
+          <div class="rhythm-drum-wrap">
+            <div class="rhythm-drum-area" id="rhythmDrum2" role="button" tabindex="0" aria-label="북 두드리기">
+              <div class="rhythm-drum"></div>
+              <p class="rhythm-drum-count" id="rhythmDrumCount2" aria-live="polite"></p>
+            </div>
+            <p class="register-step-desc register-step-desc--below-drum">북을 4번 이상 두드려 주세요.</p>
+          </div>
+          <div class="register-step-actions">
+            <button type="button" id="btnPrev2" class="auth-submit-btn register-step-btn register-step-btn--secondary">이전</button>
+          </div>
+        </div>
+
+        <!-- 3페이지: 똑같이 한 번 더 -->
+        <div class="register-step register-step--hidden" id="step3" data-step="3">
+          <p class="register-step-label">3</p>
+          <h2 class="register-step-title">똑같이 한 번 더 쳐 보세요</h2>
+          <p class="auth-error" id="authErrorStep3"></p>
+          <div class="rhythm-drum-wrap">
+            <div class="rhythm-drum-area" id="rhythmDrum3" role="button" tabindex="0" aria-label="북 두드리기">
+              <div class="rhythm-drum"></div>
+              <p class="rhythm-drum-count" id="rhythmDrumCount3" aria-live="polite"></p>
+            </div>
+            <p class="register-step-desc register-step-desc--below-drum">북을 4번 이상 두드려 주세요.</p>
+          </div>
+          <div class="register-step-actions">
+            <button type="button" id="btnPrev3" class="auth-submit-btn register-step-btn register-step-btn--secondary">이전</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
+  <!-- 가입 완료 (잘했어요 + 환영) -->
   <div id="registerWelcomeLayer" class="register-welcome-layer" style="display:none;">
-    <div class="register-welcome-card">
-      <div class="register-welcome-icon" aria-hidden="true">✨</div>
-      <h2 class="register-welcome-title">가입을 환영합니다</h2>
-      <p class="register-welcome-desc">가입 신청이 완료되었습니다.<br>관리자 승인 후 서비스를 이용하실 수 있습니다.<br><span class="register-welcome-time">(최소 1시간 ~ 최대 24시간)</span></p>
-      <p class="register-welcome-login"><span class="register-welcome-torn">Torn</span>Fi.com</p>
-      <a href="/" id="registerWelcomeBtn" class="register-welcome-btn">홈으로 돌아가기</a>
+    <div class="register-welcome-card-wrap">
+      <div class="register-welcome-card">
+        <h2 class="register-welcome-subtitle">잘했어요!</h2>
+        <p class="register-welcome-clap" aria-hidden="true">👏</p>
+        <p class="register-welcome-remember">잊지 마세요! "비밀번호는 리듬"</p>
+      </div>
     </div>
+    <a href="/login.html" id="registerWelcomeBtn" class="register-welcome-btn">로그인 하기</a>
   </div>
 
+  <script src="js/rhythm.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/nav-logo.js"></script>
   <script>
     (function () {
-      var form = document.getElementById('registerForm');
-      var errorEl = document.getElementById('authError');
-      var nicknameValidationEl = document.getElementById('nicknameValidation');
-
       var nicknameRegex = /^[a-zA-Z0-9]{5,12}$/;
       var nicknameCheckTimer = null;
       var displayNameInput = document.getElementById('displayName');
+      var nicknameValidationEl = document.getElementById('nicknameValidation');
+      var authErrorEl = document.getElementById('authError');
+      var authErrorStep2 = document.getElementById('authErrorStep2');
+      var authErrorStep3 = document.getElementById('authErrorStep3');
+
+      var step1 = document.getElementById('step1');
+      var step2 = document.getElementById('step2');
+      var step3 = document.getElementById('step3');
+      var btnNext1 = document.getElementById('btnNext1');
+      var btnPrev2 = document.getElementById('btnPrev2');
+      var btnPrev3 = document.getElementById('btnPrev3');
+
+      var rhythmDrum2 = document.getElementById('rhythmDrum2');
+      var rhythmDrumCount2 = document.getElementById('rhythmDrumCount2');
+      var rhythmDrum3 = document.getElementById('rhythmDrum3');
+      var rhythmDrumCount3 = document.getElementById('rhythmDrumCount3');
+
+      var welcomeLayer = document.getElementById('registerWelcomeLayer');
+
+      var firstTimestamps = null;
+      var stopRecording2 = null;
+      var stopRecording3 = null;
+
+      function showStep(stepEl) {
+        [step1, step2, step3].forEach(function (el) {
+          if (el) el.classList.add('register-step--hidden');
+        });
+        if (stepEl) stepEl.classList.remove('register-step--hidden');
+      }
+
+      function clearErrors() {
+        if (authErrorEl) authErrorEl.textContent = '';
+        if (authErrorStep2) authErrorStep2.textContent = '';
+        if (authErrorStep3) authErrorStep3.textContent = '';
+      }
+
+      function playDrumHit(drumEl) {
+        if (!drumEl) return;
+        drumEl.classList.add('hit');
+        var ring = document.createElement('div');
+        ring.className = 'rhythm-drum-ring';
+        drumEl.appendChild(ring);
+        setTimeout(function () { drumEl.classList.remove('hit'); }, 220);
+        setTimeout(function () {
+          if (ring.parentNode) ring.parentNode.removeChild(ring);
+        }, 650);
+      }
+
+      // ——— 1페이지: 닉네임 ———
       if (displayNameInput) {
         displayNameInput.addEventListener('input', function () {
           var v = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
           if (v !== this.value) this.value = v;
           nicknameValidationEl.textContent = '';
           nicknameValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok');
-          if (v.length > 0 && v.length < 5) nicknameValidationEl.textContent = '닉네임은 5~12자입니다.';
-          else if (v.length > 0 && !nicknameRegex.test(v)) nicknameValidationEl.textContent = '영문, 숫자만 5~12자 가능합니다.';
-          else if (v.length >= 5 && !/[a-zA-Z]/.test(v)) nicknameValidationEl.textContent = '영문, 숫자만 5~12자 가능합니다.';
+          if (v.length > 0 && v.length < 5) nicknameValidationEl.textContent = '5~12자로 입력해 주세요.';
+          else if (v.length >= 5 && !nicknameRegex.test(v)) nicknameValidationEl.textContent = '영문, 숫자만 가능해요.';
           else if (v.length >= 5) {
             if (nicknameCheckTimer) clearTimeout(nicknameCheckTimer);
             nicknameCheckTimer = setTimeout(function () {
@@ -110,127 +171,144 @@
                 .then(function (data) {
                   if (displayNameInput.value.trim() !== v) return;
                   if (data.available) {
-                    nicknameValidationEl.textContent = '사용 가능한 닉네임입니다.';
+                    nicknameValidationEl.textContent = '사용 가능해요!';
                     nicknameValidationEl.classList.remove('wallet-validation--err');
                     nicknameValidationEl.classList.add('wallet-validation--ok');
                   } else {
-                    nicknameValidationEl.textContent = data.message || '이미 사용 중인 닉네임입니다.';
+                    nicknameValidationEl.textContent = data.message || '이미 사용 중이에요.';
                     nicknameValidationEl.classList.remove('wallet-validation--ok');
                     nicknameValidationEl.classList.add('wallet-validation--err');
                   }
                 })
-                .catch(function () {
-                  if (displayNameInput.value.trim() === v) nicknameValidationEl.textContent = '';
-                });
+                .catch(function () {});
             }, 400);
-          } else nicknameValidationEl.textContent = '';
-        });
-        displayNameInput.addEventListener('blur', function () {
-          var v = this.value.trim();
-          if (!v) { nicknameValidationEl.textContent = ''; nicknameValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok'); return; }
-          if (!nicknameRegex.test(v) || !/[a-zA-Z]/.test(v)) {
-            nicknameValidationEl.textContent = v.length < 5 ? '닉네임은 5~12자입니다.' : '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
-            nicknameValidationEl.classList.add('wallet-validation--err');
-            nicknameValidationEl.classList.remove('wallet-validation--ok');
-          } else {
-            fetch('/api/public/check-nickname?displayName=' + encodeURIComponent(v))
-              .then(function (r) { return r.json(); })
-              .then(function (data) {
-                if (displayNameInput.value.trim() !== v) return;
-                if (data.available) {
-                  nicknameValidationEl.textContent = '사용 가능한 닉네임입니다.';
-                  nicknameValidationEl.classList.remove('wallet-validation--err');
-                  nicknameValidationEl.classList.add('wallet-validation--ok');
-                } else {
-                  nicknameValidationEl.textContent = data.message || '이미 사용 중인 닉네임입니다.';
-                  nicknameValidationEl.classList.remove('wallet-validation--ok');
-                  nicknameValidationEl.classList.add('wallet-validation--err');
-                }
-              })
-              .catch(function () {});
           }
+          updateNext1State();
         });
       }
 
-      var passwordInput = document.getElementById('password');
-      var passwordConfirmInput = document.getElementById('passwordConfirm');
-      var passwordConfirmValidationEl = document.getElementById('passwordConfirmValidation');
-      function attachCapsLockWarning(inputEl, warningEl) {
-        if (!inputEl || !warningEl) return;
-        function updateCaps(e) {
-          var capsOn = e && typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
-          warningEl.style.display = capsOn ? 'block' : 'none';
-        }
-        inputEl.addEventListener('keydown', updateCaps);
-        inputEl.addEventListener('keyup', updateCaps);
-        inputEl.addEventListener('blur', function () { warningEl.style.display = 'none'; });
+      function updateNext1State() {
+        var v = displayNameInput ? displayNameInput.value.trim() : '';
+        var ok = v.length >= 5 && nicknameRegex.test(v) && /[a-zA-Z]/.test(v);
+        btnNext1.disabled = !ok;
       }
-      attachCapsLockWarning(passwordInput, document.getElementById('passwordCapsWarning'));
-      attachCapsLockWarning(passwordConfirmInput, document.getElementById('passwordConfirmCapsWarning'));
-      function checkPasswordMatch() {
-        if (!passwordConfirmValidationEl) return;
-        var p = passwordInput ? passwordInput.value : '';
-        var c = passwordConfirmInput ? passwordConfirmInput.value : '';
-        if (c.length === 0) {
-          passwordConfirmValidationEl.textContent = '';
-          passwordConfirmValidationEl.classList.remove('wallet-validation--err', 'wallet-validation--ok');
-          return;
-        }
-        if (p !== c) {
-          passwordConfirmValidationEl.textContent = '비밀번호가 일치하지 않습니다.';
-          passwordConfirmValidationEl.classList.remove('wallet-validation--ok');
-          passwordConfirmValidationEl.classList.add('wallet-validation--err');
-        } else {
-          passwordConfirmValidationEl.textContent = '일치합니다.';
-          passwordConfirmValidationEl.classList.remove('wallet-validation--err');
-          passwordConfirmValidationEl.classList.add('wallet-validation--ok');
-        }
-      }
-      function clearTopError() {
-        if (errorEl) errorEl.textContent = '';
-      }
-      form.addEventListener('input', clearTopError);
-      form.addEventListener('change', clearTopError);
 
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        clearTopError();
-        var displayName = (document.getElementById('displayName').value || '').trim();
-        var password = (document.getElementById('password').value || '').trim();
-        var passwordConfirm = (document.getElementById('passwordConfirm').value || '').trim();
-        var referrer = (document.getElementById('referrer').value || '').trim() || undefined;
-        if (!displayName) {
-          errorEl.textContent = '닉네임을 입력해 주세요.';
-          return;
-        }
-        if (!nicknameRegex.test(displayName) || !/[a-zA-Z]/.test(displayName)) {
-          errorEl.textContent = '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
-          return;
-        }
-        if (password !== passwordConfirm) {
-          errorEl.textContent = '비밀번호가 일치하지 않습니다.';
-          return;
-        }
-        if (password.length < 8) {
-          errorEl.textContent = '비밀번호는 8자 이상이어야 합니다.';
-          return;
-        }
-        if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
-          errorEl.textContent = '비밀번호는 영문과 숫자를 모두 포함해야 합니다.';
-          return;
-        }
-        window.TornFiAuth.register(displayName, password, referrer)
-          .then(function (data) {
-            clearTopError();
-            var welcomeLayer = document.getElementById('registerWelcomeLayer');
-            if (welcomeLayer) welcomeLayer.style.display = 'flex';
-          })
-          .catch(function (err) {
-            var msg = (err && err.message) ? String(err.message) : '가입에 실패했습니다.';
-            var isServerError = msg.indexOf('JSON') !== -1 || msg.indexOf('fetch') !== -1 || msg === '가입에 실패했습니다.';
-            errorEl.textContent = isServerError ? '가입에 실패했습니다. 잠시 후 다시 시도해 주세요.' : msg;
-          });
+      btnNext1.addEventListener('click', function () {
+        var v = displayNameInput ? displayNameInput.value.trim() : '';
+        if (v.length < 5 || !nicknameRegex.test(v) || !/[a-zA-Z]/.test(v)) return;
+        clearErrors();
+        firstTimestamps = null;
+        showStep(step2);
+        startDrumRecorder2();
       });
+
+      btnPrev2.addEventListener('click', function () {
+        clearErrors();
+        if (stopRecording2) try { stopRecording2(); } catch (e) {}
+        showStep(step1);
+      });
+
+      btnPrev3.addEventListener('click', function () {
+        clearErrors();
+        if (stopRecording3) try { stopRecording3(); } catch (e) {}
+        firstTimestamps = null;
+        showStep(step2);
+        startDrumRecorder2();
+      });
+
+      // ——— 2페이지: 첫 번째 리듬 ———
+      function startDrumRecorder2() {
+        if (stopRecording2) try { stopRecording2(); } catch (e) {}
+        if (!rhythmDrum2 || !window.TornFiRhythm) return;
+        if (rhythmDrumCount2) rhythmDrumCount2.textContent = '';
+        if (authErrorStep2) authErrorStep2.textContent = '';
+        rhythmDrum2.removeAttribute('aria-disabled');
+
+        stopRecording2 = window.TornFiRhythm.recordRhythm(rhythmDrum2, {
+          onTap: function (n) {
+            playDrumHit(rhythmDrum2);
+            if (rhythmDrumCount2) {
+              rhythmDrumCount2.textContent = n;
+              rhythmDrumCount2.classList.remove('rhythm-drum-count--pop');
+              rhythmDrumCount2.offsetHeight;
+              rhythmDrumCount2.classList.add('rhythm-drum-count--pop');
+              clearTimeout(rhythmDrumCount2._popTimer);
+              rhythmDrumCount2._popTimer = setTimeout(function () { rhythmDrumCount2.classList.remove('rhythm-drum-count--pop'); }, 220);
+            }
+          },
+          onComplete: function (timestamps) {
+            if (!timestamps || timestamps.length < window.TornFiRhythm.RHYTHM_MIN_TAPS) {
+              if (authErrorStep2) authErrorStep2.textContent = '4번 이상 두드려 주세요.';
+              if (rhythmDrumCount2) rhythmDrumCount2.textContent = '';
+              startDrumRecorder2();
+              return;
+            }
+            firstTimestamps = timestamps;
+            if (rhythmDrumCount2) rhythmDrumCount2.textContent = '좋아요!';
+            clearErrors();
+            showStep(step3);
+            startDrumRecorder3();
+          },
+        });
+      }
+
+      // ——— 3페이지: 똑같이 한 번 더 ———
+      function startDrumRecorder3() {
+        if (stopRecording3) try { stopRecording3(); } catch (e) {}
+        if (!rhythmDrum3 || !window.TornFiRhythm) return;
+        if (rhythmDrumCount3) rhythmDrumCount3.textContent = '';
+        if (authErrorStep3) authErrorStep3.textContent = '';
+        rhythmDrum3.removeAttribute('aria-disabled');
+
+        stopRecording3 = window.TornFiRhythm.recordRhythm(rhythmDrum3, {
+          onTap: function (n) {
+            playDrumHit(rhythmDrum3);
+            if (rhythmDrumCount3) {
+              rhythmDrumCount3.textContent = n;
+              rhythmDrumCount3.classList.remove('rhythm-drum-count--pop');
+              rhythmDrumCount3.offsetHeight;
+              rhythmDrumCount3.classList.add('rhythm-drum-count--pop');
+              clearTimeout(rhythmDrumCount3._popTimer);
+              rhythmDrumCount3._popTimer = setTimeout(function () { rhythmDrumCount3.classList.remove('rhythm-drum-count--pop'); }, 220);
+            }
+          },
+          onComplete: function (timestamps) {
+            if (!timestamps || timestamps.length < window.TornFiRhythm.RHYTHM_MIN_TAPS) {
+              if (authErrorStep3) authErrorStep3.textContent = '4번 이상 두드려 주세요.';
+              if (rhythmDrumCount3) rhythmDrumCount3.textContent = '';
+              startDrumRecorder3();
+              return;
+            }
+
+            if (!window.TornFiRhythm.rhythmMatch(firstTimestamps, timestamps)) {
+              if (authErrorStep3) authErrorStep3.textContent = '리듬이 달라요. 2번으로 돌아가서 다시 쳐 주세요.';
+              if (rhythmDrumCount3) rhythmDrumCount3.textContent = '';
+              firstTimestamps = null;
+              setTimeout(function () {
+                showStep(step2);
+                startDrumRecorder2();
+              }, 800);
+              return;
+            }
+
+            // 성공 → 가입 API → 한 페이지(잘하셨어요 + 가입완료)로 표시
+            if (stopRecording3) try { stopRecording3(); } catch (e) {}
+            showStep(null);
+
+            var displayName = displayNameInput ? displayNameInput.value.trim() : '';
+            window.TornFiAuth.registerWithRhythm(displayName, firstTimestamps, undefined)
+              .then(function () {
+                welcomeLayer.style.display = 'flex';
+              })
+              .catch(function (err) {
+                showStep(step3);
+                if (authErrorStep3) authErrorStep3.textContent = (err && err.message) ? String(err.message) : '가입에 실패했어요. 다시 시도해 주세요.';
+                startDrumRecorder3();
+              });
+          },
+        });
+      }
+
       window.TornFiAuth.onUser(function (u) {
         var nbtn = document.getElementById('navMenuBtn');
         var nac = document.getElementById('navAdminCenter');

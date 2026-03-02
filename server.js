@@ -337,7 +337,7 @@ passport.deserializeUser((id, done) => {
         return done(null, null);
       }
       const isAdminByWallet = u.walletAddress && ADMIN_WALLET_ADDRESSES.includes(u.walletAddress.toLowerCase());
-      const isAdmin = isAdminByWallet || u.boardAdmin === true;
+      const isAdmin = isAdminByWallet || u.boardAdmin === true || u.levelAdmin === true;
       const resolvedId = (u.id != null ? String(u.id) : (u._id != null ? String(u._id) : null)) || idStr;
       done(null, { id: resolvedId, displayName: u.displayName, walletAddress: u.walletAddress || null, isAdmin: !!isAdmin });
     })
@@ -1190,6 +1190,61 @@ const NICKNAME_REGEX = /^[a-zA-Z0-9]{5,12}$/;
 function isNicknameValid(name) {
   return name && NICKNAME_REGEX.test(name) && /[a-zA-Z]/.test(name);
 }
+
+// ——— 리듬 패턴 로그인 ———
+const RHYTHM_MIN_TAPS = 4;       // 최소 탭 수 (구간 3개 이상)
+const RHYTHM_QUANTIZE_STEP = 0.15; // 비율 양자화 단위 (넓을수록 타이밍 오차 허용)
+const RHYTHM_IDLE_MS = 1500;      // 클라이언트에서 "입력 끝" 판단용 (참고)
+
+function rhythmTimestampsToIntervals(timestamps) {
+  if (!Array.isArray(timestamps) || timestamps.length < RHYTHM_MIN_TAPS) return null;
+  const t = timestamps.map(Number).filter((n) => !Number.isNaN(n));
+  if (t.length < RHYTHM_MIN_TAPS) return null;
+  const intervals = [];
+  for (let i = 1; i < t.length; i++) {
+    const d = t[i] - t[i - 1];
+    if (d < 35) return null; // 너무 짧은 구간(오타) 제거
+    intervals.push(d);
+  }
+  return intervals;
+}
+
+function rhythmNormalize(intervals) {
+  const sum = intervals.reduce((a, b) => a + b, 0);
+  if (sum <= 0) return null;
+  return intervals.map((x) => x / sum);
+}
+
+function rhythmQuantize(ratios) {
+  const step = RHYTHM_QUANTIZE_STEP;
+  return ratios.map((r) => Math.round(r / step) * step);
+}
+
+function rhythmToKey(ratios) {
+  const q = rhythmQuantize(ratios);
+  return q.join(',');
+}
+
+function rhythmFromTimestamps(timestamps) {
+  const intervals = rhythmTimestampsToIntervals(timestamps);
+  if (!intervals) return null;
+  const ratios = rhythmNormalize(intervals);
+  if (!ratios) return null;
+  return rhythmToKey(ratios);
+}
+
+function rhythmHashFromTimestamps(timestamps) {
+  const key = rhythmFromTimestamps(timestamps);
+  if (!key) return null;
+  return bcrypt.hashSync(key, 10);
+}
+
+function rhythmVerify(timestamps, storedHash) {
+  if (!storedHash || !timestamps) return false;
+  const key = rhythmFromTimestamps(timestamps);
+  if (!key) return false;
+  return bcrypt.compareSync(key, storedHash);
+}
 // 로컬에서 Atlas 접속 안 될 때: Render 서버에서 admin109 생성 (1회만 호출, 끝나면 Render에서 SEED_ADMIN_KEY 삭제 권장)
 app.get('/api/debug/seed-admin', async (req, res) => {
   const key = String(req.query.key || '').trim();
@@ -1272,12 +1327,11 @@ app.get('/api/public/check-nickname', async (req, res) => {
   return res.json({ ok: true, available: !taken, message: taken ? '이미 사용 중인 닉네임입니다.' : null });
 });
 
-// 회원가입 (닉네임 + 비밀번호 + 추천인 선택, 지갑 주소 없음)
+// 회원가입 (닉네임 + 리듬 패턴 + 추천인, 지갑 주소 없음)
 const REGISTER_NO_WALLET = '0x0000000000000000000000000000000000000000';
 app.post('/api/register', async (req, res) => {
   if (checkAuthRateLimit(req, res)) return;
-  const { password, displayName, referrer } = req.body || {};
-  const passwordStr = String(password || '');
+  const { displayName, rhythm, referrer } = req.body || {};
   const nameRaw = String(displayName || '').trim() || null;
   const name = isNicknameValid(nameRaw) ? nameRaw : null;
 
@@ -1287,11 +1341,11 @@ app.post('/api/register', async (req, res) => {
   if (!name) {
     return res.status(400).json({ ok: false, message: '닉네임은 영문, 숫자만 5~12자까지 가능합니다.' });
   }
-  if (!passwordStr) {
-    return res.status(400).json({ ok: false, message: '비밀번호를 입력해 주세요.' });
-  }
-  if (!isPasswordStrong(passwordStr)) {
-    return res.status(400).json({ ok: false, message: '비밀번호는 8자 이상이며, 영문과 숫자를 모두 포함해야 합니다. (특수문자 사용 시 더 안전합니다)' });
+
+  const timestamps = Array.isArray(rhythm) ? rhythm : null;
+  const rhythmHash = timestamps ? rhythmHashFromTimestamps(timestamps) : null;
+  if (!rhythmHash) {
+    return res.status(400).json({ ok: false, message: '나만의 리듬을 북에서 4번 이상 두드려 주세요.' });
   }
 
   const referrerTrim = String(referrer || '').trim() || null;
@@ -1317,10 +1371,9 @@ app.post('/api/register', async (req, res) => {
 
   const settings = await db.readSettings();
   const autoApproveNewUsers = settings.autoApproveNewUsers !== false;
-  const hash = bcrypt.hashSync(passwordStr, 10);
   const user = {
     id: crypto.randomBytes(12).toString('hex'),
-    passwordHash: hash,
+    rhythmHash,
     displayName: name,
     walletAddress: REGISTER_NO_WALLET,
     referrer: referrerTrim || null,
@@ -1345,22 +1398,34 @@ app.post('/api/register', async (req, res) => {
   });
 });
 
-// 로그인 (닉네임 + 비밀번호)
+// 로그인 (닉네임 + 리듬 또는 닉네임 + 비밀번호(기존 계정))
 app.post('/api/login', async (req, res) => {
   if (checkAuthRateLimit(req, res)) return;
-  const { id, password } = req.body || {};
+  const { id, password, rhythm } = req.body || {};
   const nicknameInput = String(id || '').trim();
   const passwordStr = String(password || '');
+  const rhythmTimestamps = Array.isArray(rhythm) ? rhythm : null;
 
-  if (!nicknameInput || !passwordStr) {
-    return res.status(400).json({ ok: false, message: '닉네임과 비밀번호를 입력해 주세요.' });
+  if (!nicknameInput) {
+    return res.status(400).json({ ok: false, message: '닉네임을 입력해 주세요.' });
   }
 
   const users = await db.readUsers();
   const nicknameLower = nicknameInput.toLowerCase();
   const user = users.find(u => u.displayName && u.displayName.toLowerCase() === nicknameLower);
-  if (!user || !user.passwordHash || !bcrypt.compareSync(passwordStr, user.passwordHash)) {
-    return res.status(401).json({ ok: false, message: '닉네임 또는 비밀번호가 올바르지 않습니다.' });
+  if (!user) {
+    return res.status(401).json({ ok: false, message: '닉네임 또는 리듬이 올바르지 않습니다.' });
+  }
+
+  let authOk = false;
+  if (user.rhythmHash && rhythmTimestamps) {
+    authOk = rhythmVerify(rhythmTimestamps, user.rhythmHash);
+  } else if (user.passwordHash && passwordStr) {
+    authOk = bcrypt.compareSync(passwordStr, user.passwordHash);
+  }
+
+  if (!authOk) {
+    return res.status(401).json({ ok: false, message: '닉네임 또는 리듬이 올바르지 않습니다.' });
   }
   if (user.isFake === true) {
     return res.status(403).json({ ok: false, message: '관리자가 생성한 테스트 계정은 로그인할 수 없습니다.' });
@@ -1386,7 +1451,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   const isAdminByWallet = user.walletAddress && ADMIN_WALLET_ADDRESSES.includes(user.walletAddress.toLowerCase());
-  const isAdmin = isAdminByWallet || user.boardAdmin === true;
+  const isAdmin = isAdminByWallet || user.boardAdmin === true || user.levelAdmin === true;
   const sessionUser = {
     id: userId,
     displayName: user.displayName,
@@ -1446,18 +1511,24 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
-// 회원탈퇴 (로그인 필요, 로그인 비밀번호 확인)
+// 회원탈퇴 (로그인 필요, 리듬 또는 비밀번호 확인)
 app.post('/api/withdraw', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
-  const { password } = req.body || {};
+  const { password, rhythm } = req.body || {};
   const passwordStr = String(password || '').trim();
-  if (!passwordStr) return res.status(400).json({ ok: false, message: '로그인 비밀번호를 입력해 주세요.' });
+  const rhythmTimestamps = Array.isArray(rhythm) ? rhythm : null;
   const users = await db.readUsers();
   const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
   const me = users[idx];
-  if (!me.passwordHash || !bcrypt.compareSync(passwordStr, me.passwordHash)) {
-    return res.status(400).json({ ok: false, message: '로그인 비밀번호가 일치하지 않습니다.' });
+  let confirmOk = false;
+  if (me.rhythmHash && rhythmTimestamps) {
+    confirmOk = rhythmVerify(rhythmTimestamps, me.rhythmHash);
+  } else if (me.passwordHash && passwordStr) {
+    confirmOk = bcrypt.compareSync(passwordStr, me.passwordHash);
+  }
+  if (!confirmOk) {
+    return res.status(400).json({ ok: false, message: me.rhythmHash ? '리듬이 일치하지 않습니다.' : '로그인 비밀번호가 일치하지 않습니다.' });
   }
   users[idx].withdrawn = true;
   users[idx].withdrawnAt = new Date().toISOString();
@@ -2182,7 +2253,7 @@ async function adminOnlyMiddleware(req, res, next) {
     }
     const users = await db.readUsers();
     const dbUser = users.find((u) => String(u.id) === String(req.user.id));
-    if (dbUser && dbUser.boardAdmin === true) {
+    if (dbUser && (dbUser.boardAdmin === true || dbUser.levelAdmin === true)) {
       req.user.isAdmin = true;
       return next();
     }
@@ -2437,6 +2508,7 @@ app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
   }
   const filtered = users.filter((u) => String(u.id) !== userId);
   await db.writeUsers(filtered);
+  if (typeof db.deleteUserById === 'function') await db.deleteUserById(userId);
   if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
     if (sess && String(sess.id) === userId) sessions.delete(token);
@@ -2975,6 +3047,7 @@ app.post('/api/admin/users/:userId/force-withdraw', adminMiddleware, async (req,
   });
   const filtered = users.filter((u) => String(u.id) !== userId);
   await db.writeUsers(filtered);
+  if (typeof db.deleteUserById === 'function') await db.deleteUserById(userId);
   if (typeof db.deleteSessionsByUserId === 'function') await db.deleteSessionsByUserId(userId);
   for (const [token, sess] of sessions.entries()) {
     if (sess && String(sess.id) === userId) sessions.delete(token);

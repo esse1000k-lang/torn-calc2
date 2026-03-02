@@ -2297,37 +2297,80 @@ button.mobile-home-menu__btn {
   bottom: 0;
   background: linear-gradient(180deg, rgba(10, 12, 14, 0.97) 0%, rgba(17, 17, 19, 0.98) 100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 300;
-  padding: 1.5rem;
+  padding: 1.5rem 1.5rem 2rem;
   animation: withdrawnGoodbyeFadeIn 0.4s ease-out;
+}
+
+.register-welcome-card-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .register-welcome-card {
   background: var(--bg-card);
-  border: 1px solid rgba(0, 255, 136, 0.3);
+  border: none;
   border-radius: 16px;
-  padding: 2.5rem 2rem;
-  max-width: 420px;
+  padding: 3rem 2.5rem;
+  max-width: 440px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 0 40px rgba(0, 255, 136, 0.06), 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
   animation: withdrawnGoodbyeCardIn 0.5s ease-out 0.1s both;
 }
 
-.register-welcome-icon {
-  font-size: 3rem;
+@keyframes register-welcome-clap-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-12px) scale(1.02); }
+}
+
+.register-welcome-clap {
+  font-size: 12rem;
   line-height: 1;
-  margin-bottom: 1.25rem;
-  filter: drop-shadow(0 0 12px rgba(0, 255, 136, 0.2));
+  margin: 0 0 2rem 0;
+  animation: register-welcome-clap-float 2.8s ease-in-out infinite;
+}
+
+.register-welcome-subtitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neon);
+  margin: 0 0 2rem 0;
+}
+
+.register-welcome-remember {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.5;
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.35) 0%, rgba(0, 204, 106, 0.3) 100%);
+  border: 3px solid var(--neon);
+  border-radius: 14px;
+  box-shadow: 0 0 32px rgba(0, 255, 136, 0.25), inset 0 0 24px rgba(0, 255, 136, 0.08);
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.register-welcome-remember strong {
+  color: var(--neon);
+  font-weight: 900;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
 }
 
 .register-welcome-title {
   font-size: 1.35rem;
   font-weight: 600;
   color: var(--text);
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.75rem 0;
   line-height: 1.4;
   letter-spacing: -0.02em;
 }
@@ -2352,7 +2395,9 @@ button.mobile-home-menu__btn {
 }
 
 .register-welcome-btn {
+  flex-shrink: 0;
   display: inline-block;
+  margin-top: auto;
   padding: 0.7rem 2rem;
   background: var(--neon);
   color: var(--bg-dark);
@@ -2477,6 +2522,11 @@ button.mobile-home-menu__btn {
 }
 .login-modal-box .auth-brand a {
   display: inline-block;
+  color: var(--neon);
+  text-decoration: none;
+}
+.login-modal-box .auth-brand a:hover {
+  color: var(--neon-dim);
 }
 
 .auth-page--login {
@@ -2489,7 +2539,14 @@ button.mobile-home-menu__btn {
 }
 
 .auth-page--register {
-  max-width: 440px;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 1.5rem;
+  min-height: calc(100vh - 56px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .auth-card {
@@ -2510,10 +2567,15 @@ button.mobile-home-menu__btn {
 }
 
 .auth-card--register {
-  border: 1px solid rgba(0, 255, 136, 0.2);
-  border-radius: 16px;
-  padding: 2rem 1.75rem;
-  box-shadow: 0 0 32px rgba(0, 255, 136, 0.04), 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: none;
+  border-radius: 0;
+  padding: 1.25rem 1rem 1.5rem;
+  box-shadow: none;
+  background: transparent;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .auth-card-head {
@@ -2636,23 +2698,113 @@ button.mobile-home-menu__btn {
 .auth-brand a {
   color: var(--text-muted);
   text-decoration: none;
-  animation: auth-brand-glow 2s ease-in-out infinite;
 }
 .auth-brand a:hover {
-  color: var(--neon);
-  animation: none;
-  text-shadow: 0 0 12px var(--neon-glow);
+  color: var(--text-muted);
 }
 
-@keyframes auth-brand-glow {
-  0%, 100% {
-    color: var(--text-muted);
-    text-shadow: none;
-  }
-  50% {
-    color: var(--neon);
-    text-shadow: 0 0 10px var(--neon-glow), 0 0 20px rgba(0, 255, 136, 0.25);
-  }
+/* 로그인 닉네임 입력: 타자 애니메이션 (클릭/포커스 시 숨김) */
+.login-id-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.login-id-typing {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.login-id-wrap--hide-typing .login-id-typing {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s;
+}
+
+.login-id-typing-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  vertical-align: bottom;
+  animation: login-typing-reveal 3s steps(5) 0.3s infinite;
+}
+
+@keyframes login-typing-reveal {
+  0% { width: 0; }
+  35% { width: 5.5em; }
+  70% { width: 5.5em; }
+  85% { width: 0; }
+  100% { width: 0; }
+}
+
+.login-id-typing-cursor {
+  animation: login-typing-blink 0.7s step-end infinite;
+}
+
+@keyframes login-typing-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.login-password-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.login-password-block label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.login-password-block input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-dark);
+  color: var(--text);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.login-password-block input:focus {
+  outline: none;
+  border-color: var(--neon);
+}
+
+.login-password-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 2px solid rgba(0, 255, 136, 0.5);
+  background: transparent;
+  color: var(--neon);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.login-password-btn:hover {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: var(--neon);
+}
+
+.login-password-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .auth-card--register h1 {
@@ -2826,7 +2978,7 @@ button.mobile-home-menu__btn {
 }
 
 .auth-card--register .auth-submit-btn {
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  box-shadow: none;
 }
 
 .auth-submit-btn:hover,
@@ -2835,13 +2987,18 @@ button.mobile-home-menu__btn {
 }
 
 .auth-card--register .auth-submit-btn:hover {
-  box-shadow: 0 0 24px rgba(0, 255, 136, 0.25);
+  box-shadow: none;
 }
 
 .auth-card input:focus {
   outline: none;
   border-color: var(--neon);
   box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.15);
+}
+
+.auth-card--register input:focus {
+  border-color: var(--border);
+  box-shadow: none;
 }
 
 .auth-card .auth-error {
@@ -2947,8 +3104,391 @@ button.mobile-home-menu__btn {
 .back-link:hover {
   color: var(--neon);
 }
+/* ——— 리듬 로그인: 북 + 탭 애니메이션 ——— */
+.rhythm-drum-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.rhythm-drum-area {
+  position: relative;
+  width: 208px;
+  height: 208px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.rhythm-drum-area:focus {
+  outline: none;
+}
+
+.rhythm-drum-area[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* 북 통 몸통 + 막 (위에서 본 모양) — 전 페이지 동일 크기 */
+.rhythm-drum {
+  position: relative;
+  width: 156px;
+  height: 156px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e8d5b5, #c4a574 40%, #8b6914 70%, #5c4813);
+  box-shadow:
+    inset 0 0 0 4px rgba(0, 0, 0, 0.25),
+    inset 0 -8px 20px rgba(0, 0, 0, 0.3),
+    0 0 0 6px #3d2e0a,
+    0 6px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.08s ease-out;
+  will-change: transform;
+}
+
+.rhythm-drum::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #f5e6c8, #d4b896 50%, #a08050);
+  box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.3), inset 0 -2px 6px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+/* 탭 시 “탁” 하고 눌리는 느낌 */
+.rhythm-drum-area.hit .rhythm-drum {
+  animation: rhythm-drum-hit 0.2s ease-out;
+}
+
+@keyframes rhythm-drum-hit {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.92); }
+  70% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* 울리는 파동 (탭할 때마다 ring 추가) */
+.rhythm-drum-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 156px;
+  height: 156px;
+  margin-left: -78px;
+  margin-top: -78px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 255, 136, 0.6);
+  pointer-events: none;
+  animation: rhythm-drum-ring 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes rhythm-drum-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+    border-color: rgba(0, 255, 136, 0.8);
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+    border-color: rgba(0, 255, 136, 0.1);
+  }
+}
+
+.rhythm-drum-hint {
+  margin-top: 0.85rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.rhythm-drum-count {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  user-select: none;
+}
+
+.rhythm-drum-count--pop {
+  animation: rhythm-drum-count-pop 0.22s ease-out;
+}
+
+@keyframes rhythm-drum-count-pop {
+  0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.25; }
+  70% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* 회원가입: 리듬 섹션 문구 (초등학생도 이해) */
+.rhythm-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+.rhythm-section-desc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.rhythm-step-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 255, 136, 0.15);
+  color: var(--neon);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.auth-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--neon);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.auth-link-btn:hover {
+  color: var(--neon-dim);
+}
+
+/* ——— 회원가입 스텝 페이지 (1 → 2 → 3) ——— */
+.auth-page--steps .auth-card {
+  max-width: 100%;
+}
+
+.auth-page--steps .register-steps {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.register-step {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 0.75rem 0;
+  min-height: 200px;
+  justify-content: center;
+  gap: 0;
+}
+
+.register-step--hidden {
+  display: none !important;
+}
+
+.register-step-label {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  border-radius: 50%;
+  background: rgba(0, 255, 136, 0.2);
+  color: var(--neon);
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.register-step-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 0.35rem;
+}
+
+.register-step-rhythm-words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+@keyframes rhythm-word-beat {
+  0%, 100% { transform: scale(1) translateY(0); }
+  25% { transform: scale(1.06) translateY(-2px); }
+  50% { transform: scale(1) translateY(0); }
+  75% { transform: scale(1.04) translateY(-1px); }
+}
+
+.register-step-rhythm-words .rhythm-word {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: rgba(0, 255, 136, 0.85);
+  letter-spacing: 0.28em;
+  word-spacing: 0.15em;
+  font-family: "Outfit", "Noto Sans KR", sans-serif;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+  animation: rhythm-word-beat 1.2s ease-in-out infinite;
+  display: inline-block;
+}
+
+.register-step-rhythm-words .rhythm-word:last-child {
+  animation-delay: 0.3s;
+}
+
+.register-step-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.register-step-desc--below-drum {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.register-step-inner {
+  margin-top: 0.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.register-step-inner input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  background: var(--bg-dark);
+  color: var(--text);
+  font-size: 1rem;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+}
+
+.register-step-inner input:focus {
+  border-color: rgba(0, 255, 136, 0.6);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.12);
+}
+
+.register-step-btn {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: var(--neon);
+  color: var(--bg-dark);
+}
+
+.register-step-btn:hover:not(:disabled) {
+  background: var(--neon-dim);
+}
+
+.register-step-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.register-step-btn--secondary {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.register-step-btn--secondary:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.register-step .rhythm-drum-wrap {
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
+}
+
+.register-step-actions {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
 .auth-card--register .auth-link {
-  margin-top: 1.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  flex-shrink: 0;
+}
+
+/* 성공: 잘하셨어요 */
+.register-success-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 11, 0.9);
+  padding: 1.5rem;
+}
+
+.register-success-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.1);
+}
+
+.register-success-emoji {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.register-success-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--neon);
+  margin-bottom: 0.5rem;
+}
+
+.register-success-desc {
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.register-success-desc strong {
+  color: var(--neon);
+}
+
+.register-success-note {
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
 /* 실시간 채팅 — 텔레그램 대화방 스타일, 사이트 컨셉(다크·네온) */

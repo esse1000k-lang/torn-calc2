@@ -186,7 +186,7 @@
     .admin-nav-dropdown-menu a:hover { background: rgba(0, 255, 136, 0.1); }
     .admin-panel { display: none; margin-bottom: 0; }
     .admin-panel.is-active { display: block; }
-    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminForceWithdrawSection, #adminDeletedFeedSection, #adminBannerSection { scroll-margin-top: 0.5rem; }
+    #adminPinChange, #adminAccountSection, #adminLevelTable, #adminPending, #adminExchangeSection, #adminTotalPointsSection, #adminUsersSection, #adminDeletedFeedSection, #adminBannerSection { scroll-margin-top: 0.5rem; }
     #adminUsersSection .admin-btn { min-height: 18px; height: 18px; padding: 0 0.4375rem; border-radius: 4px; font-size: 0.8125rem; }
     #adminUsersSection .admin-section-body { padding: 1.25rem 1.25rem 1.5rem; }
     #adminUsersSection .admin-create-user-wrap {
@@ -387,7 +387,6 @@
           <a href="#" class="admin-nav-link" data-panel="adminLevelTable">🐋 등급 관리</a>
           <a href="#" class="admin-nav-link" data-panel="adminPending">⏳ 가입 승인</a>
           <a href="#" class="admin-nav-link" data-panel="adminUsersSection">👤 개별 관리</a>
-          <a href="#" class="admin-nav-link" data-panel="adminForceWithdrawSection">🚫 강제 탈퇴</a>
         </div>
       </div>
       <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedSection">🗑️ 삭제된 피드</a>
@@ -511,11 +510,13 @@
         </div>
         <p class="admin-summary">
           회원 수: <strong id="usersSummaryCount">0</strong>명
+          <button type="button" id="usersForceWithdrawSelectedBtn" class="admin-btn admin-btn--burn" style="margin-left:0.75rem;">선택 강퇴</button>
         </p>
         <div class="admin-table-wrap">
           <table id="usersTable" class="admin-table">
             <thead>
               <tr>
+                <th style="width:2.5rem;"><input type="checkbox" id="usersSelectAll" title="전체 선택"></th>
                 <th>닉네임</th>
                 <th>구분</th>
                 <th>지갑 주소</th>
@@ -650,35 +651,6 @@
       </div>
     </section>
 
-    <section id="adminForceWithdrawSection" class="admin-section admin-panel">
-      <div class="admin-section-header">
-        <h2>강제 탈퇴</h2>
-        <p class="admin-section-desc">강퇴 처리된 회원 목록입니다. 회원 관리에서 강퇴한 아이디가 여기로 기록됩니다.</p>
-      </div>
-      <div class="admin-section-body">
-        <p class="admin-summary">
-          강퇴 건수: <strong id="forceWithdrawSummaryCount">0</strong>건
-          <button type="button" id="forceWithdrawClearBtn" class="admin-btn admin-btn--burn" style="margin-left:1rem;">선택 삭제</button>
-          <span style="font-size:0.8125rem; color:var(--text-muted); margin-left:0.5rem;">삭제된 지갑은 재가입 가능합니다.</span>
-        </p>
-        <div class="admin-table-wrap">
-          <table id="forceWithdrawTable" class="admin-table">
-            <thead>
-              <tr>
-                <th style="width:2.5rem;"><input type="checkbox" id="forceWithdrawSelectAll" title="전체 선택"></th>
-                <th>닉네임</th>
-                <th>지갑 주소</th>
-                <th>강퇴 일시</th>
-                <th>처리자</th>
-              </tr>
-            </thead>
-            <tbody id="forceWithdrawBody"></tbody>
-          </table>
-        </div>
-        <p id="forceWithdrawNone" class="text-muted" style="font-size:0.9rem; display:none;">강제 탈퇴된 회원이 없습니다.</p>
-      </div>
-    </section>
-
     </div>
   </div>
 
@@ -697,6 +669,17 @@
     </div>
   </div>
 
+  <div id="forceWithdrawConfirmLayer" class="admin-confirm-layer" style="display:none;">
+    <div class="admin-confirm-box">
+      <h3>강제 탈퇴</h3>
+      <p id="forceWithdrawConfirmMessage" class="admin-section-desc"></p>
+      <div class="confirm-actions">
+        <button type="button" id="forceWithdrawConfirmCancel" class="btn-cancel">취소</button>
+        <button type="button" id="forceWithdrawConfirmOk" class="btn-confirm">강퇴</button>
+      </div>
+    </div>
+  </div>
+
   <div id="completionConfirmLayer" class="admin-confirm-layer" style="display:none;">
     <div class="admin-confirm-box completion-box">
       <h3>교환 완료</h3>
@@ -706,18 +689,6 @@
       <div class="confirm-actions">
         <button type="button" id="completionConfirmCancel" class="btn-cancel">취소</button>
         <button type="button" id="completionConfirmOk" class="btn-confirm">전송 완료</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="forceWithdrawConfirmLayer" class="admin-confirm-layer" style="display:none;">
-    <div class="admin-confirm-box">
-      <h3>강제 탈퇴 확인</h3>
-      <p class="admin-section-desc">해당 회원을 강제 탈퇴시키겠습니까? 계정이 삭제됩니다.</p>
-      <p id="forceWithdrawConfirmName" class="confirm-address" style="margin:0.75rem 0;"></p>
-      <div class="confirm-actions">
-        <button type="button" id="forceWithdrawConfirmCancel" class="btn-cancel">취소</button>
-        <button type="button" id="forceWithdrawConfirmOk" class="btn-confirm">승인</button>
       </div>
     </div>
   </div>
@@ -800,8 +771,8 @@
         }
         usersBody.innerHTML = renderUserRows(list);
         attachTableHandlers(usersBody);
-        attachForceWithdrawHandlers(usersBody);
         attachDeleteUserHandlers(usersBody);
+        attachForceWithdrawHandlers(usersBody);
         attachLevelAdminHandlers(usersBody);
         attachUserPointsHandlers(usersBody);
         attachItemsDropdownHandlers(usersBody);
@@ -861,72 +832,14 @@
           var itemsCell = renderItemsCell(u.shopItems);
           var walletCell = renderWalletCell(walletDisplay);
           var pointsAction = '<td class="admin-cell-actions"><input type="number" data-points-delta placeholder="+/-" style="width:5rem;margin-right:0.25rem;" step="1"> <button type="button" class="admin-btn" data-points-apply="' + u.id + '">적용</button></td>';
+          var selectCell = isFake ? '<td></td>' : '<td><input type="checkbox" class="user-force-withdraw-cb" value="' + (u.id || '').replace(/"/g, '&quot;') + '" data-user-id="' + (u.id || '').replace(/"/g, '&quot;') + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '" title="강퇴 대상 선택"></td>';
           var btn = isFake
             ? '<button type="button" class="admin-btn admin-btn--burn" data-delete-user-btn="' + u.id + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">삭제</button>'
-            : '<button type="button" class="admin-btn admin-btn--burn" data-force-withdraw-btn="' + u.id + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">강퇴</button>';
-          return '<tr data-user-id="' + u.id + '"><td>' + (u.displayName || '-') + '</td><td>' + badge + '</td>' + walletCell + '<td class="user-level">' + levelBadge(lv) + '</td>' + levelAdminCell + stakedCell + pointsCell + itemsCell + pointsAction + '<td class="admin-cell-actions">' + btn + '</td></tr>';
+            : '<button type="button" class="admin-btn admin-btn--burn" data-force-withdraw-btn="' + (u.id || '').replace(/"/g, '&quot;') + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">강퇴</button>';
+          return '<tr data-user-id="' + u.id + '">' + selectCell + '<td>' + (u.displayName || '-') + '</td><td>' + badge + '</td>' + walletCell + '<td class="user-level">' + levelBadge(lv) + '</td>' + levelAdminCell + stakedCell + pointsCell + itemsCell + pointsAction + '<td class="admin-cell-actions">' + btn + '</td></tr>';
         }).join('');
       }
 
-      var pendingForceWithdrawUserId = null;
-      (function setupForceWithdrawConfirmLayer() {
-        var layer = document.getElementById('forceWithdrawConfirmLayer');
-        var cancelBtn = document.getElementById('forceWithdrawConfirmCancel');
-        var okBtn = document.getElementById('forceWithdrawConfirmOk');
-        if (!layer) return;
-        if (cancelBtn) cancelBtn.addEventListener('click', function () {
-          pendingForceWithdrawUserId = null;
-          layer.style.display = 'none';
-        });
-        if (okBtn) okBtn.addEventListener('click', function () {
-          if (!pendingForceWithdrawUserId) return;
-          var id = pendingForceWithdrawUserId;
-          pendingForceWithdrawUserId = null;
-          layer.style.display = 'none';
-          okBtn.disabled = true;
-          fetch('/api/admin/users/' + encodeURIComponent(id) + '/force-withdraw', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: '{}',
-          })
-            .then(function (r) {
-              return r.json().then(function (res) {
-                console.log('[admin/force-withdraw] status=', r.status, r.statusText, 'body=', res);
-                return { status: r.status, res: res };
-              });
-            })
-            .then(function (out) {
-              var res = out.res;
-              if (out.status === 200 && res && res.ok) {
-                if (typeof loadUsers === 'function') loadUsers();
-                if (res.message) alert(res.message);
-                location.reload();
-              } else if (res && res.message) {
-                alert(res.message);
-              }
-            })
-            .catch(function (err) {
-              console.error('[admin/force-withdraw] request failed', err);
-              alert('강제 탈퇴 처리 중 오류가 발생했습니다.');
-            })
-            .finally(function () { okBtn.disabled = false; });
-        });
-      })();
-      function attachForceWithdrawHandlers(tbody) {
-        if (!tbody) return;
-        var layer = document.getElementById('forceWithdrawConfirmLayer');
-        var nameEl = document.getElementById('forceWithdrawConfirmName');
-        tbody.querySelectorAll('[data-force-withdraw-btn]').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var id = this.getAttribute('data-force-withdraw-btn');
-            var displayName = (this.getAttribute('data-display-name') || '').replace(/&quot;/g, '"') || '(닉네임 없음)';
-            pendingForceWithdrawUserId = id;
-            if (nameEl) nameEl.textContent = displayName + ' — 강제 탈퇴하시겠습니까?';
-            if (layer) layer.style.display = 'flex';
-          });
-        });
-      }
       function attachDeleteUserHandlers(tbody) {
         if (!tbody) return;
         tbody.querySelectorAll('[data-delete-user-btn]').forEach(function (btn) {
@@ -955,6 +868,17 @@
                 alert('삭제 처리 중 오류가 발생했습니다.');
               })
               .finally(function () { btn.disabled = false; });
+          });
+        });
+      }
+
+      function attachForceWithdrawHandlers(tbody) {
+        if (!tbody) return;
+        tbody.querySelectorAll('[data-force-withdraw-btn]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = this.getAttribute('data-force-withdraw-btn');
+            var displayName = (this.getAttribute('data-display-name') || '').replace(/&quot;/g, '"') || '(닉네임 없음)';
+            showForceWithdrawConfirm([{ id: id, displayName: displayName }]);
           });
         });
       }
@@ -1165,6 +1089,89 @@
             })
             .catch(function () { alert('테스트 회원 생성 중 오류가 발생했습니다.'); })
             .finally(function () { createUserBtn.disabled = false; });
+        });
+      }
+
+      var pendingForceWithdrawList = [];
+      function showForceWithdrawConfirm(list) {
+        pendingForceWithdrawList = list || [];
+        var msgEl = document.getElementById('forceWithdrawConfirmMessage');
+        if (msgEl) {
+          if (pendingForceWithdrawList.length === 0) {
+            msgEl.textContent = '선택된 회원이 없습니다.';
+          } else if (pendingForceWithdrawList.length === 1) {
+            msgEl.textContent = '"' + (pendingForceWithdrawList[0].displayName || '닉네임 없음') + '" 회원을 강제 탈퇴시키겠습니까? 계정이 삭제됩니다.';
+          } else {
+            msgEl.textContent = '선택한 ' + pendingForceWithdrawList.length + '명을 강제 탈퇴시키겠습니까? 계정이 삭제됩니다.';
+          }
+        }
+        var layer = document.getElementById('forceWithdrawConfirmLayer');
+        if (layer) layer.style.display = 'flex';
+      }
+      (function () {
+        var layer = document.getElementById('forceWithdrawConfirmLayer');
+        var msgEl = document.getElementById('forceWithdrawConfirmMessage');
+        var cancelBtn = document.getElementById('forceWithdrawConfirmCancel');
+        var okBtn = document.getElementById('forceWithdrawConfirmOk');
+        if (cancelBtn) cancelBtn.addEventListener('click', function () {
+          if (layer) layer.style.display = 'none';
+          pendingForceWithdrawList = [];
+        });
+        if (okBtn) okBtn.addEventListener('click', function () {
+          if (pendingForceWithdrawList.length === 0) {
+            if (layer) layer.style.display = 'none';
+            return;
+          }
+          okBtn.disabled = true;
+          var idx = 0;
+          function next() {
+            if (idx >= pendingForceWithdrawList.length) {
+              okBtn.disabled = false;
+              if (layer) layer.style.display = 'none';
+              pendingForceWithdrawList = [];
+              if (typeof loadUsers === 'function') loadUsers();
+              return;
+            }
+            var u = pendingForceWithdrawList[idx];
+            fetch('/api/admin/users/' + encodeURIComponent(u.id) + '/force-withdraw', { method: 'POST', credentials: 'same-origin' })
+              .then(function (r) { return r.json(); })
+              .then(function (res) {
+                idx++;
+                next();
+              })
+              .catch(function () {
+                okBtn.disabled = false;
+                alert('강퇴 처리 중 오류가 발생했습니다.');
+              });
+          }
+          next();
+        });
+      })();
+
+      var usersSelectAll = document.getElementById('usersSelectAll');
+      if (usersSelectAll) {
+        usersSelectAll.addEventListener('change', function () {
+          var body = document.getElementById('usersBody');
+          if (!body) return;
+          body.querySelectorAll('.user-force-withdraw-cb').forEach(function (cb) { cb.checked = usersSelectAll.checked; });
+        });
+      }
+      var usersForceWithdrawSelectedBtn = document.getElementById('usersForceWithdrawSelectedBtn');
+      if (usersForceWithdrawSelectedBtn) {
+        usersForceWithdrawSelectedBtn.addEventListener('click', function () {
+          var body = document.getElementById('usersBody');
+          if (!body) return;
+          var checked = [];
+          body.querySelectorAll('.user-force-withdraw-cb:checked').forEach(function (cb) {
+            var id = cb.getAttribute('data-user-id');
+            var name = (cb.getAttribute('data-display-name') || '').replace(/&quot;/g, '"');
+            if (id) checked.push({ id: id, displayName: name || '(닉네임 없음)' });
+          });
+          if (checked.length === 0) {
+            alert('강퇴할 회원을 선택해 주세요.');
+            return;
+          }
+          showForceWithdrawConfirm(checked);
         });
       }
 
@@ -1532,7 +1539,7 @@
         if (panel) panel.classList.add('is-active');
         if (link) link.classList.add('is-active');
         var dropdownWraps = document.querySelectorAll('.admin-nav-dropdown-wrap');
-        var accountPanelIds = ['adminAccountSection', 'adminLevelTable', 'adminPending', 'adminUsersSection', 'adminForceWithdrawSection'];
+        var accountPanelIds = ['adminAccountSection', 'adminLevelTable', 'adminPending', 'adminUsersSection'];
         if (dropdownWraps[0] && accountPanelIds.indexOf(panelId) !== -1) {
           var accountMain = dropdownWraps[0].querySelector('.admin-nav-link');
           if (accountMain) accountMain.classList.add('is-active');
@@ -1542,9 +1549,6 @@
         }
         if (panelId === 'adminPending') {
           loadAutoApproveSetting();
-        }
-        if (panelId === 'adminForceWithdrawSection') {
-          loadForceWithdrawn();
         }
         if (panelId === 'adminDeletedFeedSection') {
           loadDeletedFeedAll();
@@ -1991,83 +1995,6 @@
               .finally(function () { keywordsSaveBtn.disabled = false; });
           });
         }
-      })();
-
-      function loadForceWithdrawn() {
-        var tbody = document.getElementById('forceWithdrawBody');
-        var countEl = document.getElementById('forceWithdrawSummaryCount');
-        var noneEl = document.getElementById('forceWithdrawNone');
-        var tableEl = document.getElementById('forceWithdrawTable');
-        if (!tbody) return;
-        fetch('/api/admin/force-withdrawn', { credentials: 'same-origin' })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (!data.ok) return;
-            var list = data.entries || [];
-            if (countEl) countEl.textContent = list.length;
-            if (list.length === 0) {
-              if (noneEl) noneEl.style.display = 'block';
-              if (tableEl) tableEl.style.display = 'none';
-              tbody.innerHTML = '';
-              return;
-            }
-            if (noneEl) noneEl.style.display = 'none';
-            if (tableEl) tableEl.style.display = 'table';
-            tbody.innerHTML = list.map(function (e) {
-              var id = (e.id || '').replace(/"/g, '&quot;');
-              var name = (e.displayName || '').trim() || '-';
-              var wallet = (e.walletAddress || '').trim() || '-';
-              var date = e.withdrawnAt ? new Date(e.withdrawnAt).toLocaleString('ko-KR') : '-';
-              var by = (e.withdrawnByDisplayName || '').trim() || '-';
-              return '<tr><td><input type="checkbox" class="force-withdraw-cb" value="' + id + '" data-entry-id="' + id + '"></td><td>' + name + '</td><td class="wallet">' + wallet + '</td><td>' + date + '</td><td>' + by + '</td></tr>';
-            }).join('');
-          });
-      }
-
-      (function setupForceWithdrawClearBtn() {
-        var btn = document.getElementById('forceWithdrawClearBtn');
-        var selectAll = document.getElementById('forceWithdrawSelectAll');
-        if (!btn) return;
-        if (selectAll) {
-          selectAll.addEventListener('change', function () {
-            document.querySelectorAll('.force-withdraw-cb').forEach(function (cb) {
-              cb.checked = selectAll.checked;
-            });
-          });
-        }
-        btn.addEventListener('click', function () {
-          var ids = [];
-          document.querySelectorAll('.force-withdraw-cb:checked').forEach(function (cb) {
-            var id = cb.getAttribute('data-entry-id') || cb.value;
-            if (id) ids.push(id);
-          });
-          if (ids.length === 0) {
-            alert('삭제할 회원을 선택해 주세요.');
-            return;
-          }
-          if (!confirm('선택한 ' + ids.length + '건의 탈퇴 이력을 삭제하시겠습니까?\n삭제된 지갑은 재가입할 수 있습니다.')) return;
-          btn.disabled = true;
-          fetch('/api/admin/force-withdrawn', {
-            method: 'DELETE',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: ids }),
-          })
-            .then(function (r) { return r.json().then(function (data) { return { status: r.status, data: data }; }); })
-            .then(function (result) {
-              if (result.data && result.data.ok) {
-                if (selectAll) selectAll.checked = false;
-                loadForceWithdrawn();
-                alert(result.data.message || '선택한 탈퇴 이력이 삭제되었습니다.');
-              } else if (result.status === 403) {
-                alert('관리자만 탈퇴 이력을 지울 수 있습니다.');
-              } else if (result.data && result.data.message) {
-                alert(result.data.message);
-              }
-            })
-            .catch(function () { alert('삭제 처리 중 오류가 발생했습니다.'); })
-            .finally(function () { btn.disabled = false; });
-        });
       })();
 
       function loadAdminAccount() {
