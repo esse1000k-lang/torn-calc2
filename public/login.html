@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>로그인 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <div class="login-modal-layer">
+    <div class="login-modal-box">
+      <a href="/" class="login-modal-back" aria-label="닫기">×</a>
+      <a href="/" class="back-link">← 홈으로</a>
+      <div class="auth-card auth-card--login">
+        <h1 class="auth-title"><span class="auth-title-emoji">👋</span> 로그인</h1>
+        <p class="auth-error" id="authError"></p>
+        <form id="loginForm" class="auth-form">
+          <label for="loginId">닉네임</label>
+          <input type="text" id="loginId" name="id" required autocomplete="username" placeholder="닉네임 입력">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="비밀번호 입력">
+          <p class="capslock-warning" id="passwordCapsWarning" aria-live="polite" role="status" style="display:none;">Caps Lock이 켜져 있습니다.</p>
+          <span class="auth-login-btn-wrap"><button type="submit" class="auth-submit">로그인</button></span>
+        </form>
+        <p class="auth-link">계정이 없으신가요? <a href="/register.html">회원가입</a></p>
+      </div>
+      <p class="auth-brand"><a href="/">TornFi.com</a></p>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var layer = document.querySelector('.login-modal-layer');
+      var box = document.querySelector('.login-modal-box');
+      var errorEl = document.getElementById('authError');
+      if (layer && box) {
+        layer.addEventListener('click', function (e) {
+          if (e.target !== layer) return;
+          if (errorEl && errorEl.textContent.trim() !== '') return;
+          window.location.href = '/';
+        });
+      }
+
+      (function attachLoginCapsLock() {
+        var inputEl = document.getElementById('password');
+        var warningEl = document.getElementById('passwordCapsWarning');
+        if (!inputEl || !warningEl) return;
+        function updateCaps(e) {
+          var capsOn = e && typeof e.getModifierState === 'function' && e.getModifierState('CapsLock');
+          warningEl.style.display = capsOn ? 'block' : 'none';
+        }
+        inputEl.addEventListener('keydown', updateCaps);
+        inputEl.addEventListener('keyup', updateCaps);
+        inputEl.addEventListener('blur', function () { warningEl.style.display = 'none'; });
+      })();
+      var form = document.getElementById('loginForm');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorEl.textContent = '';
+        var loginId = document.getElementById('loginId').value.trim();
+        var password = document.getElementById('password').value;
+        window.TornFiAuth.login(loginId, password)
+          .then(function () {
+            window.location.href = '/';
+          })
+          .catch(function (err) {
+            errorEl.textContent = (err && err.message) || '로그인에 실패했습니다.';
+          });
+      });
+      window.TornFiAuth.onUser(function (u) {
+        var nbtn = document.getElementById('navMenuBtn');
+        var nac = document.getElementById('navAdminCenter');
+        if (u) {
+          if (nbtn) nbtn.style.display = 'none';
+          if (nac) nac.style.display = u.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (nbtn) nbtn.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+        }
+      });
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+    })();
+  </script>
+</body>
+</html>

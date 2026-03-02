@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>출석체크 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/attendance.css">
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <main class="site-main attendance-page">
+    <section class="attendance-hero">
+      <div class="attendance-hero__calendar" aria-hidden="true">
+        <span class="attendance-hero__cal-icon">📅</span>
+        <span class="attendance-hero__today" id="attendanceTodayLabel"></span>
+      </div>
+      <h1 class="attendance-hero__title">오늘도 방문해주셨군요?! 🤩</h1>
+      <p class="attendance-hero__sub">일일 출석하고 하트를 받아가세요. 연속 출석하면 보너스까지.</p>
+      <div class="attendance-streak" id="attendanceStreakWrap">
+        <span class="attendance-streak__fire" aria-hidden="true">🔥</span>
+        <span class="attendance-streak__label">연속</span>
+        <span class="attendance-streak__count" id="attendanceStreakCount">0</span>
+        <span class="attendance-streak__unit">일</span>
+      </div>
+    </section>
+
+    <section class="attendance-action">
+      <button type="button" class="attendance-btn" id="attendanceBtn" disabled>
+        오늘 출석하기
+      </button>
+      <p class="attendance-action__hint" id="attendanceHint">로그인하면 출석할 수 있어요.</p>
+    </section>
+
+    <section class="attendance-calendar" aria-label="출석 달력">
+      <h2 class="attendance-calendar__title">📆 출석 기록</h2>
+      <div class="attendance-calendar__nav">
+        <button type="button" class="attendance-calendar__prev" id="attendanceCalPrev" aria-label="이전 달">‹</button>
+        <span class="attendance-calendar__month" id="attendanceCalMonth"></span>
+        <button type="button" class="attendance-calendar__next" id="attendanceCalNext" aria-label="다음 달">›</button>
+      </div>
+      <div class="attendance-calendar__weekdays">
+        <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+      </div>
+      <div class="attendance-calendar__grid" id="attendanceCalGrid"></div>
+      <p class="attendance-calendar__legend"><span class="attendance-calendar__dot"></span> 출석한 날</p>
+    </section>
+
+    <section class="attendance-rewards">
+      <h2 class="attendance-rewards__title">❤️ 출석 보상</h2>
+      <ul class="attendance-rewards__list">
+        <li><strong>일일 출석</strong> → 하트 <strong>1</strong>개</li>
+        <li><strong>7일 연속</strong> → <strong>+7</strong>개</li>
+        <li><strong>한 달 연속</strong> → <strong>+30</strong>개</li>
+      </ul>
+    </section>
+
+    <section class="attendance-billboard" aria-label="꾸준히 출석한 멤버">
+      <div class="attendance-billboard__sign">
+        <span class="attendance-billboard__icon" aria-hidden="true">🏆</span>
+        <h2 class="attendance-billboard__title">매일 찾아와 주는 분들</h2>
+        <p class="attendance-billboard__desc">꾸준히 출석하고 있어요. 오늘도 수고 많으셨어요!</p>
+      </div>
+      <ul class="attendance-billboard__list" id="attendanceLeaderboard">
+        <li class="attendance-billboard__empty" id="attendanceLeaderboardEmpty">아직 연속 출석 기록이 없어요. 첫 주인공이 되어 보세요!</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      function updateNav(user) {
+        if (user) {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+        }
+      }
+      if (window.TornFiAuth && window.TornFiAuth.onUser) window.TornFiAuth.onUser(updateNav);
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+    })();
+  </script>
+  <script src="js/attendance.js"></script>
+</body>
+</html>

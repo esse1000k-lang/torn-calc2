@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>회원 정보 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .profile-page { max-width: 480px; margin: 0 auto; padding: 0 1rem 2rem; }
+    .profile-hero { margin-top: 0.5rem; border-radius: 12px 12px 0 0; height: 100px; position: relative; background: linear-gradient(110deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 204, 106, 0.14) 40%, rgba(0, 255, 136, 0.1) 70%, rgba(0, 204, 106, 0.06) 100%); background-size: 200% 100%; animation: profile-hero-shine 8s ease-in-out infinite; }
+    @keyframes profile-hero-shine { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0% 0; } }
+    .profile-avatar-area { text-align: center; margin-top: -48px; margin-bottom: 0; }
+    .profile-avatar-wrap { display: inline-flex; justify-content: center; align-items: center; position: relative; z-index: 1; cursor: pointer; border-radius: 50%; width: 96px; height: 96px; }
+    .profile-avatar-wrap:hover .profile-avatar-edit-badge { background: rgba(0, 255, 136, 0.2); }
+    .profile-avatar-wrap:hover .profile-avatar-edit-badge svg { stroke: var(--neon); }
+    .profile-avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid var(--bg-card); background: var(--bg-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: box-shadow 0.2s ease; }
+    .profile-avatar-edit-badge { position: absolute; right: 2px; bottom: 2px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; transition: background 0.2s; pointer-events: none; }
+    .profile-avatar-edit-badge svg { width: 12px; height: 12px; stroke: #fff; stroke-width: 2; fill: none; stroke-linecap: round; }
+    .profile-info-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 12px 12px; margin-top: -48px; padding: 3.25rem 1.25rem 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .profile-info-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.25rem; }
+    .profile-info-name { font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .profile-edit-btn { flex-shrink: 0; padding: 0.4rem 0.85rem; font-size: 0.8rem; background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+    .profile-edit-btn:hover { border-color: var(--neon); color: var(--neon); }
+    .profile-handle { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .profile-bio-text { font-size: 0.9rem; line-height: 1.5; color: var(--text); margin-bottom: 1rem; white-space: pre-wrap; word-break: break-word; }
+    .profile-bio-text.empty { color: var(--text-muted); }
+    .profile-meta { display: flex; flex-direction: column; gap: 0.5rem; }
+    .profile-meta-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; line-height: 1.4; color: var(--text); }
+    .profile-meta-row .icon { flex-shrink: 0; width: 1.1rem; text-align: center; }
+    .profile-meta-row .value { word-break: break-all; }
+    .profile-meta-row .value.wallet { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--text-muted); }
+    .profile-edit-panel { margin-top: 1.5rem; padding: 1.25rem; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; display: none; }
+    .profile-edit-panel.is-open { display: block; }
+    .profile-edit-section { margin-bottom: 1.25rem; padding-top: 0.75rem; }
+    .profile-edit-section:first-of-type { padding-top: 0; }
+    .profile-edit-section:last-of-type { margin-bottom: 0; }
+    .profile-edit-label { font-size: 0.8rem; color: var(--text-muted); min-width: 4.5rem; flex-shrink: 0; }
+    .profile-edit-section-title { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.02em; }
+    .profile-edit-section-desc { font-weight: 400; font-size: 0.75rem; color: var(--text-muted); opacity: 0.9; }
+    .profile-bio-input { width: 100%; height: 4.5rem; padding: 0.5rem 0.6rem; margin-bottom: 0.5rem; background: var(--bg-dark); border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.875rem; resize: none; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .profile-bio-input:focus { outline: none; border-color: var(--neon); }
+    .profile-bio-input::-webkit-scrollbar { width: 8px; }
+    .profile-bio-input::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+    .profile-bio-input::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .profile-bio-input::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    .profile-bio-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
+    .profile-edit-btn { padding: 0.45rem 0.9rem; font-size: 0.8rem; font-weight: 500; background: var(--neon); color: var(--bg-dark); border: none; border-radius: 6px; cursor: pointer; }
+    .profile-edit-btn:hover { background: var(--neon-dim); color: var(--text); }
+    .profile-bio-feedback { font-size: 0.8rem; min-height: 1.1em; }
+    .profile-edit-close { margin-top: 1rem; padding: 0.5rem; font-size: 0.8rem; background: transparent; color: var(--text-muted); border: none; cursor: pointer; width: 100%; border-radius: 6px; }
+    .profile-edit-close:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .profile-edit-input { width: 100%; padding: 0.5rem 0.6rem; margin-bottom: 0.5rem; background: var(--bg-dark); border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.875rem; box-sizing: border-box; }
+    .profile-edit-input:focus { outline: none; border-color: var(--neon); }
+    .profile-edit-input::placeholder { color: var(--text-muted); opacity: 0.8; }
+    .profile-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .profile-denied { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+    .profile-denied a { color: var(--neon); }
+    .profile-success { font-size: 0.8rem; color: var(--neon); margin-top: 0.5rem; }
+    .profile-error { font-size: 0.8rem; color: var(--danger); margin-top: 0.5rem; }
+    .profile-bio-count { color: var(--text-muted); font-size: 0.75rem; margin-left: 0.25rem; }
+    .profile-crop-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .profile-crop-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; max-width: 100%; }
+    .profile-crop-box h3 { font-size: 1rem; color: var(--neon); margin-bottom: 1rem; }
+    .profile-crop-viewport { width: 300px; height: 300px; overflow: hidden; position: relative; margin: 0 auto 1rem; border-radius: 50%; border: 2px solid var(--border); background: var(--bg-dark); cursor: move; touch-action: none; }
+    .profile-crop-viewport img { display: block; position: absolute; pointer-events: none; }
+    .profile-crop-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .profile-crop-actions button { width: auto; padding: 0.5rem 1rem; }
+    .profile-crop-actions .profile-crop-cancel { background: var(--bg-dark); color: var(--text); border: 1px solid var(--border); }
+    .profile-crop-actions .profile-crop-cancel:hover { border-color: var(--text-muted); }
+    .profile-nickname-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .profile-nickname-msgs { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; justify-content: center; }
+    .profile-nickname-msgs .profile-bio-feedback { margin: 0; font-size: 0.8rem; }
+    .profile-nickname-validation.wallet-validation--ok { color: var(--neon); }
+    .profile-nickname-validation.wallet-validation--err { color: var(--danger); }
+    .profile-password-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .profile-wallet-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .profile-password-match { font-size: 0.8rem; margin: 0; }
+    .profile-password-match.is-ok { color: var(--neon); }
+    .profile-password-match.is-err { color: var(--danger); }
+    .profile-toast-overlay { position: fixed; inset: 0; z-index: 1001; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .profile-toast-overlay.is-open { display: flex; }
+    .profile-toast-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; min-width: 260px; max-width: 90vw; }
+    .profile-toast-text { font-size: 0.9rem; color: var(--text); margin: 0 0 1rem 0; line-height: 1.45; }
+    .profile-toast-actions { display: flex; justify-content: flex-end; }
+    .profile-toast-btn { padding: 0.5rem 1.25rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none; background: var(--neon); color: var(--bg-dark); }
+    .profile-toast-btn:hover { background: var(--neon-dim); }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <div id="profileCropModal" class="profile-crop-overlay" style="display:none;" aria-modal="true" aria-labelledby="profileCropTitle">
+    <div class="profile-crop-box">
+      <h3 id="profileCropTitle">프로필 사진 조정</h3>
+      <p class="profile-label" style="margin-bottom:0.5rem;">사진을 드래그해서 원하는 영역을 맞춰 주세요.</p>
+      <div id="profileCropViewport" class="profile-crop-viewport">
+        <img id="profileCropImg" src="" alt="">
+      </div>
+      <div class="profile-crop-actions">
+        <button type="button" id="profileCropCancel" class="profile-photo-btn profile-crop-cancel">취소</button>
+        <button type="button" id="profileCropApply" class="profile-photo-btn">적용</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileToastModal" class="profile-toast-overlay" role="alertdialog" aria-live="polite" aria-modal="true" style="display:none;">
+    <div class="profile-toast-box">
+      <p id="profileToastText" class="profile-toast-text"></p>
+      <div class="profile-toast-actions">
+        <button type="button" id="profileToastOk" class="profile-toast-btn">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileDenied" class="profile-denied" style="display:none;">
+    <p>로그인한 회원만 이용할 수 있습니다.</p>
+    <a href="/login.html">로그인</a> · <a href="/">홈으로</a>
+  </div>
+
+  <div id="profilePage" class="profile-page" style="display:none;">
+    <h1 style="font-size:1.25rem; margin-bottom:1rem; padding-top:0.5rem;">회원 정보</h1>
+
+    <div class="profile-hero" aria-hidden="true"></div>
+    <div class="profile-avatar-area">
+      <div class="profile-avatar-wrap" id="profileAvatarWrap" role="button" tabindex="0" title="사진 변경" aria-label="프로필 사진 변경">
+        <img id="profilePhoto" class="profile-avatar" src="" alt="프로필 사진" width="96" height="96">
+        <span class="profile-avatar-edit-badge" aria-hidden="true" title="클릭하면 사진을 바꿀 수 있습니다">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="6" width="20" height="14" rx="2" fill="none"/><circle cx="12" cy="12" r="3.5" fill="none"/><path d="M8 6V4h8v2" fill="none" stroke-linecap="round"/></svg>
+        </span>
+        <input type="file" id="profilePhotoInput" accept="image/jpeg,image/png,image/gif,image/webp" aria-hidden="true" style="display:none;">
+      </div>
+    </div>
+
+    <div class="profile-info-box">
+      <div class="profile-info-header">
+        <h2 id="infoDisplayName" class="profile-info-name">—</h2>
+        <button type="button" id="profileEditBtn" class="profile-edit-btn" aria-expanded="false">회원 정보 수정</button>
+      </div>
+      <p id="infoHandle" class="profile-handle">@—</p>
+      <p id="infoBio" class="profile-bio-text empty">자기소개가 없습니다.</p>
+
+      <div class="profile-meta">
+        <div class="profile-meta-row"><span class="icon" aria-hidden="true">❤️</span><span id="infoHearts" class="value">0</span></div>
+        <div class="profile-meta-row"><span class="icon" aria-hidden="true">🔗</span><span id="infoWallet" class="value wallet">—</span></div>
+        <div class="profile-meta-row"><span id="infoLevelIcon" class="icon" aria-hidden="true">—</span><span id="infoLevel" class="value">—</span></div>
+      </div>
+
+      <div id="profileEditPanel" class="profile-edit-panel" aria-hidden="true">
+        <div class="profile-edit-section" id="profileInbox">
+          <p class="profile-edit-section-title">자기소개<span id="bioCount" class="profile-bio-count profile-edit-section-desc">(0/100)</span></p>
+          <textarea id="inputBio" class="profile-bio-input" placeholder="한 줄로 나를 소개해 보세요" maxlength="100" rows="2"></textarea>
+          <div class="profile-bio-actions">
+            <button type="button" id="bioSave" class="profile-edit-btn">저장</button>
+            <span id="bioFeedback" class="profile-bio-feedback" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="profile-edit-section">
+          <p class="profile-edit-section-title">닉네임 <span class="profile-edit-section-desc">(ID)</span></p>
+          <p id="nicknameCooldown" class="profile-bio-feedback" style="color:var(--neon); display:none;"></p>
+          <form id="formNickname">
+            <input type="text" id="inputDisplayName" class="profile-edit-input" minlength="5" maxlength="12" pattern="[a-zA-Z0-9]*" placeholder="영문·숫자 5~12자" autocomplete="username">
+            <div class="profile-nickname-row">
+              <button type="submit" id="nicknameSubmit" class="profile-edit-btn">저장</button>
+              <div class="profile-nickname-msgs">
+                <p id="nicknameValidation" class="profile-bio-feedback profile-nickname-validation" aria-live="polite" role="status"></p>
+                <p id="nicknameErr" class="profile-bio-feedback profile-error" style="display:none;"></p>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="profile-edit-section">
+          <p class="profile-edit-section-title">지갑 주소 <span class="profile-edit-section-desc">(선택, 인증 시 회원 등급 반영)</span></p>
+          <p class="profile-edit-section-desc">이더리움 지갑을 등록하면 TORN 스테이킹 기준 회원 등급이 적용됩니다. 비워두면 등급 없이 이용 가능합니다.</p>
+          <input type="text" id="inputWallet" class="profile-edit-input" placeholder="0x..." autocomplete="off" spellcheck="false">
+          <div class="profile-wallet-row">
+            <button type="button" id="walletVerifyBtn" class="profile-edit-btn">인증하기</button>
+            <button type="button" id="walletClearBtn" class="profile-edit-btn" style="margin-left:0.5rem; background:transparent; color:var(--text-muted); border:1px solid var(--border);">지갑 삭제</button>
+          </div>
+          <p id="walletFeedback" class="profile-bio-feedback" aria-live="polite" style="margin-top:0.5rem;"></p>
+        </div>
+        <div class="profile-edit-section">
+          <p class="profile-edit-section-title">비밀번호 <span class="profile-edit-section-desc">(영문·숫자 조합 8자 이상)</span></p>
+          <form id="formPassword">
+            <input type="password" id="inputPassword" class="profile-edit-input" minlength="8" placeholder="새 비밀번호" autocomplete="new-password">
+            <input type="password" id="inputPasswordConfirm" class="profile-edit-input" placeholder="다시 입력">
+            <p id="passwordErr" class="profile-bio-feedback profile-error" style="display:none;"></p>
+            <div class="profile-password-row">
+              <button type="submit" class="profile-edit-btn">변경</button>
+              <p id="passwordMatchHint" class="profile-password-match" aria-live="polite" style="display:none;"></p>
+            </div>
+          </form>
+        </div>
+        <button type="button" id="profileEditClose" class="profile-edit-close">닫기</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var profileDenied = document.getElementById('profileDenied');
+      var profilePage = document.getElementById('profilePage');
+      var infoDisplayName = document.getElementById('infoDisplayName');
+      var infoHandle = document.getElementById('infoHandle');
+      var infoBio = document.getElementById('infoBio');
+      var infoHearts = document.getElementById('infoHearts');
+      var infoWallet = document.getElementById('infoWallet');
+      var infoLevel = document.getElementById('infoLevel');
+      var infoLevelIcon = document.getElementById('infoLevelIcon');
+      var profileEditBtn = document.getElementById('profileEditBtn');
+      var LEVEL_NAMES = { 1: '조개', 2: '새우', 3: '문어', 4: '물개', 5: '상어', 6: '고래' };
+      var LEVEL_ICONS = { 1: '🐚', 2: '🦐', 3: '🐙', 4: '🦭', 5: '🦈', 6: '🐋' };
+      var formNickname = document.getElementById('formNickname');
+      var inputDisplayName = document.getElementById('inputDisplayName');
+      var nicknameErr = document.getElementById('nicknameErr');
+      var nicknameValidation = document.getElementById('nicknameValidation');
+      var nicknameCooldown = document.getElementById('nicknameCooldown');
+      var nicknameSubmit = document.getElementById('nicknameSubmit');
+      var currentDisplayName = '';
+      var formPassword = document.getElementById('formPassword');
+      var inputPassword = document.getElementById('inputPassword');
+      var inputPasswordConfirm = document.getElementById('inputPasswordConfirm');
+      var passwordErr = document.getElementById('passwordErr');
+      var passwordMatchHint = document.getElementById('passwordMatchHint');
+      var profileToastModal = document.getElementById('profileToastModal');
+      var profileToastText = document.getElementById('profileToastText');
+      var profileToastOk = document.getElementById('profileToastOk');
+      var nicknameRegex = /^[a-zA-Z0-9]{5,12}$/;
+      function isNicknameValid(v) { return v && nicknameRegex.test(v) && /[a-zA-Z]/.test(v); }
+      var nicknameCheckTimer = null;
+      var profilePhoto = document.getElementById('profilePhoto');
+      var profilePhotoInput = document.getElementById('profilePhotoInput');
+      var profileAvatarWrap = document.getElementById('profileAvatarWrap');
+      var inputBio = document.getElementById('inputBio');
+      var bioCount = document.getElementById('bioCount');
+      var bioFeedback = document.getElementById('bioFeedback');
+      var bioSave = document.getElementById('bioSave');
+
+      var placeholderAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><circle fill="%231a1a1e" cx="40" cy="40" r="40"/><circle fill="%236b7280" cx="40" cy="32" r="12"/><path fill="%236b7280" d="M24 72c0-12 7.2-22 16-27 8.8 5 16 15 16 27H24z"/></svg>');
+
+      function fillInfo(user) {
+        infoDisplayName.textContent = user.displayName || '—';
+        if (infoHandle) infoHandle.textContent = '@' + (user.displayName || '—');
+        var bioStr = user.bio != null ? String(user.bio) : '';
+        if (infoBio) {
+          infoBio.textContent = bioStr || '자기소개가 없습니다.';
+          infoBio.classList.toggle('empty', !bioStr);
+        }
+        if (infoHearts) infoHearts.textContent = typeof user.points === 'number' ? user.points : 0;
+        infoWallet.textContent = (user.walletAddress && user.walletAddress.trim()) ? user.walletAddress : '없음';
+        if (infoLevelIcon) infoLevelIcon.textContent = user.isAdmin ? '🛠️' : (LEVEL_ICONS[user.level] || '—');
+        if (infoLevel) {
+          infoLevel.textContent = user.isAdmin ? '관리자' : (LEVEL_NAMES[user.level] ? LEVEL_NAMES[user.level] + ' (Lv.' + user.level + ')' : '—');
+        }
+        inputDisplayName.placeholder = user.displayName || '새 닉네임';
+        currentDisplayName = (user.displayName || '').trim();
+        if (profilePhoto) profilePhoto.src = (user.profileImageUrl && user.profileImageUrl.trim()) ? user.profileImageUrl : placeholderAvatar;
+        if (inputBio) inputBio.value = bioStr;
+        if (bioCount) bioCount.textContent = '(' + bioStr.length + '/100)';
+        if (user.nextDisplayNameChangeAt && new Date(user.nextDisplayNameChangeAt).getTime() > Date.now()) {
+          var d = new Date(user.nextDisplayNameChangeAt);
+          nicknameCooldown.textContent = '다음 변경일: ' + d.toLocaleDateString('ko-KR');
+          nicknameCooldown.style.display = 'block';
+          nicknameSubmit.disabled = false;
+        } else {
+          nicknameCooldown.style.display = 'none';
+        }
+      }
+
+      function init() {
+        var user = window.TornFiAuth.getUser();
+        if (!user) {
+          profileDenied.style.display = 'block';
+          profilePage.style.display = 'none';
+          var nac = document.getElementById('navAdminCenter');
+          var nbtn = document.getElementById('navMenuBtn');
+          if (nbtn) nbtn.style.display = 'none';
+          if (nac) nac.style.display = 'none';
+          return;
+        }
+        profileDenied.style.display = 'none';
+        profilePage.style.display = 'block';
+        fillInfo(user);
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok && data.user) fillInfo(data.user);
+          })
+          .catch(function () {});
+        var nac = document.getElementById('navAdminCenter');
+        var nbtn = document.getElementById('navMenuBtn');
+        if (nbtn) nbtn.style.display = 'none';
+        if (nac) nac.style.display = user.isAdmin ? 'inline-flex' : 'none';
+      }
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+
+      function checkNicknameAvailability() {
+        if (!nicknameValidation) return;
+        var v = (inputDisplayName.value || '').trim();
+        nicknameValidation.textContent = '';
+        nicknameValidation.classList.remove('wallet-validation--ok', 'wallet-validation--err');
+        if (v.length === 0) return;
+        if (v.length < 5) { nicknameValidation.textContent = '닉네임은 5~12자입니다.'; nicknameValidation.classList.add('wallet-validation--err'); return; }
+        if (!nicknameRegex.test(v)) { nicknameValidation.textContent = '영문, 숫자만 5~12자 가능합니다.'; nicknameValidation.classList.add('wallet-validation--err'); return; }
+        if (!/[a-zA-Z]/.test(v)) { nicknameValidation.textContent = '영문, 숫자만 5~12자 가능합니다.'; nicknameValidation.classList.add('wallet-validation--err'); return; }
+        if (v.toLowerCase() === (currentDisplayName || '').toLowerCase()) { nicknameValidation.textContent = '현재 닉네임과 동일합니다.'; return; }
+        fetch('/api/public/check-nickname?displayName=' + encodeURIComponent(v), { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (inputDisplayName.value.trim() !== v) return;
+            if (data.available) { nicknameValidation.textContent = '사용 가능한 닉네임입니다.'; nicknameValidation.classList.add('wallet-validation--ok'); nicknameValidation.classList.remove('wallet-validation--err'); }
+            else { nicknameValidation.textContent = data.message || '이미 사용 중인 닉네임입니다.'; nicknameValidation.classList.add('wallet-validation--err'); nicknameValidation.classList.remove('wallet-validation--ok'); }
+          })
+          .catch(function () { if (inputDisplayName.value.trim() === v) { nicknameValidation.textContent = '확인할 수 없습니다.'; nicknameValidation.classList.add('wallet-validation--err'); } });
+      }
+      if (inputDisplayName) {
+        inputDisplayName.addEventListener('input', function () {
+          var v = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+          if (v !== this.value) this.value = v;
+          if (nicknameValidation) { nicknameValidation.textContent = ''; nicknameValidation.classList.remove('wallet-validation--ok', 'wallet-validation--err'); }
+          if (nicknameCheckTimer) clearTimeout(nicknameCheckTimer);
+          if (v.length >= 5) { nicknameCheckTimer = setTimeout(function () { nicknameCheckTimer = null; checkNicknameAvailability(); }, 400); }
+        });
+      }
+      formNickname.addEventListener('submit', function (e) {
+        e.preventDefault();
+        nicknameErr.style.display = 'none';
+        if (nicknameValidation) { nicknameValidation.textContent = ''; nicknameValidation.classList.remove('wallet-validation--ok', 'wallet-validation--err'); }
+        var name = inputDisplayName.value.trim();
+        if (!name) {
+          nicknameErr.textContent = '닉네임을 입력해 주세요.';
+          nicknameErr.style.display = 'block';
+          return;
+        }
+        if (!isNicknameValid(name)) {
+          nicknameErr.textContent = '닉네임은 영문, 숫자만 5~12자까지 가능합니다.';
+          nicknameErr.style.display = 'block';
+          return;
+        }
+        fetch('/api/me', {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: name }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              nicknameErr.style.display = 'none';
+              if (nicknameValidation) { nicknameValidation.textContent = ''; nicknameValidation.classList.remove('wallet-validation--ok', 'wallet-validation--err'); }
+              currentDisplayName = name;
+              if (profileToastText) profileToastText.textContent = '변경되었습니다.';
+              if (profileToastModal) { profileToastModal.style.display = 'flex'; profileToastModal.classList.add('is-open'); }
+              infoDisplayName.textContent = name;
+              if (infoHandle) infoHandle.textContent = '@' + name;
+              window.TornFiAuth.init().then(function () { fillInfo(window.TornFiAuth.getUser() || {}); });
+            } else {
+              nicknameErr.textContent = data.message || '저장에 실패했습니다.';
+              nicknameErr.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            nicknameErr.textContent = '저장에 실패했습니다.';
+            nicknameErr.style.display = 'block';
+          });
+      });
+
+      function updatePasswordMatchHint() {
+        var pwd = inputPassword.value;
+        var confirm = inputPasswordConfirm.value;
+        if (!pwd || !confirm) {
+          if (passwordMatchHint) { passwordMatchHint.style.display = 'none'; passwordMatchHint.textContent = ''; passwordMatchHint.className = 'profile-password-match'; }
+          return;
+        }
+        if (!passwordMatchHint) return;
+        passwordMatchHint.style.display = 'block';
+        if (pwd === confirm) {
+          passwordMatchHint.textContent = '일치합니다.';
+          passwordMatchHint.className = 'profile-password-match is-ok';
+        } else {
+          passwordMatchHint.textContent = '일치하지 않습니다.';
+          passwordMatchHint.className = 'profile-password-match is-err';
+        }
+      }
+      if (inputPassword) inputPassword.addEventListener('input', updatePasswordMatchHint);
+      if (inputPasswordConfirm) inputPasswordConfirm.addEventListener('input', updatePasswordMatchHint);
+
+      if (profileToastOk && profileToastModal) {
+        profileToastOk.addEventListener('click', function () {
+          profileToastModal.classList.remove('is-open');
+          profileToastModal.style.display = 'none';
+        });
+      }
+
+      formPassword.addEventListener('submit', function (e) {
+        e.preventDefault();
+        passwordErr.style.display = 'none';
+        var pwd = inputPassword.value;
+        var confirm = inputPasswordConfirm.value;
+        if (pwd.length < 8) {
+          passwordErr.textContent = '비밀번호는 8자 이상이어야 합니다.';
+          passwordErr.style.display = 'block';
+          return;
+        }
+        if (!/[a-zA-Z]/.test(pwd) || !/\d/.test(pwd)) {
+          passwordErr.textContent = '비밀번호는 영문과 숫자를 모두 포함해야 합니다.';
+          passwordErr.style.display = 'block';
+          return;
+        }
+        if (pwd !== confirm) {
+          passwordErr.textContent = '비밀번호가 일치하지 않습니다.';
+          passwordErr.style.display = 'block';
+          return;
+        }
+        fetch('/api/me', {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) {
+              inputPassword.value = '';
+              inputPasswordConfirm.value = '';
+              if (passwordMatchHint) { passwordMatchHint.style.display = 'none'; passwordMatchHint.textContent = ''; passwordMatchHint.className = 'profile-password-match'; }
+              if (profileToastText) profileToastText.textContent = '변경되었습니다.';
+              if (profileToastModal) { profileToastModal.style.display = 'flex'; profileToastModal.classList.add('is-open'); }
+            } else {
+              passwordErr.textContent = data.message || '변경에 실패했습니다.';
+              passwordErr.style.display = 'block';
+            }
+          })
+          .catch(function () {
+            passwordErr.textContent = '변경에 실패했습니다.';
+            passwordErr.style.display = 'block';
+          });
+      });
+
+      inputDisplayName.addEventListener('input', function () {
+        this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+      });
+
+      var PROFILE_AVATAR_MAX_SIZE = 1 * 1024 * 1024;
+      var PROFILE_AVATAR_MAX_DIM = 400;
+      var CROP_SIZE = 300;
+
+      var profileCropModal = document.getElementById('profileCropModal');
+      var profileCropViewport = document.getElementById('profileCropViewport');
+      var profileCropImg = document.getElementById('profileCropImg');
+      var profileCropCancel = document.getElementById('profileCropCancel');
+      var profileCropApply = document.getElementById('profileCropApply');
+
+      var cropObjectUrl = null;
+      var cropImgDisplayW = 0;
+      var cropImgDisplayH = 0;
+      var cropDrag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
+
+      function setCropImagePosition(left, top) {
+        var maxLeft = Math.min(0, CROP_SIZE - cropImgDisplayW);
+        var maxTop = Math.min(0, CROP_SIZE - cropImgDisplayH);
+        profileCropImg.style.left = Math.max(maxLeft, Math.min(0, left)) + 'px';
+        profileCropImg.style.top = Math.max(maxTop, Math.min(0, top)) + 'px';
+      }
+
+      function openCropModal(file) {
+        if (!file || !file.type.match(/^image\/(jpeg|png|gif|webp)$/)) return;
+        if (cropObjectUrl) URL.revokeObjectURL(cropObjectUrl);
+        cropObjectUrl = URL.createObjectURL(file);
+        profileCropImg.onload = function () {
+          var nw = profileCropImg.naturalWidth;
+          var nh = profileCropImg.naturalHeight;
+          var scale = Math.max(CROP_SIZE / nw, CROP_SIZE / nh);
+          cropImgDisplayW = Math.round(nw * scale);
+          cropImgDisplayH = Math.round(nh * scale);
+          profileCropImg.style.width = cropImgDisplayW + 'px';
+          profileCropImg.style.height = cropImgDisplayH + 'px';
+          setCropImagePosition((CROP_SIZE - cropImgDisplayW) / 2, (CROP_SIZE - cropImgDisplayH) / 2);
+          profileCropModal.style.display = 'flex';
+        };
+        profileCropImg.onerror = function () {
+          URL.revokeObjectURL(cropObjectUrl);
+          cropObjectUrl = null;
+          alert('이미지를 불러올 수 없습니다.');
+        };
+        profileCropImg.src = cropObjectUrl;
+      }
+
+      function closeCropModal() {
+        profileCropModal.style.display = 'none';
+        profileCropImg.src = '';
+        profileCropImg.onerror = null;
+        if (cropObjectUrl) { URL.revokeObjectURL(cropObjectUrl); cropObjectUrl = null; }
+      }
+
+      function getCroppedBlob(cb) {
+        var left = parseInt(profileCropImg.style.left, 10) || 0;
+        var top = parseInt(profileCropImg.style.top, 10) || 0;
+        var scaleX = profileCropImg.naturalWidth / cropImgDisplayW;
+        var scaleY = profileCropImg.naturalHeight / cropImgDisplayH;
+        var sx = (-left) * scaleX;
+        var sy = (-top) * scaleY;
+        var sw = CROP_SIZE * scaleX;
+        var sh = CROP_SIZE * scaleY;
+        var canvas = document.createElement('canvas');
+        canvas.width = PROFILE_AVATAR_MAX_DIM;
+        canvas.height = PROFILE_AVATAR_MAX_DIM;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(profileCropImg, sx, sy, sw, sh, 0, 0, PROFILE_AVATAR_MAX_DIM, PROFILE_AVATAR_MAX_DIM);
+        canvas.toBlob(function (blob) {
+          if (!blob) cb(new Error('이미지 처리에 실패했습니다.'));
+          else if (blob.size > PROFILE_AVATAR_MAX_SIZE) cb(new Error('프로필 사진은 1MB 이하로 선택해 주세요.'));
+          else cb(null, blob);
+        }, 'image/jpeg', 0.85);
+      }
+
+      function onCropDragStart(e) {
+        e.preventDefault();
+        var x = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+        var y = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+        cropDrag.active = true;
+        cropDrag.startX = x;
+        cropDrag.startY = y;
+        cropDrag.startLeft = parseInt(profileCropImg.style.left, 10) || 0;
+        cropDrag.startTop = parseInt(profileCropImg.style.top, 10) || 0;
+      }
+      function onCropDragMove(e) {
+        if (!cropDrag.active) return;
+        e.preventDefault();
+        var x = (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+        var y = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+        setCropImagePosition(cropDrag.startLeft + (x - cropDrag.startX), cropDrag.startTop + (y - cropDrag.startY));
+      }
+      function onCropDragEnd() { cropDrag.active = false; }
+
+      if (profileCropViewport) {
+        profileCropViewport.addEventListener('mousedown', onCropDragStart);
+        profileCropViewport.addEventListener('touchstart', onCropDragStart, { passive: false });
+      }
+      document.addEventListener('mousemove', function (e) {
+        if (cropDrag.active) onCropDragMove(e);
+      });
+      document.addEventListener('touchmove', function (e) {
+        if (cropDrag.active) { e.preventDefault(); onCropDragMove(e); }
+      }, { passive: false });
+      document.addEventListener('mouseup', onCropDragEnd);
+      document.addEventListener('touchend', onCropDragEnd);
+
+      if (profileCropCancel) profileCropCancel.addEventListener('click', closeCropModal);
+      if (profileCropModal) profileCropModal.addEventListener('click', function (e) { if (e.target === profileCropModal) closeCropModal(); });
+      if (profileCropApply) profileCropApply.addEventListener('click', function () {
+        getCroppedBlob(function (err, blob) {
+          if (err) { alert(err.message); return; }
+          closeCropModal();
+          profilePhotoInput.value = '';
+          var fd = new FormData();
+          fd.append('avatar', blob, 'avatar.jpg');
+          fetch('/api/me/avatar', { method: 'POST', credentials: 'same-origin', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.ok && data.profileImageUrl) {
+                if (profilePhoto) profilePhoto.src = data.profileImageUrl;
+                window.TornFiAuth.init().then(function () { fillInfo(window.TornFiAuth.getUser() || {}); });
+              } else if (data.message) alert(data.message);
+            })
+            .catch(function () {});
+        });
+      });
+
+      function openPhotoInput() {
+        if (profilePhotoInput) profilePhotoInput.click();
+      }
+      if (profileAvatarWrap && profilePhotoInput) {
+        profileAvatarWrap.addEventListener('click', openPhotoInput);
+        profileAvatarWrap.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPhotoInput(); } });
+      }
+      if (profilePhotoInput) {
+        profilePhotoInput.addEventListener('change', function () {
+          var file = profilePhotoInput.files && profilePhotoInput.files[0];
+          if (!file) { profilePhotoInput.value = ''; return; }
+          if (file.size > PROFILE_AVATAR_MAX_SIZE) { alert('프로필 사진은 1MB 이하로 선택해 주세요.'); profilePhotoInput.value = ''; return; }
+          openCropModal(file);
+          profilePhotoInput.value = '';
+        });
+      }
+
+      if (inputBio) inputBio.addEventListener('input', function () {
+        if (bioCount) bioCount.textContent = '(' + this.value.length + '/100)';
+      });
+      var profileEditPanel = document.getElementById('profileEditPanel');
+      var profileEditClose = document.getElementById('profileEditClose');
+      function setEditPanelOpen(open) {
+        if (profileEditPanel) {
+          profileEditPanel.classList.toggle('is-open', open);
+          profileEditPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+        }
+        if (profileEditBtn) {
+          profileEditBtn.textContent = open ? '닫기' : '회원 정보 수정';
+          profileEditBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+      }
+      if (profileEditBtn) profileEditBtn.addEventListener('click', function () {
+        setEditPanelOpen(!profileEditPanel || !profileEditPanel.classList.contains('is-open'));
+      });
+      if (profileEditClose) profileEditClose.addEventListener('click', function () {
+        setEditPanelOpen(false);
+      });
+
+      function setBioFeedback(message, isError) {
+        if (!bioFeedback) return;
+        bioFeedback.textContent = message || '';
+        bioFeedback.className = 'profile-bio-feedback ' + (isError ? 'profile-error' : 'profile-success');
+      }
+      if (bioSave && inputBio) {
+        bioSave.addEventListener('click', function () {
+          setBioFeedback('');
+          var text = inputBio.value.trim();
+          fetch('/api/me', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bio: text }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              if (data.ok) {
+                setBioFeedback(data.message || '저장되었습니다.', false);
+                if (data.user) fillInfo(data.user);
+                if (bioCount) bioCount.textContent = '(' + (data.user && data.user.bio ? data.user.bio : text).length + '/100)';
+                if (infoBio) {
+                  var b = (data.user && data.user.bio != null) ? data.user.bio : text;
+                  infoBio.textContent = b || '자기소개가 없습니다.';
+                  infoBio.classList.toggle('empty', !b);
+                }
+                if (infoHearts && data.user && typeof data.user.points === 'number') infoHearts.textContent = data.user.points;
+              } else {
+                setBioFeedback(data.message || '저장에 실패했습니다.', true);
+              }
+            })
+            .catch(function () {
+              setBioFeedback('저장에 실패했습니다.', true);
+            });
+        });
+      }
+
+      var inputWallet = document.getElementById('inputWallet');
+      var walletVerifyBtn = document.getElementById('walletVerifyBtn');
+      var walletClearBtn = document.getElementById('walletClearBtn');
+      var walletFeedback = document.getElementById('walletFeedback');
+      function setWalletFeedback(message, isError) {
+        if (!walletFeedback) return;
+        walletFeedback.textContent = message || '';
+        walletFeedback.className = 'profile-bio-feedback ' + (isError ? 'profile-error' : 'profile-success');
+      }
+      if (walletVerifyBtn && inputWallet) {
+        walletVerifyBtn.addEventListener('click', function () {
+          var raw = inputWallet.value.trim();
+          if (!raw) {
+            setWalletFeedback('지갑 주소를 입력해 주세요.', true);
+            return;
+          }
+          walletVerifyBtn.disabled = true;
+          setWalletFeedback('인증 중…');
+          fetch('/api/me/verify-wallet', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: raw }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              walletVerifyBtn.disabled = false;
+              if (data.ok && data.user) {
+                setWalletFeedback(data.message || '지갑이 인증되었습니다.', false);
+                fillInfo(data.user);
+                inputWallet.value = '';
+                if (infoWallet) infoWallet.textContent = data.user.walletAddress || '없음';
+                if (infoLevel && data.user.level) infoLevel.textContent = (LEVEL_NAMES[data.user.level] || '') + (data.user.level ? ' (Lv.' + data.user.level + ')' : '');
+                if (infoLevelIcon) infoLevelIcon.textContent = LEVEL_ICONS[data.user.level] || '—';
+              } else {
+                setWalletFeedback(data.message || '인증에 실패했습니다.', true);
+              }
+            })
+            .catch(function () {
+              walletVerifyBtn.disabled = false;
+              setWalletFeedback('요청에 실패했습니다.', true);
+            });
+        });
+      }
+      if (walletClearBtn) {
+        walletClearBtn.addEventListener('click', function () {
+          walletClearBtn.disabled = true;
+          setWalletFeedback('삭제 중…');
+          fetch('/api/me', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ walletAddress: null }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              walletClearBtn.disabled = false;
+              if (data.ok && data.user) {
+                setWalletFeedback('지갑이 삭제되었습니다.', false);
+                fillInfo(data.user);
+                if (inputWallet) inputWallet.value = '';
+                if (infoWallet) infoWallet.textContent = '없음';
+                if (infoLevel) infoLevel.textContent = LEVEL_NAMES[1] ? LEVEL_NAMES[1] + ' (Lv.1)' : '—';
+                if (infoLevelIcon) infoLevelIcon.textContent = LEVEL_ICONS[1] || '—';
+              } else {
+                setWalletFeedback(data.message || '삭제에 실패했습니다.', true);
+              }
+            })
+            .catch(function () {
+              walletClearBtn.disabled = false;
+              setWalletFeedback('요청에 실패했습니다.', true);
+            });
+        });
+      }
+
+      if (window.TornFiAuth.getUser()) {
+        init();
+      } else {
+        window.TornFiAuth.init().then(init);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>랭킹 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .ranking-page { max-width: 720px; margin: 0 auto; padding: 0.5rem 1rem 3rem; position: relative; z-index: 1; }
+    .ranking-hero {
+      text-align: center; margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.12) 0%, rgba(0, 255, 136, 0.02) 50%, transparent 100%);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .ranking-hero::before {
+      content: ''; position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.06), transparent);
+      animation: ranking-shine 4s ease-in-out infinite;
+    }
+    @keyframes ranking-shine {
+      0%, 100% { transform: translateX(0); opacity: 0; }
+      50% { transform: translateX(200%); opacity: 1; }
+    }
+    .ranking-hero h1 {
+      font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(180deg, #fff 0%, var(--neon) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 0.75rem 0;
+    }
+    .ranking-hero p { font-size: 0.9rem; color: var(--text-muted); margin: 0; }
+
+    .ranking-section { margin-bottom: 3rem; }
+    .ranking-section:last-child { margin-bottom: 0; }
+    .ranking-section-title {
+      display: flex; align-items: center; gap: 0.75rem; margin: 0 0 0.75rem 0;
+      font-size: 1.2rem; font-weight: 700; color: var(--text);
+    }
+    .ranking-section-title .icon { font-size: 1.5rem; filter: drop-shadow(0 0 8px rgba(0,255,136,0.4)); }
+    .ranking-section-desc { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 3rem 0; padding-left: 2.25rem; }
+    .typing-wrap { display: inline; margin-left: 0.25rem; }
+    .typing-text {
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      width: 0;
+      max-width: 10ch;
+      vertical-align: bottom;
+      color: var(--neon);
+      font-weight: 500;
+      animation: typing-reveal 5s steps(8) 0.5s infinite;
+    }
+    @keyframes typing-reveal {
+      0% { width: 0; }
+      32% { width: 10ch; }
+      72% { width: 10ch; }
+      88% { width: 0; }
+      100% { width: 0; }
+    }
+    .typing-cursor {
+      display: inline-block;
+      color: var(--neon);
+      font-weight: 300;
+      animation: typing-blink 0.8s step-end infinite;
+      margin-left: 1px;
+    }
+    @keyframes typing-blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    .ranking-section-title::after {
+      content: ''; flex: 1; height: 2px;
+      background: linear-gradient(90deg, var(--neon), transparent);
+      border-radius: 1px; opacity: 0.6;
+    }
+
+    .ranking-podium {
+      display: flex; align-items: flex-end; justify-content: center; gap: 0.75rem;
+      margin: 0 0 3.5rem 0; min-height: 200px; padding: 0 0.25rem;
+    }
+    .ranking-podium .podium-card {
+      flex: 1; max-width: 160px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly;
+      border-radius: 16px; padding: 1.5rem 0.75rem; position: relative;
+      animation: podium-in 0.6s ease-out backwards;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .ranking-podium .podium-card:nth-child(1) { order: 1; animation-delay: 0.1s; }
+    .ranking-podium .podium-card:nth-child(2) { order: 2; animation-delay: 0s; }
+    .ranking-podium .podium-card:nth-child(3) { order: 3; animation-delay: 0.2s; }
+    @keyframes podium-in {
+      from { opacity: 0; transform: translateY(24px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .podium-card.rank-1 {
+      background: linear-gradient(180deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 193, 7, 0.08) 50%, rgba(255, 215, 0, 0.05) 100%);
+      border: 1px solid rgba(255, 215, 0, 0.5);
+      min-height: 220px; margin-bottom: -1rem;
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.15), 0 12px 40px rgba(0,0,0,0.4);
+      animation: crown-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes crown-pulse {
+      0%, 100% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.15), 0 12px 40px rgba(0,0,0,0.4); }
+      50% { box-shadow: 0 0 56px rgba(255, 215, 0, 0.25), 0 12px 40px rgba(0,0,0,0.4); }
+    }
+    .podium-card.rank-2 {
+      background: linear-gradient(180deg, rgba(192, 192, 192, 0.22) 0%, rgba(192, 192, 192, 0.06) 50%, rgba(192, 192, 192, 0.04) 100%);
+      border: 1px solid rgba(192, 192, 192, 0.45);
+      min-height: 180px;
+    }
+    .podium-card.rank-3 {
+      background: linear-gradient(180deg, rgba(205, 127, 50, 0.22) 0%, rgba(205, 127, 50, 0.06) 50%, rgba(205, 127, 50, 0.04) 100%);
+      border: 1px solid rgba(205, 127, 50, 0.5);
+      min-height: 160px;
+    }
+    .podium-medal { font-size: 2.25rem; line-height: 1; margin-bottom: 0.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+    .podium-card.rank-1 .podium-medal { font-size: 2.75rem; }
+    .podium-rank {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+      margin-bottom: 0.6rem;
+    }
+    .podium-card.rank-1 .podium-rank { color: #ffd700; text-shadow: 0 0 12px rgba(255,215,0,0.5); }
+    .podium-card.rank-2 .podium-rank { color: #c0c0c0; }
+    .podium-card.rank-3 .podium-rank { color: #cd9b5a; }
+    .podium-name {
+      font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem;
+      text-align: center; word-break: break-all; line-height: 1.2;
+    }
+    .podium-card.rank-1 .podium-name { font-size: 1.1rem; color: #fff; text-shadow: 0 0 20px rgba(255,215,0,0.3); }
+    .podium-value {
+      font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .podium-card.rank-1 .podium-value { color: #ffd700; font-size: 1.35rem; }
+    .podium-card.rank-2 .podium-value { color: #e0e0e0; }
+    .podium-card.rank-3 .podium-value { color: #cd9b5a; }
+    .podium-value-unit { font-size: 0.7rem; font-weight: 500; color: var(--text-muted); margin-top: 0.25rem; }
+    .crown-1 { position: absolute; top: -0.5rem; font-size: 1.75rem; opacity: 0.9; filter: drop-shadow(0 0 8px rgba(255,215,0,0.6)); }
+
+    .ranking-list-wrap {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      margin-top: 0;
+    }
+    .ranking-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .ranking-table th, .ranking-table td { padding: 0.875rem 1.25rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .ranking-table th { background: rgba(0, 255, 136, 0.06); color: var(--neon); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ranking-table tr:last-child td { border-bottom: none; }
+    .ranking-table tbody tr { transition: background 0.2s; }
+    .ranking-table tbody tr:hover td { background: rgba(0, 255, 136, 0.06); }
+    .ranking-table .col-rank { width: 4rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ranking-table .col-rank .rank-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; border-radius: 50%;
+      background: var(--border); color: var(--text-muted); font-size: 0.8rem;
+    }
+    .ranking-table .col-value { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--neon); }
+    .ranking-loading { padding: 2.5rem 2rem; text-align: center; color: var(--text-muted); margin: 0; }
+    .ranking-empty { padding: 2.5rem 2rem; text-align: center; color: var(--text-muted); font-size: 0.95rem; margin: 0; }
+    .ranking-error { padding: 1.25rem 1rem; background: rgba(255, 51, 102, 0.1); border: 1px solid rgba(255, 51, 102, 0.3); border-radius: 8px; color: var(--danger); font-size: 0.9rem; margin: 0 0 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <div class="ranking-page">
+    <div class="ranking-hero">
+      <h1>🏆 랭킹</h1>
+      <p>하트·스테이킹 순위를 한눈에 확인해 보세요.</p>
+    </div>
+
+    <section class="ranking-section" aria-labelledby="hearts-title">
+      <h2 id="hearts-title" class="ranking-section-title"><span class="icon">❤️</span> 하트 랭킹</h2>
+      <p class="ranking-section-desc">압도적 하트 수, 진심 어린 소통의 훈장입니다.</p>
+      <div id="heartsLoading" class="ranking-loading">불러오는 중…</div>
+      <div id="heartsError" class="ranking-error" style="display:none;"></div>
+      <div id="heartsPodium" class="ranking-podium" style="display:none;"></div>
+      <div id="heartsListWrap" class="ranking-list-wrap" style="display:none;">
+        <table id="heartsTable" class="ranking-table">
+          <thead><tr><th class="col-rank">순위</th><th>닉네임</th><th class="col-value">하트</th></tr></thead>
+          <tbody id="heartsBody"></tbody>
+        </table>
+      </div>
+      <p id="heartsEmpty" class="ranking-empty" style="display:none;">랭킹 데이터가 없습니다.</p>
+    </section>
+
+    <section class="ranking-section" aria-labelledby="staking-title">
+      <h2 id="staking-title" class="ranking-section-title"><span class="icon">🌪️</span> 스테이킹 랭킹</h2>
+      <p class="ranking-section-desc">TORN 토큰 생태계의 든든한 버팀목 <span class="typing-wrap"><span class="typing-text">배당 개꿀...</span><span class="typing-cursor" aria-hidden="true">|</span></span></p>
+      <div id="stakingLoading" class="ranking-loading">불러오는 중…</div>
+      <div id="stakingError" class="ranking-error" style="display:none;"></div>
+      <div id="stakingPodium" class="ranking-podium" style="display:none;"></div>
+      <div id="stakingListWrap" class="ranking-list-wrap" style="display:none;">
+        <table id="stakingTable" class="ranking-table">
+          <thead><tr><th class="col-rank">순위</th><th>닉네임</th><th class="col-value">스테이킹 (TORN)</th></tr></thead>
+          <tbody id="stakingBody"></tbody>
+        </table>
+      </div>
+      <p id="stakingEmpty" class="ranking-empty" style="display:none;">랭킹 데이터가 없습니다.</p>
+    </section>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      var medals = ['🥇', '🥈', '🥉'];
+      var rankLabels = ['1st', '2nd', '3rd'];
+
+      function buildPodiumCards(list, valueKey, valueFormat, unitLabel) {
+        if (!list || list.length === 0) return '';
+        var top3 = list.slice(0, 3);
+        var order = [1, 0, 2];
+        return order.map(function (i) {
+          var row = top3[i];
+          if (!row) return '';
+          var rank = row.rank;
+          var medal = medals[rank - 1] || '';
+          var label = rankLabels[rank - 1] || rank + '위';
+          var value = valueFormat(row[valueKey]);
+          return '<div class="podium-card rank-' + rank + '">' +
+            (rank === 1 ? '<span class="crown-1" aria-hidden="true">👑</span>' : '') +
+            '<span class="podium-medal">' + medal + '</span>' +
+            '<span class="podium-rank">' + escapeHtml(label) + '</span>' +
+            '<span class="podium-name">' + escapeHtml(row.displayName || '-') + '</span>' +
+            '<span class="podium-value">' + escapeHtml(value) + '</span>' +
+            '<span class="podium-value-unit">' + escapeHtml(unitLabel) + '</span>' +
+            '</div>';
+        }).join('');
+      }
+
+      var RANK_LIST_START = 4;
+      var RANK_LIST_END = 20;
+
+      function buildTableRows(list, valueKey, valueFormat) {
+        if (!list || list.length < RANK_LIST_START) return '';
+        var slice = list.slice(RANK_LIST_START - 1, RANK_LIST_END);
+        return slice.map(function (row) {
+          return '<tr><td class="col-rank"><span class="rank-badge">' + escapeHtml(String(row.rank)) + '</span></td>' +
+            '<td>' + escapeHtml(row.displayName || '-') + '</td>' +
+            '<td class="col-value">' + escapeHtml(valueFormat(row[valueKey])) + '</td></tr>';
+        }).join('');
+      }
+
+      function renderHearts(list) {
+        var loading = document.getElementById('heartsLoading');
+        var err = document.getElementById('heartsError');
+        var podium = document.getElementById('heartsPodium');
+        var listWrap = document.getElementById('heartsListWrap');
+        var body = document.getElementById('heartsBody');
+        var empty = document.getElementById('heartsEmpty');
+        loading.style.display = 'none';
+        err.style.display = 'none';
+        if (!list || list.length === 0) {
+          podium.style.display = 'none';
+          listWrap.style.display = 'none';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        var valueFmt = function (v) { return Number(v).toLocaleString(); };
+        podium.innerHTML = buildPodiumCards(list, 'hearts', valueFmt, '하트');
+        podium.style.display = 'flex';
+        body.innerHTML = buildTableRows(list, 'hearts', valueFmt);
+        listWrap.style.display = list.length >= RANK_LIST_START ? 'block' : 'none';
+      }
+
+      function renderStaking(list) {
+        var loading = document.getElementById('stakingLoading');
+        var err = document.getElementById('stakingError');
+        var podium = document.getElementById('stakingPodium');
+        var listWrap = document.getElementById('stakingListWrap');
+        var body = document.getElementById('stakingBody');
+        var empty = document.getElementById('stakingEmpty');
+        loading.style.display = 'none';
+        err.style.display = 'none';
+        if (!list || list.length === 0) {
+          podium.style.display = 'none';
+          listWrap.style.display = 'none';
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        var valueFmt = function (v) { return Number(v).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
+        podium.innerHTML = buildPodiumCards(list, 'staked', valueFmt, 'TORN');
+        podium.style.display = 'flex';
+        body.innerHTML = buildTableRows(list, 'staked', valueFmt);
+        listWrap.style.display = list.length >= RANK_LIST_START ? 'block' : 'none';
+      }
+
+      fetch('/api/ranking/hearts', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok && data.list) renderHearts(data.list);
+          else renderHearts([]);
+        })
+        .catch(function () {
+          document.getElementById('heartsLoading').style.display = 'none';
+          document.getElementById('heartsError').style.display = 'block';
+          document.getElementById('heartsError').textContent = '하트 랭킹을 불러오지 못했습니다.';
+        });
+
+      fetch('/api/ranking/staking', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok && data.list) renderStaking(data.list);
+          else renderStaking([]);
+        })
+        .catch(function () {
+          document.getElementById('stakingLoading').style.display = 'none';
+          document.getElementById('stakingError').style.display = 'block';
+          document.getElementById('stakingError').textContent = '스테이킹 랭킹을 불러오지 못했습니다. (네트워크 지연 시 잠시 후 다시 시도해 주세요.)';
+        });
+
+      var navAdminCenter = document.getElementById('navAdminCenter');
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      function updateNav(user) {
+        if (user) {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
+        } else {
+          if (navMenuBtn) navMenuBtn.style.display = 'none';
+          if (navAdminCenter) navAdminCenter.style.display = 'none';
+        }
+      }
+      if (window.TornFiAuth && window.TornFiAuth.getUser()) updateNav(window.TornFiAuth.getUser());
+      if (window.TornFiAuth && window.TornFiAuth.onUser) window.TornFiAuth.onUser(updateNav);
+      var navMenuBtn = document.getElementById('navMenuBtn');
+      var navMenuDropdown = document.getElementById('navMenuDropdown');
+      if (navMenuBtn && navMenuDropdown) {
+        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
+        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
+        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
+      }
+    })();
+  </script>
+</body>
+</html>
