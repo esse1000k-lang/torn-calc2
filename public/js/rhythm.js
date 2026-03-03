@@ -47,15 +47,15 @@
 
   /**
    * 두 리듬(타임스탬프 배열)이 같은지 비교 (가입 시 1차/2차 일치 확인)
-   * 2번·3번에서 탭 횟수가 달라도, 같은 개수의 구간만 잘라서 비교 (앞부분 N개 구간)
+   * 탭 횟수가 정확히 같을 때만 비교 (한 번 더/덜 치면 불일치)
    */
   function rhythmMatch(ts1, ts2) {
     var i1 = timestampsToIntervals(ts1);
     var i2 = timestampsToIntervals(ts2);
     if (!i1 || !i2) return false;
-    var n = Math.min(i1.length, i2.length);
-    var k1 = keyFromIntervals(i1.slice(0, n));
-    var k2 = keyFromIntervals(i2.slice(0, n));
+    if (i1.length !== i2.length) return false;
+    var k1 = keyFromIntervals(i1);
+    var k2 = keyFromIntervals(i2);
     return k1 && k2 && k1 === k2;
   }
 

@@ -1243,18 +1243,12 @@ function rhythmVerify(timestamps, storedHash) {
   if (!storedHash || !timestamps) return false;
   const intervals = rhythmTimestampsToIntervals(timestamps);
   if (!intervals) return false;
-  // 가입 시와 탭 횟수가 달라도, 앞 N개 구간만 잘라서 비교 (2·3단계와 동일한 관대한 비교)
-  const minIntervals = RHYTHM_MIN_TAPS - 1;
-  for (let n = minIntervals; n <= intervals.length; n++) {
-    const slice = intervals.slice(0, n);
-    const ratios = rhythmNormalize(slice);
-    if (!ratios) continue;
-    const keyNew = rhythmToKey(ratios, RHYTHM_QUANTIZE_STEP);
-    const keyLegacy = rhythmToKey(ratios, RHYTHM_QUANTIZE_STEP_LEGACY);
-    if ((keyNew && bcrypt.compareSync(keyNew, storedHash)) || (keyLegacy && bcrypt.compareSync(keyLegacy, storedHash)))
-      return true;
-  }
-  return false;
+  // 가입 시와 동일한 탭 횟수(구간 수)일 때만 검증 (한 번 더/덜 치면 불일치)
+  const ratios = rhythmNormalize(intervals);
+  if (!ratios) return false;
+  const keyNew = rhythmToKey(ratios, RHYTHM_QUANTIZE_STEP);
+  const keyLegacy = rhythmToKey(ratios, RHYTHM_QUANTIZE_STEP_LEGACY);
+  return (keyNew && bcrypt.compareSync(keyNew, storedHash)) || (keyLegacy && bcrypt.compareSync(keyLegacy, storedHash));
 }
 // 로컬에서 Atlas 접속 안 될 때: Render 서버에서 admin109 생성 (1회만 호출, 끝나면 Render에서 SEED_ADMIN_KEY 삭제 권장)
 app.get('/api/debug/seed-admin', async (req, res) => {
