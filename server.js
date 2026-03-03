@@ -1193,7 +1193,8 @@ function isNicknameValid(name) {
 
 // ——— 리듬 패턴 로그인 ———
 const RHYTHM_MIN_TAPS = 4;       // 최소 탭 수 (구간 3개 이상)
-const RHYTHM_QUANTIZE_STEP = 0.15; // 비율 양자화 단위 (넓을수록 타이밍 오차 허용)
+const RHYTHM_QUANTIZE_STEP = 0.2;  // 비율 양자화 단위 (0.2 = 타이밍 오차 더 허용, 0.15보다 완화)
+const RHYTHM_QUANTIZE_STEP_LEGACY = 0.15; // 기존 가입자 호환용
 const RHYTHM_IDLE_MS = 1500;      // 클라이언트에서 "입력 끝" 판단용 (참고)
 
 function rhythmTimestampsToIntervals(timestamps) {
@@ -1215,35 +1216,34 @@ function rhythmNormalize(intervals) {
   return intervals.map((x) => x / sum);
 }
 
-function rhythmQuantize(ratios) {
-  const step = RHYTHM_QUANTIZE_STEP;
+function rhythmQuantize(ratios, step = RHYTHM_QUANTIZE_STEP) {
   return ratios.map((r) => Math.round(r / step) * step);
 }
 
-function rhythmToKey(ratios) {
-  const q = rhythmQuantize(ratios);
+function rhythmToKey(ratios, step = RHYTHM_QUANTIZE_STEP) {
+  const q = rhythmQuantize(ratios, step);
   return q.join(',');
 }
 
-function rhythmFromTimestamps(timestamps) {
+function rhythmFromTimestamps(timestamps, step = RHYTHM_QUANTIZE_STEP) {
   const intervals = rhythmTimestampsToIntervals(timestamps);
   if (!intervals) return null;
   const ratios = rhythmNormalize(intervals);
   if (!ratios) return null;
-  return rhythmToKey(ratios);
+  return rhythmToKey(ratios, step);
 }
 
 function rhythmHashFromTimestamps(timestamps) {
-  const key = rhythmFromTimestamps(timestamps);
+  const key = rhythmFromTimestamps(timestamps, RHYTHM_QUANTIZE_STEP);
   if (!key) return null;
   return bcrypt.hashSync(key, 10);
 }
 
 function rhythmVerify(timestamps, storedHash) {
   if (!storedHash || !timestamps) return false;
-  const key = rhythmFromTimestamps(timestamps);
-  if (!key) return false;
-  return bcrypt.compareSync(key, storedHash);
+  const keyNew = rhythmFromTimestamps(timestamps, RHYTHM_QUANTIZE_STEP);
+  const keyLegacy = rhythmFromTimestamps(timestamps, RHYTHM_QUANTIZE_STEP_LEGACY);
+  return (keyNew && bcrypt.compareSync(keyNew, storedHash)) || (keyLegacy && bcrypt.compareSync(keyLegacy, storedHash));
 }
 // 로컬에서 Atlas 접속 안 될 때: Render 서버에서 admin109 생성 (1회만 호출, 끝나면 Render에서 SEED_ADMIN_KEY 삭제 권장)
 app.get('/api/debug/seed-admin', async (req, res) => {

@@ -3,7 +3,7 @@
  */
 (function () {
   var RHYTHM_MIN_TAPS = 4;
-  var RHYTHM_QUANTIZE_STEP = 0.15;
+  var RHYTHM_QUANTIZE_STEP = 0.2;  // 비율 양자화 단위 (0.2 = 타이밍 오차 더 허용, 기존 0.15보다 완화)
   var RHYTHM_IDLE_MS = 1500;
 
   function timestampsToIntervals(timestamps) {
