@@ -865,6 +865,30 @@
         if (swipeArea) {
           swipeArea.addEventListener('touchstart', onSwipeStart, { passive: true });
           swipeArea.addEventListener('touchend', onSwipeEnd, { passive: true });
+          var mouseStartX = 0, mouseStartY = 0, mouseDown = false;
+          swipeArea.addEventListener('mousedown', function (e) {
+            if (e.button !== 0) return;
+            mouseDown = true;
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+          });
+          document.addEventListener('mousemove', function (e) {
+            if (!mouseDown) return;
+            var dx = e.clientX - mouseStartX;
+            var dy = e.clientY - mouseStartY;
+            if (Math.abs(dx) < swipeThreshold) return;
+            if (Math.abs(dy) > Math.abs(dx)) return;
+            mouseDown = false;
+            var activeTab = document.querySelector('.dividend-tab--active');
+            if (!activeTab) return;
+            var currentId = activeTab.getAttribute('data-tab');
+            var idx = TAB_ORDER.indexOf(currentId);
+            if (idx === -1) return;
+            if (dx < 0) idx = (idx + 1) % TAB_ORDER.length;
+            else idx = (idx - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+            switchToTab(TAB_ORDER[idx]);
+          });
+          document.addEventListener('mouseup', function () { mouseDown = false; });
         }
       })();
 

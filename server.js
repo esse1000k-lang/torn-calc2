@@ -3385,6 +3385,40 @@ app.get('/api/feed', async (req, res) => {
   res.json({ ok: true, posts: enriched, total });
 });
 
+// 인기글 (댓글 많은 순, 최대 5개) — /api/feed/:postId 보다 위에 두기
+app.get('/api/feed/popular', async (req, res) => {
+  const limit = Math.min(5, Math.max(1, parseInt(req.query.limit, 10) || 5));
+  const { posts: rawPosts } = await db.getFeedPosts(50, 0);
+  const sorted = rawPosts
+    .slice()
+    .sort((a, b) => (b.comments || []).length - (a.comments || []).length)
+    .slice(0, limit);
+  const users = await db.readUsersFresh();
+  const FEED_COMMENTS_RETURN = 50;
+  const enriched = sorted.map((p) => {
+    const author = users.find((u) => String(u.id) === String(p.authorId));
+    const authorLevel = author ? getMemberLevel(author) : null;
+    const comments = (p.comments || []).slice(-FEED_COMMENTS_RETURN).map((c) => {
+      const commentAuthor = users.find((u) => String(u.id) === String(c.authorId));
+      const commentAuthorLevel = commentAuthor ? getMemberLevel(commentAuthor) : null;
+      return {
+        ...c,
+        authorProfileImageUrl: c.authorProfileImageUrl || (commentAuthor && commentAuthor.profileImageUrl ? commentAuthor.profileImageUrl : null),
+        authorLevel: commentAuthorLevel,
+      };
+    });
+    return {
+      ...p,
+      authorProfileImageUrl: author && author.profileImageUrl ? author.profileImageUrl : null,
+      authorLevel,
+      authorBio: author && typeof author.bio === 'string' ? author.bio : '',
+      authorPoints: author && typeof author.points === 'number' ? author.points : 0,
+      comments,
+    };
+  });
+  res.json({ ok: true, posts: enriched });
+});
+
 // 단일 피드 글 조회 (_id 기반, 캐시 무효화 헤더로 304 방지)
 app.get('/api/feed/:postId', async (req, res) => {
   const postId = String(req.params.postId || '').trim();

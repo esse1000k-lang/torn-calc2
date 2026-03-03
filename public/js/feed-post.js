@@ -83,12 +83,18 @@
       : '<span class="feed-card__avatar" aria-hidden="true">' + (author.charAt(0) || '?') + '</span>';
     var bodyHtml = (escapeHtml(p.body || '')).replace(/\n/g, '<br>');
     var dateStr = formatDate(p.createdAt);
-    var img = (p.images && p.images[0]) ? '<img src="' + escapeHtml(p.images[0]) + '" alt="" class="feed-card__thumb" loading="lazy">' : '';
+    var imagesHtml = '';
+    if (p.images && p.images.length > 0) {
+      imagesHtml = '<div class="feed-card__images">' + p.images.map(function (src) {
+        return '<div class="feed-card__images-item"><img src="' + escapeHtml(src) + '" alt="" class="feed-card__thumb" loading="lazy"></div>';
+      }).join('') + '</div>';
+    }
     var heartsReceived = (p.heartsReceived || 0) > 0 ? p.heartsReceived : 0;
-    var isMine = !!(myId && p.authorId === myId);
+    var isMine = !!(myId && p.authorId != null && String(p.authorId) === String(myId));
     var footer = '<div class="feed-card__footer">';
     if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
-    else if (!isMine && myId) footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+    else if (isMine) footer += '<button type="button" class="feed-card-heart-btn feed-card-heart-btn--own" data-post-id="' + escapeHtml(p.id) + '" data-own-post="1" aria-label="본인 글"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+    else if (myId) footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
     footer += '</div>';
     var commentsCountLabel = '댓글 ' + comments.length;
     var commentFormHtml = myId ? '<div class="feed-card__comment-form feed-post-compose-bar__form" data-post-id="' + escapeHtml(p.id) + '">' +
@@ -110,7 +116,7 @@
                 '<time class="feed-card__date" datetime="' + (p.createdAt || '') + '">' + dateStr + '</time>' +
               '</div></div>' +
             (bodyHtml ? '<div class="feed-card__body"><p class="feed-card__excerpt feed-card__body-full">' + bodyHtml + '</p></div>' : '') +
-            (img ? '<div class="feed-card__thumb-wrap">' + img + '</div>' : '') +
+            (imagesHtml ? imagesHtml : '') +
             '<div class="feed-card__actions">' + footer + '<span class="feed-card__comments-count">' + commentsCountLabel + '</span></div>' +
           '</div></div></div>' +
       '<div class="feed-card__comments">' + commentsListBlock + '</div></article>';
@@ -428,6 +434,10 @@
       if (heartBtn) {
         e.preventDefault();
         e.stopPropagation();
+        if (heartBtn.getAttribute('data-own-post') === '1') {
+          showFeedAlert('본인 글에는 하트를 줄 수 없습니다.');
+          return;
+        }
         var pid = heartBtn.getAttribute('data-post-id');
         var authorName = heartBtn.getAttribute('data-author-name') || '이 사용자';
         if (!pid) return;
