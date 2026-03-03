@@ -10,6 +10,7 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="/manifest.json">
   <script src="js/pwa-env.js"></script>
+  <script src="js/autocomplete-off.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -41,13 +42,12 @@
             <p class="nickname-validation" id="nicknameValidation" aria-live="polite" role="status"></p>
             <button type="button" id="btnNext1" class="auth-submit-btn register-step-btn" disabled>다음</button>
           </div>
-          <p class="auth-link auth-link--register">이미 계정이 있으신가요? <a href="/login.html">로그인</a></p>
         </div>
 
         <!-- 2페이지: 나만의 박자 -->
         <div class="register-step register-step--hidden" id="step2" data-step="2">
           <p class="register-step-label">2</p>
-          <h2 class="register-step-title">나만의 박자를 만들어보세요.</h2>
+          <h2 class="register-step-title">나만의 박자를 만들어 북을 치세요.</h2>
           <div class="register-step-rhythm-words" id="rhythmWordsContainer" aria-hidden="true"></div>
           <p class="auth-error" id="authErrorStep2"></p>
           <div class="rhythm-drum-wrap">
@@ -78,20 +78,20 @@
             <button type="button" id="btnPrev3" class="auth-submit-btn register-step-btn register-step-btn--secondary">이전</button>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- 가입 완료 (잘했어요 + 환영) -->
-  <div id="registerWelcomeLayer" class="register-welcome-layer" style="display:none;">
-    <div class="register-welcome-card-wrap">
-      <div class="register-welcome-card">
-        <h2 class="register-welcome-subtitle">잘했어요!</h2>
-        <p class="register-welcome-clap" aria-hidden="true">👏</p>
-        <p class="register-welcome-remember">잊지 마세요! "비밀번호는 리듬"</p>
+        <!-- 4페이지: 가입 완료 (본판 카드 안) -->
+        <div class="register-step register-step--hidden register-step--welcome" id="step4" data-step="4">
+          <div class="register-step-welcome-body">
+            <h2 class="register-welcome-subtitle">잘했어요!</h2>
+            <p class="register-welcome-clap" aria-hidden="true">👏</p>
+            <p class="register-welcome-remember">잊지 마세요! "비밀번호는 박자"</p>
+          </div>
+          <div class="register-step-welcome-footer">
+            <a href="/login.html" class="register-welcome-btn">로그인</a>
+          </div>
+        </div>
       </div>
     </div>
-    <a href="/login.html" id="registerWelcomeBtn" class="register-welcome-btn">로그인 하기</a>
   </div>
 
   <script src="js/rhythm.js"></script>
@@ -107,9 +107,11 @@
       var authErrorStep2 = document.getElementById('authErrorStep2');
       var authErrorStep3 = document.getElementById('authErrorStep3');
 
+      var registerStepsEl = document.getElementById('registerSteps');
       var step1 = document.getElementById('step1');
       var step2 = document.getElementById('step2');
       var step3 = document.getElementById('step3');
+      var step4 = document.getElementById('step4');
       var btnNext1 = document.getElementById('btnNext1');
       var btnPrev2 = document.getElementById('btnPrev2');
       var btnPrev3 = document.getElementById('btnPrev3');
@@ -119,7 +121,6 @@
       var rhythmDrum3 = document.getElementById('rhythmDrum3');
       var rhythmDrumCount3 = document.getElementById('rhythmDrumCount3');
 
-      var welcomeLayer = document.getElementById('registerWelcomeLayer');
 
       var firstTimestamps = null;
       var stopRecording2 = null;
@@ -181,10 +182,14 @@
       }
 
       function showStep(stepEl) {
-        [step1, step2, step3].forEach(function (el) {
+        [step1, step2, step3, step4].forEach(function (el) {
           if (el) el.classList.add('register-step--hidden');
         });
         if (stepEl) stepEl.classList.remove('register-step--hidden');
+        if (registerStepsEl) {
+          if (stepEl === step4) registerStepsEl.classList.add('register-steps--welcome');
+          else registerStepsEl.classList.remove('register-steps--welcome');
+        }
       }
 
       function clearErrors() {
@@ -344,14 +349,12 @@
               return;
             }
 
-            // 성공 → 가입 API → 한 페이지(잘하셨어요 + 가입완료)로 표시
+            // 성공 → 가입 API → 카드 안 4단계(잘했어요 + 가입완료)로 표시
             if (stopRecording3) try { stopRecording3(); } catch (e) {}
-            showStep(null);
-
             var displayName = displayNameInput ? displayNameInput.value.trim() : '';
             window.TornFiAuth.registerWithRhythm(displayName, firstTimestamps)
               .then(function () {
-                welcomeLayer.style.display = 'flex';
+                showStep(step4);
               })
               .catch(function (err) {
                 showStep(step3);

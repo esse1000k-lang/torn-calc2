@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content">
   <meta name="theme-color" content="#0a0a0b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10,10 +10,12 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="/manifest.json">
   <script src="js/pwa-env.js"></script>
+  <script src="js/autocomplete-off.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
+  <script>(function(){document.documentElement.style.setProperty('--login-vh',window.innerHeight+'px');})();</script>
 </head>
 <body>
   <nav class="site-nav">
@@ -43,7 +45,7 @@
               <div class="rhythm-drum" id="rhythmDrumVisual"></div>
               <p class="rhythm-drum-count" id="rhythmDrumCount" aria-live="polite"></p>
             </div>
-            <p class="rhythm-drum-hint">북치기 (4회 이상)</p>
+            <p class="rhythm-drum-hint">북치기로 본인 인증</p>
           </div>
         </div>
       </div>
@@ -53,8 +55,8 @@
         <button type="button" id="loginWithPasswordBtn" class="login-password-btn">로그인</button>
       </div>
     </div>
-    <a href="/register.html" class="login-float-register">회원가입</a>
   </div>
+  <a href="/register.html" class="login-float-register">회원가입</a>
 
   <script src="js/rhythm.js"></script>
   <script src="js/auth.js"></script>

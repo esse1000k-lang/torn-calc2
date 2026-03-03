@@ -2417,6 +2417,74 @@ button.mobile-home-menu__btn {
   transform: scale(0.98);
 }
 
+/* 가입 완료(step4): 로그인 버튼을 뷰포트 최하단에 고정 */
+.register-step--welcome .register-step-welcome-body {
+  text-align: center;
+  padding-bottom: 8rem;
+}
+.register-step--welcome .register-step-welcome-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 1rem 2.75rem;
+  padding-bottom: max(2.75rem, env(safe-area-inset-bottom));
+  text-align: center;
+  z-index: 10;
+}
+.register-step--welcome .register-welcome-subtitle {
+  margin: 0 0 0.75rem 0;
+}
+.register-step--welcome .register-welcome-clap {
+  font-size: 13.5rem;
+  margin: 1rem 0 1.25rem 0;
+  line-height: 1;
+}
+
+/* 잊지 마세요 박스: 상점 타이틀 박스와 동일한 반짝임 애니메이션 */
+@keyframes register-welcome-shine {
+  0%, 100% { transform: translateX(0); opacity: 0; }
+  50% { transform: translateX(200%); opacity: 1; }
+}
+.register-step--welcome .register-welcome-remember {
+  margin-bottom: 0;
+  white-space: nowrap;
+  font-size: min(1.45rem, 5.2vw);
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+.register-step--welcome .register-welcome-remember::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.12), transparent);
+  animation: register-welcome-shine 4s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (min-width: 360px) {
+  .register-step--welcome .register-welcome-remember {
+    font-size: 1.35rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+@media (min-width: 380px) {
+  .register-step--welcome .register-welcome-remember {
+    font-size: 1.45rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+}
+.register-step--welcome .register-welcome-btn {
+  display: inline-block;
+  margin-top: 0;
+}
+
 /* Auth pages */
 .auth-page {
   position: relative;
@@ -2429,10 +2497,13 @@ button.mobile-home-menu__btn {
   align-items: center;
 }
 
-/* 로그인 커스텀 모달 */
+/* 로그인 커스텀 모달 — 네비(50px) 아래부터만 덮어서 네비는 선명하게 */
 .login-modal-layer {
   position: fixed;
-  inset: 0;
+  top: 50px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 150;
   display: flex;
   align-items: center;
@@ -2449,10 +2520,16 @@ button.mobile-home-menu__btn {
 }
 
 .login-modal-box {
-  position: relative;
-  width: 100%;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 2rem));
   max-width: 420px;
+  max-height: calc(100vh - 4rem);
+  box-sizing: border-box;
   padding: 2.25rem;
+  overflow-y: auto;
   background: var(--bg-card);
   border: 1px solid rgba(0, 255, 136, 0.2);
   border-radius: 16px;
@@ -2473,11 +2550,11 @@ button.mobile-home-menu__btn {
 @keyframes loginModalBoxIn {
   from {
     opacity: 0;
-    transform: translateY(-12px) scale(0.98);
+    transform: translate(-50%, -50%) translateY(-12px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(-50%, -50%) translateY(0) scale(1);
   }
 }
 
@@ -2529,12 +2606,14 @@ button.mobile-home-menu__btn {
   color: var(--neon-dim);
 }
 
-/* 로그인 페이지: 회원가입 플로팅 버튼 (녹색 박스 밖 최하단 중앙, 구름둥둥) */
+/* 로그인 페이지: 회원가입 버튼 — 키보드 올라와도 고정(따라 올라가지 않음) */
 .login-float-register {
-  position: absolute;
-  bottom: 2rem;
+  position: fixed;
+  top: calc(var(--login-vh, 100vh) - 4.5rem);
+  bottom: auto;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 151;
   display: inline-block;
   padding: 0.65rem 1.5rem;
   background: rgba(0, 255, 136, 0.15);
@@ -2607,7 +2686,7 @@ button.mobile-home-menu__btn {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -3505,11 +3584,13 @@ button.mobile-home-menu__btn {
   }
 }
 
-.auth-card--register .auth-link {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
+.auth-card--register .auth-link.auth-link--register {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  padding-bottom: 2rem;
   flex-shrink: 0;
   font-size: 0.875rem;
+  text-align: center;
 }
 
 /* 성공: 잘하셨어요 */
