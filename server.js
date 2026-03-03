@@ -1338,11 +1338,11 @@ app.get('/api/public/check-nickname', async (req, res) => {
   return res.json({ ok: true, available: !taken, message: taken ? '이미 사용 중인 닉네임입니다.' : null });
 });
 
-// 회원가입 (닉네임 + 리듬 패턴 + 추천인, 지갑 주소 없음)
+// 회원가입 (닉네임 + 리듬 패턴만, 즉시 가입·로그인 가능)
 const REGISTER_NO_WALLET = '0x0000000000000000000000000000000000000000';
 app.post('/api/register', async (req, res) => {
   if (checkAuthRateLimit(req, res)) return;
-  const { displayName, rhythm, referrer } = req.body || {};
+  const { displayName, rhythm } = req.body || {};
   const nameRaw = String(displayName || '').trim() || null;
   const name = isNicknameValid(nameRaw) ? nameRaw : null;
 
@@ -1359,7 +1359,6 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ ok: false, message: '나만의 리듬을 북에서 4번 이상 두드려 주세요.' });
   }
 
-  const referrerTrim = String(referrer || '').trim() || null;
   const clientIp = getClientIp(req);
   const users = await db.readUsers();
   const displayNameLower = name.toLowerCase();
@@ -1370,7 +1369,7 @@ app.post('/api/register', async (req, res) => {
       ? ipCheck.sameIpRecent.map((u) => u.displayName || u.id).join(', ')
       : '';
     const msg = who
-      ? `이미 이 IP에서 가입한 계정이 있어 가입이 제한되었습니다. (동일 IP 가입: ${who})`
+      ? `이 IP에서 가입 가능한 계정 수(${IP_MAX_ACCOUNTS}개)를 초과했습니다. (동일 IP: ${who})`
       : DUPLICATE_BLOCK_MESSAGE;
     return res.status(403).json({ ok: false, message: msg });
   }
@@ -1380,32 +1379,29 @@ app.post('/api/register', async (req, res) => {
     return res.status(409).json({ ok: false, message: '이미 사용 중인 닉네임입니다.' });
   }
 
-  const settings = await db.readSettings();
-  const autoApproveNewUsers = settings.autoApproveNewUsers !== false;
+  const nowIso = new Date().toISOString();
   const user = {
     id: crypto.randomBytes(12).toString('hex'),
     rhythmHash,
     displayName: name,
     walletAddress: REGISTER_NO_WALLET,
-    referrer: referrerTrim || null,
-    approved: autoApproveNewUsers,
-    createdAt: new Date().toISOString(),
+    approved: true,
+    approvedAt: nowIso,
+    approvedBy: 'auto',
+    createdAt: nowIso,
+    lastLoginAt: nowIso,
     level: MEMBER_LEVEL_MIN,
     points: 3,
     signupIp: clientIp || undefined,
   };
-  if (autoApproveNewUsers) {
-    user.approvedAt = new Date().toISOString();
-    user.approvedBy = 'auto';
-  }
 
   users.push(user);
   await db.writeUsers(users);
 
   res.status(201).json({
     ok: true,
-    message: autoApproveNewUsers ? '가입이 완료되었습니다. 로그인하여 이용해 주세요.' : '가입 신청이 완료되었습니다. 관리자 승인 후 로그인하여 이용해 주세요.',
-    user: { id: user.id, displayName: user.displayName, walletAddress: user.walletAddress, approved: user.approved },
+    message: '가입이 완료되었습니다. 로그인하여 이용해 주세요.',
+    user: { id: user.id, displayName: user.displayName, walletAddress: user.walletAddress, approved: true },
   });
 });
 
@@ -1448,6 +1444,14 @@ app.post('/api/login', async (req, res) => {
   if (!isApproved) {
     return res.status(403).json({ ok: false, message: '관리자 승인 대기 중입니다. 승인 후 로그인 가능합니다.' });
   }
+
+  const loginAt = new Date().toISOString();
+  const userIdx = users.findIndex((u) => u === user || (u.displayName && u.displayName.toLowerCase() === nicknameLower));
+  if (userIdx !== -1) {
+    users[userIdx] = { ...users[userIdx], lastLoginAt: loginAt };
+    await db.writeUsers(users);
+  }
+  user.lastLoginAt = loginAt;
 
   // 회원 id가 없으면 생성 후 DB 반영 (세션 연동 꼬임 방지)
   let userId = user.id != null && user.id !== '' ? String(user.id) : null;
@@ -2853,6 +2857,8 @@ function fetchEtherscanTornTransfers(address) {
 // ---------- 이중 아이디 방지: IP·지갑 커플링, 지갑/스테이킹 3일, 연쇄 송금 ----------
 const DUPLICATE_BLOCK_MESSAGE = '커뮤니티 보안 정책에 따라 가입이 제한되었습니다.';
 const IP_COUPLE_DAYS = 30;
+const IP_MAX_ACCOUNTS = 3;           // 동일 IP에서 허용 가입 수 (리듬 까먹을 수 있어 3개까지)
+const INACTIVE_DAYS_FOR_DELETE = 30; // 이 기간 로그인 없으면 미활동 계정 자동 삭제
 const WALLET_AGE_DAYS = 3;
 const TRANSFER_NETWORK_DAYS = 30;
 
@@ -2992,17 +2998,38 @@ async function getTxCounterpartiesLast30Days(address) {
   }
 }
 
-/** 1) IP 커플링: 동일 IP에서 30일 이내 가입 이력 있으면 차단 (원인 추적용: sameIpRecent 반환) */
+/** 1) IP 커플링: 동일 IP에서 30일 이내 가입이 IP_MAX_ACCOUNTS개 넘으면 차단 (리듬 까먹을 수 있어 3개까지 허용) */
 function checkDuplicateIp(clientIp, users) {
   if (!clientIp) return { block: false, sameIpRecent: [] };
-  // localhost/개발 환경에서는 동일 PC에서 테스트 가입 허용
   const isLocal = /^(::1|127\.0\.0\.1|localhost)$/i.test(String(clientIp).trim());
   if (isLocal) return { block: false, sameIpRecent: [] };
   const cutoff = Date.now() - IP_COUPLE_DAYS * 24 * 60 * 60 * 1000;
   const sameIpRecent = users.filter(
     (u) => u.signupIp === clientIp && u.createdAt && new Date(u.createdAt).getTime() >= cutoff
   );
-  return { block: sameIpRecent.length > 0, sameIpRecent };
+  return { block: sameIpRecent.length >= IP_MAX_ACCOUNTS, sameIpRecent };
+}
+
+/** 30일 이상 로그인 없으면 미활동 계정 자동 삭제 (관리/관리자 계정 제외). lastLoginAt 없으면 미삭제(기존 회원 보호). */
+async function deleteInactiveUsers() {
+  const users = await db.readUsers();
+  const cutoff = Date.now() - INACTIVE_DAYS_FOR_DELETE * 24 * 60 * 60 * 1000;
+  const toKeep = users.filter((u) => {
+    if (u.managementAccount === true) return true;
+    if (u.walletAddress && ADMIN_WALLET_ADDRESSES.includes(u.walletAddress.toLowerCase())) return true;
+    if (u.withdrawn === true) return true;
+    if (!u.lastLoginAt) return true;
+    return new Date(u.lastLoginAt).getTime() >= cutoff;
+  });
+  const removed = users.length - toKeep.length;
+  if (removed > 0) {
+    await db.writeUsers(toKeep);
+    for (const [token, sess] of sessions.entries()) {
+      if (sess && sess.id && !toKeep.some((u) => String(u.id) === String(sess.id))) sessions.delete(token);
+    }
+    if (process.env.NODE_ENV !== 'test') console.log('[inactive] Removed', removed, 'inactive user(s) (no login', INACTIVE_DAYS_FOR_DELETE, 'days).');
+  }
+  return removed;
 }
 
 /** 2) 지갑 최초 생성·스테이킹 만 3일 경과 여부 */
@@ -3841,6 +3868,13 @@ function onServerListen(listenPort) {
   setInterval(() => {
     runScheduledTornadoNews().catch((err) => console.error('Tornado news schedule:', err.message));
   }, TORNADO_NEWS_FETCH_INTERVAL_MS);
+  const INACTIVE_CHECK_MS = 24 * 60 * 60 * 1000;
+  setTimeout(() => {
+    deleteInactiveUsers().catch((err) => console.error('Inactive user cleanup:', err.message));
+  }, 5 * 60 * 1000);
+  setInterval(() => {
+    deleteInactiveUsers().catch((err) => console.error('Inactive user cleanup:', err.message));
+  }, INACTIVE_CHECK_MS);
 }
 
 // API 라우트보다 뒤에 두어 /api/* 요청이 static에 맡지 않도록 함

@@ -31,13 +31,13 @@
     <div class="login-modal-box">
       <a href="/" class="login-modal-back" aria-label="닫기">×</a>
       <div class="auth-card auth-card--login">
-        <h1 class="auth-title" id="loginTitleClick" role="button" tabindex="0">로그인</h1>
-        <p class="auth-error" id="authError"></p>
+        <h1 class="auth-title" id="loginTitleClick" role="button" tabindex="0"><span class="auth-title-emoji" aria-hidden="true">👋</span> 로그인</h1>
         <div class="auth-form">
           <div class="login-id-wrap" id="loginIdWrap">
             <span class="login-id-typing" id="loginIdTyping" aria-hidden="true"><span class="login-id-typing-text">닉네임 입력</span><span class="login-id-typing-cursor">|</span></span>
             <input type="text" id="loginId" name="id" autocomplete="username" placeholder=" " aria-label="닉네임 입력">
           </div>
+          <p class="auth-error" id="authError"></p>
           <div class="rhythm-drum-wrap">
             <div class="rhythm-drum-area" id="rhythmDrum" role="button" tabindex="0" aria-label="리듬 입력 영역, 북을 두드려 로그인">
               <div class="rhythm-drum" id="rhythmDrumVisual"></div>
@@ -47,13 +47,13 @@
           </div>
         </div>
       </div>
-      <p class="auth-brand"><a href="/register.html">회원가입</a></p>
       <div id="loginPasswordBlock" class="login-password-block" style="display:none;">
         <label for="loginPassword">비밀번호</label>
         <input type="password" id="loginPassword" placeholder="비밀번호" autocomplete="current-password">
         <button type="button" id="loginWithPasswordBtn" class="login-password-btn">로그인</button>
       </div>
     </div>
+    <a href="/register.html" class="login-float-register">회원가입</a>
   </div>
 
   <script src="js/rhythm.js"></script>

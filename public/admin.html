@@ -470,7 +470,6 @@
               <tr>
                 <th>닉네임</th>
                 <th>지갑 주소</th>
-                <th>추천인</th>
                 <th>가입일</th>
                 <th></th>
               </tr>
@@ -989,7 +988,7 @@
             pendingTable.style.display = 'table';
             pendingBody.innerHTML = list.map(function (u) {
               var date = u.createdAt ? new Date(u.createdAt).toLocaleDateString('ko-KR') : '-';
-              return '<tr><td>' + (u.displayName || '-') + '</td><td class="wallet">' + (u.walletAddress || '') + '</td><td>' + (u.referrer || '-') + '</td><td>' + date + '</td><td class="admin-cell-actions"><button type="button" class="admin-btn" data-approve="' + u.id + '">승인</button> <button type="button" class="admin-btn admin-btn--burn" data-reject="' + u.id + '">거부</button></td></tr>';
+              return '<tr><td>' + (u.displayName || '-') + '</td><td class="wallet">' + (u.walletAddress || '') + '</td><td>' + date + '</td><td class="admin-cell-actions"><button type="button" class="admin-btn" data-approve="' + u.id + '">승인</button> <button type="button" class="admin-btn admin-btn--burn" data-reject="' + u.id + '">거부</button></td></tr>';
             }).join('');
             pendingBody.querySelectorAll('[data-approve]').forEach(function (btn) {
               btn.addEventListener('click', function () {

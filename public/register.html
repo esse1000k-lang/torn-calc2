@@ -349,7 +349,7 @@
             showStep(null);
 
             var displayName = displayNameInput ? displayNameInput.value.trim() : '';
-            window.TornFiAuth.registerWithRhythm(displayName, firstTimestamps, undefined)
+            window.TornFiAuth.registerWithRhythm(displayName, firstTimestamps)
               .then(function () {
                 welcomeLayer.style.display = 'flex';
               })
