@@ -15,7 +15,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
-  <script>(function(){document.documentElement.style.setProperty('--login-vh',window.innerHeight+'px');})();</script>
 </head>
 <body>
   <nav class="site-nav">
@@ -29,24 +28,21 @@
     </div>
   </nav>
 
-  <div class="login-modal-layer">
-    <div class="login-modal-box">
-      <a href="/" class="login-modal-back" aria-label="닫기">×</a>
-      <div class="auth-card auth-card--login">
-        <h1 class="auth-title" id="loginTitleClick" role="button" tabindex="0"><span class="auth-title-emoji" aria-hidden="true">👋</span> 로그인</h1>
-        <div class="auth-form">
-          <div class="login-id-wrap" id="loginIdWrap">
-            <span class="login-id-typing" id="loginIdTyping" aria-hidden="true"><span class="login-id-typing-text">닉네임 입력</span><span class="login-id-typing-cursor">|</span></span>
-            <input type="text" id="loginId" name="id" autocomplete="username" placeholder=" " aria-label="닉네임 입력">
+  <div class="auth-page auth-page--login">
+    <div class="auth-card auth-card--login">
+      <h1 class="auth-title" id="loginTitleClick" role="button" tabindex="0"><span class="auth-title-emoji" aria-hidden="true">👋</span> 로그인</h1>
+      <div class="auth-form">
+        <div class="login-id-wrap" id="loginIdWrap">
+          <span class="login-id-typing" id="loginIdTyping" aria-hidden="true"><span class="login-id-typing-text">닉네임 입력</span><span class="login-id-typing-cursor">|</span></span>
+          <input type="text" id="loginId" name="id" autocomplete="username" placeholder=" " aria-label="닉네임 입력">
+        </div>
+        <p class="auth-error" id="authError"></p>
+        <div class="rhythm-drum-wrap">
+          <div class="rhythm-drum-area" id="rhythmDrum" role="button" tabindex="0" aria-label="리듬 입력 영역, 북을 두드려 로그인">
+            <div class="rhythm-drum" id="rhythmDrumVisual"></div>
+            <p class="rhythm-drum-count" id="rhythmDrumCount" aria-live="polite"></p>
           </div>
-          <p class="auth-error" id="authError"></p>
-          <div class="rhythm-drum-wrap">
-            <div class="rhythm-drum-area" id="rhythmDrum" role="button" tabindex="0" aria-label="리듬 입력 영역, 북을 두드려 로그인">
-              <div class="rhythm-drum" id="rhythmDrumVisual"></div>
-              <p class="rhythm-drum-count" id="rhythmDrumCount" aria-live="polite"></p>
-            </div>
-            <p class="rhythm-drum-hint">북치기로 본인 인증</p>
-          </div>
+          <p class="rhythm-drum-hint">북치기로 본인 인증</p>
         </div>
       </div>
       <div id="loginPasswordBlock" class="login-password-block" style="display:none;">
@@ -55,29 +51,19 @@
         <button type="button" id="loginWithPasswordBtn" class="login-password-btn">로그인</button>
       </div>
     </div>
+    <a href="/register.html" class="login-float-register">회원가입</a>
   </div>
-  <a href="/register.html" class="login-float-register">회원가입</a>
 
   <script src="js/rhythm.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/nav-logo.js"></script>
   <script>
     (function () {
-      var layer = document.querySelector('.login-modal-layer');
-      var box = document.querySelector('.login-modal-box');
       var errorEl = document.getElementById('authError');
       var loginIdEl = document.getElementById('loginId');
       var drumArea = document.getElementById('rhythmDrum');
       var drumVisual = document.getElementById('rhythmDrumVisual');
       var countEl = document.getElementById('rhythmDrumCount');
-
-      if (layer && box) {
-        layer.addEventListener('click', function (e) {
-          if (e.target !== layer) return;
-          if (errorEl && errorEl.textContent.trim() !== '') return;
-          window.location.href = '/';
-        });
-      }
 
       function playDrumHit() {
         if (!drumArea || !drumVisual) return;

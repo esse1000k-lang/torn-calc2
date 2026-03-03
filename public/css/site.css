@@ -2606,16 +2606,13 @@ button.mobile-home-menu__btn {
   color: var(--neon-dim);
 }
 
-/* 로그인 페이지: 회원가입 버튼 — 키보드 올라와도 고정(따라 올라가지 않음) */
-.login-float-register {
-  position: fixed;
-  top: calc(var(--login-vh, 100vh) - 4.5rem);
-  bottom: auto;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 151;
+/* 로그인 본판: 회원가입 — 플로우 하단, 카드와 간격 유지 */
+.auth-page--login .login-float-register {
+  margin-top: auto;
+  flex: 0 0 auto;
   display: inline-block;
   padding: 0.65rem 1.5rem;
+  padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
   background: rgba(0, 255, 136, 0.15);
   color: var(--neon);
   font-size: 0.9rem;
@@ -2627,19 +2624,43 @@ button.mobile-home-menu__btn {
   animation: login-float-cloud 3s ease-in-out infinite;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
-.login-float-register:hover {
+.auth-page--login .login-float-register:hover {
   background: rgba(0, 255, 136, 0.25);
   border-color: rgba(0, 255, 136, 0.6);
   color: var(--neon);
 }
 @keyframes login-float-cloud {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(-10px); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
+/* 로그인 본판: 배열 = 네비 → (간격) → 로그인 창 → (간격) → 회원가입 */
 .auth-page--login {
-  margin: 2rem auto 2.5rem;
-  padding: 0 1.25rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2.5rem;
+  min-height: calc(100vh - 50px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  box-sizing: border-box;
+}
+.auth-page--login .auth-card--login {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 2rem;
+  animation: loginCardBorderGlow 2s ease-in-out 0.4s infinite;
+}
+@keyframes loginCardBorderGlow {
+  0%, 100% {
+    border-color: rgba(0, 255, 136, 0.2);
+    box-shadow: 0 0 28px rgba(0, 255, 136, 0.06), 0 6px 28px rgba(0, 0, 0, 0.25);
+  }
+  50% {
+    border-color: rgba(0, 255, 136, 0.6);
+    box-shadow: 0 0 28px rgba(0, 255, 136, 0.15), 0 0 48px rgba(0, 255, 136, 0.08), 0 6px 28px rgba(0, 0, 0, 0.25);
+  }
 }
 .auth-page--login .back-link {
   align-self: flex-start;
