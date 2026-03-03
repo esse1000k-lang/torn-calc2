@@ -2538,14 +2538,17 @@ button.mobile-home-menu__btn {
   margin-bottom: 1.25rem;
 }
 
+/* 회원가입: 네비 제외 전체 공간, 상단 여백 최소·한 화면에 담기 */
 .auth-page--register {
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
-  padding: 0.75rem 1rem 1.5rem;
-  min-height: calc(100vh - 56px);
+  margin: 0;
+  padding: 0.5rem 1rem 1rem;
+  min-height: calc(100vh - 50px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: stretch;
   box-sizing: border-box;
 }
 
@@ -2569,10 +2572,13 @@ button.mobile-home-menu__btn {
 .auth-card--register {
   border: none;
   border-radius: 0;
-  padding: 1.25rem 1rem 1.5rem;
+  padding: 0;
   box-shadow: none;
   background: transparent;
-  flex: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -3278,21 +3284,31 @@ button.mobile-home-menu__btn {
   max-width: 100%;
 }
 
+.auth-page--steps .register-step .auth-error {
+  min-height: 1.25rem;
+  width: 100%;
+  max-width: 320px;
+}
+
 .auth-page--steps .register-steps {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
 }
 
 .register-step {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  padding: 0.75rem 0;
-  min-height: 200px;
-  justify-content: center;
-  gap: 0;
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem 1rem;
+  min-height: 0;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: center;
 }
 
 .register-step--hidden {
@@ -3301,86 +3317,92 @@ button.mobile-home-menu__btn {
 
 .register-step-label {
   display: inline-block;
-  width: 28px;
-  height: 28px;
-  line-height: 28px;
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
   text-align: center;
   border-radius: 50%;
   background: rgba(0, 255, 136, 0.2);
   color: var(--neon);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin: 0 0 0.25rem 0;
 }
 
 .register-step-title {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.4;
-  margin-bottom: 0.35rem;
+  line-height: 1.35;
+  margin: 0;
+  max-width: 320px;
 }
 
 .register-step-rhythm-words {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1.25rem;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem 0;
 }
 
+/* 북 치는 듯한 비트: 짧게 눌렀다가 살짝 튀었다가 복귀 */
 @keyframes rhythm-word-beat {
-  0%, 100% { transform: scale(1) translateY(0); }
-  25% { transform: scale(1.06) translateY(-2px); }
-  50% { transform: scale(1) translateY(0); }
-  75% { transform: scale(1.04) translateY(-1px); }
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  15% { transform: scale(0.94); filter: brightness(1.4); }
+  35% { transform: scale(1.06); filter: brightness(1.15); }
+  55% { transform: scale(1); filter: brightness(1); }
 }
 
 .register-step-rhythm-words .rhythm-word {
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: rgba(0, 255, 136, 0.85);
-  letter-spacing: 0.28em;
-  word-spacing: 0.15em;
+  color: rgba(0, 255, 136, 0.9);
+  letter-spacing: 0.2em;
+  word-spacing: 0.1em;
   font-family: "Outfit", "Noto Sans KR", sans-serif;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
-  animation: rhythm-word-beat 1.2s ease-in-out infinite;
+  text-shadow: 0 0 24px rgba(0, 255, 136, 0.35);
+  animation: rhythm-word-beat 1.4s ease-out infinite;
   display: inline-block;
 }
 
-.register-step-rhythm-words .rhythm-word:last-child {
-  animation-delay: 0.3s;
-}
+/* 세 줄이 차례로 쿵-쿵-쿵 느낌으로 비트 */
+.register-step-rhythm-words .rhythm-word:nth-child(1) { animation-delay: 0s; }
+.register-step-rhythm-words .rhythm-word:nth-child(2) { animation-delay: 0.28s; }
+.register-step-rhythm-words .rhythm-word:nth-child(3) { animation-delay: 0.56s; }
 
 .register-step-desc {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--text-muted);
-  margin-bottom: 1rem;
+  margin: 0;
+  max-width: 320px;
 }
 
 .register-step-desc--below-drum {
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
   margin-bottom: 0;
 }
 
 .register-step-inner {
-  margin-top: 0.5rem;
-  flex: 1;
+  margin-top: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
 }
 
 .register-step-inner input {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 1rem;
   border-radius: 10px;
   border: 1px solid rgba(0, 255, 136, 0.35);
   background: var(--bg-dark);
   color: var(--text);
   font-size: 1rem;
   box-sizing: border-box;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .register-step-inner input:focus {
@@ -3390,11 +3412,11 @@ button.mobile-home-menu__btn {
 }
 
 .register-step-btn {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   width: 100%;
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -3423,20 +3445,31 @@ button.mobile-home-menu__btn {
 }
 
 .register-step .rhythm-drum-wrap {
-  flex: 1;
+  flex: 0 0 auto;
   justify-content: center;
-  min-height: 0;
+  align-items: center;
+  margin: 0.25rem 0;
+  width: 100%;
 }
 
 .register-step-actions {
-  margin-top: auto;
-  padding-top: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+/* 한 화면에 담기: 짧은 뷰포트에서 북 크기만 약간 축소 */
+@media (max-height: 640px) {
+  .auth-page--register .register-step .rhythm-drum-wrap {
+    transform: scale(0.88);
+    transform-origin: center;
+  }
 }
 
 .auth-card--register .auth-link {
-  margin-top: 1.25rem;
-  padding-top: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
   flex-shrink: 0;
+  font-size: 0.875rem;
 }
 
 /* 성공: 잘하셨어요 */

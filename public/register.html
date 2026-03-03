@@ -48,10 +48,7 @@
         <div class="register-step register-step--hidden" id="step2" data-step="2">
           <p class="register-step-label">2</p>
           <h2 class="register-step-title">나만의 박자를 만들어보세요.</h2>
-          <div class="register-step-rhythm-words" aria-hidden="true">
-            <span class="rhythm-word">둠-칫-둠-칫</span>
-            <span class="rhythm-word">쿵-치-팍-치</span>
-          </div>
+          <div class="register-step-rhythm-words" id="rhythmWordsContainer" aria-hidden="true"></div>
           <p class="auth-error" id="authErrorStep2"></p>
           <div class="rhythm-drum-wrap">
             <div class="rhythm-drum-area" id="rhythmDrum2" role="button" tabindex="0" aria-label="북 두드리기">
@@ -127,6 +124,61 @@
       var firstTimestamps = null;
       var stopRecording2 = null;
       var stopRecording3 = null;
+
+      var RHYTHM_SOUNDS = ['쿵', '짝'];
+
+      function randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      /** 쿵/짝 + _ 로 한 문장 패턴 랜덤 생성, 총 글자 수 4~5개 (예: 쿵_쿵쿵_쿵) */
+      function generateOneRhythmPattern() {
+        var sound = RHYTHM_SOUNDS[randomInt(0, 1)];
+        var total = randomInt(4, 5);
+        var groupCount = randomInt(2, Math.min(4, total));
+        var counts = [];
+        for (var c = 0; c < groupCount; c++) counts[c] = 1;
+        for (var r = total - groupCount; r > 0; r--) {
+          counts[randomInt(0, groupCount - 1)]++;
+        }
+        return counts.map(function (n) { return Array(n + 1).join(sound); }).join('_');
+      }
+
+      /** 3개 문구 패턴 랜덤 생성, 1·2·3줄 중복 없음 */
+      function generateRhythmWordSamples() {
+        var seen = {};
+        var out = [];
+        while (out.length < 3) {
+          var p = generateOneRhythmPattern();
+          if (!seen[p]) {
+            seen[p] = true;
+            out.push(p);
+          }
+        }
+        return out;
+      }
+
+      function shuffleArray(arr) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        return a;
+      }
+
+      function fillRhythmWords() {
+        var container = document.getElementById('rhythmWordsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        var samples = generateRhythmWordSamples();
+        shuffleArray(samples).forEach(function (text) {
+          var span = document.createElement('span');
+          span.className = 'rhythm-word';
+          span.textContent = text;
+          container.appendChild(span);
+        });
+      }
 
       function showStep(stepEl) {
         [step1, step2, step3].forEach(function (el) {
@@ -218,6 +270,7 @@
 
       // ——— 2페이지: 첫 번째 리듬 ———
       function startDrumRecorder2() {
+        fillRhythmWords();
         if (stopRecording2) try { stopRecording2(); } catch (e) {}
         if (!rhythmDrum2 || !window.TornFiRhythm) return;
         if (rhythmDrumCount2) rhythmDrumCount2.textContent = '';

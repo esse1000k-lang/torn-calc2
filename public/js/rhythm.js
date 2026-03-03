@@ -3,7 +3,7 @@
  */
 (function () {
   var RHYTHM_MIN_TAPS = 4;
-  var RHYTHM_QUANTIZE_STEP = 0.2;  // 비율 양자화 단위 (0.2 = 타이밍 오차 더 허용, 기존 0.15보다 완화)
+  var RHYTHM_QUANTIZE_STEP = 0.15;  // 비율 양자화 단위 (탭 횟수 비교 수정 후 난이도 복원)
   var RHYTHM_IDLE_MS = 1500;
 
   function timestampsToIntervals(timestamps) {
@@ -33,20 +33,29 @@
     return quantize(ratios).join(',');
   }
 
+  function keyFromIntervals(intervals) {
+    if (!intervals || intervals.length === 0) return null;
+    var ratios = normalize(intervals);
+    return ratios ? toKey(ratios) : null;
+  }
+
   function rhythmFromTimestamps(timestamps) {
     var intervals = timestampsToIntervals(timestamps);
     if (!intervals) return null;
-    var ratios = normalize(intervals);
-    if (!ratios) return null;
-    return toKey(ratios);
+    return keyFromIntervals(intervals);
   }
 
   /**
    * 두 리듬(타임스탬프 배열)이 같은지 비교 (가입 시 1차/2차 일치 확인)
+   * 2번·3번에서 탭 횟수가 달라도, 같은 개수의 구간만 잘라서 비교 (앞부분 N개 구간)
    */
   function rhythmMatch(ts1, ts2) {
-    var k1 = rhythmFromTimestamps(ts1);
-    var k2 = rhythmFromTimestamps(ts2);
+    var i1 = timestampsToIntervals(ts1);
+    var i2 = timestampsToIntervals(ts2);
+    if (!i1 || !i2) return false;
+    var n = Math.min(i1.length, i2.length);
+    var k1 = keyFromIntervals(i1.slice(0, n));
+    var k2 = keyFromIntervals(i2.slice(0, n));
     return k1 && k2 && k1 === k2;
   }
 
