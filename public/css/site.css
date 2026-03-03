@@ -216,6 +216,40 @@ body::before {
   opacity: 0.85;
 }
 
+/* 로그인 페이지: 네비 우측 회원가입 (로고와 동일한 상하 정렬) */
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+}
+.nav-register {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.65rem;
+  min-height: 2.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--neon);
+  text-decoration: none;
+  background: linear-gradient(180deg, #222e28 0%, #1a2620 100%);
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  transform: translateY(-4px);
+}
+.nav-register:hover {
+  color: var(--neon);
+  background: linear-gradient(180deg, #2a3c30 0%, #222e28 100%);
+}
+.nav-right .nav-menu-wrap {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 /* 상단 우측 메뉴 (이모지만) */
 .nav-menu-wrap {
   position: relative;
@@ -307,6 +341,13 @@ body::before {
 }
 
 .nav-right a:hover {
+  color: var(--neon);
+}
+
+.nav-right a.nav-register {
+  color: var(--neon);
+}
+.nav-right a.nav-register:hover {
   color: var(--neon);
 }
 
@@ -2344,26 +2385,36 @@ button.mobile-home-menu__btn {
   margin: 0 0 2rem 0;
 }
 
+@keyframes register-remember-blink {
+  0%, 12%   { opacity: 1; }
+  15%, 27%  { opacity: 0; }
+  30%, 42%  { opacity: 1; }
+  45%, 57%  { opacity: 0; }
+  60%, 72%  { opacity: 1; }
+  75%, 87%  { opacity: 0; }
+  90%, 100% { opacity: 1; }
+}
+
 .register-welcome-remember {
   display: block;
   font-size: 1.45rem;
-  font-weight: 800;
-  color: #fff;
+  font-weight: 700;
+  color: var(--text);
   line-height: 1.5;
   margin: 0;
   padding: 1.25rem 1.5rem;
-  background: linear-gradient(135deg, rgba(0, 255, 136, 0.35) 0%, rgba(0, 204, 106, 0.3) 100%);
-  border: 3px solid var(--neon);
-  border-radius: 14px;
-  box-shadow: 0 0 32px rgba(0, 255, 136, 0.25), inset 0 0 24px rgba(0, 255, 136, 0.08);
+  background: linear-gradient(180deg, #222e28 0%, #1a2620 100%);
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  border-radius: 12px;
   letter-spacing: -0.02em;
   text-align: center;
+  animation: register-remember-blink 4s ease-in-out 1;
+  animation-fill-mode: forwards;
 }
 
 .register-welcome-remember strong {
   color: var(--neon);
-  font-weight: 900;
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+  font-weight: 800;
 }
 
 .register-welcome-title {
@@ -2394,23 +2445,24 @@ button.mobile-home-menu__btn {
   color: #fff;
 }
 
+/* 로그인 버튼: 회원가입 박스와 동일 — 내부 그라데이션만 */
 .register-welcome-btn {
   flex-shrink: 0;
   display: inline-block;
   margin-top: auto;
   padding: 0.7rem 2rem;
-  background: var(--neon);
-  color: var(--bg-dark);
+  background: linear-gradient(180deg, #222e28 0%, #1a2620 100%);
+  color: var(--neon);
   font-size: 0.95rem;
   font-weight: 600;
   border-radius: 8px;
   text-decoration: none;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s, color 0.2s, transform 0.1s;
 }
 
 .register-welcome-btn:hover {
-  background: var(--neon-dim);
-  color: var(--text);
+  color: var(--neon);
+  background: linear-gradient(180deg, #2a3c30 0%, #222e28 100%);
 }
 
 .register-welcome-btn:active {
@@ -2433,38 +2485,21 @@ button.mobile-home-menu__btn {
   z-index: 10;
 }
 .register-step--welcome .register-welcome-subtitle {
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 1.75rem 0;
 }
 .register-step--welcome .register-welcome-clap {
   font-size: 13.5rem;
-  margin: 1rem 0 1.25rem 0;
+  margin: 1.5rem 0 2.25rem 0;
   line-height: 1;
 }
 
-/* 잊지 마세요 박스: 상점 타이틀 박스와 동일한 반짝임 애니메이션 */
-@keyframes register-welcome-shine {
-  0%, 100% { transform: translateX(0); opacity: 0; }
-  50% { transform: translateX(200%); opacity: 1; }
-}
 .register-step--welcome .register-welcome-remember {
+  margin-top: 0.5rem;
   margin-bottom: 0;
   white-space: nowrap;
   font-size: min(1.45rem, 5.2vw);
   padding-left: 0.75rem;
   padding-right: 0.75rem;
-  position: relative;
-  overflow: hidden;
-}
-.register-step--welcome .register-welcome-remember::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.12), transparent);
-  animation: register-welcome-shine 4s ease-in-out infinite;
-  pointer-events: none;
 }
 @media (min-width: 360px) {
   .register-step--welcome .register-welcome-remember {
@@ -2606,50 +2641,20 @@ button.mobile-home-menu__btn {
   color: var(--neon-dim);
 }
 
-/* 로그인 본판: 회원가입 — 플로우 하단, 카드와 간격 유지 */
-.auth-page--login .login-float-register {
-  margin-top: auto;
-  flex: 0 0 auto;
-  display: inline-block;
-  padding: 0.65rem 1.5rem;
-  padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
-  background: rgba(0, 255, 136, 0.15);
-  color: var(--neon);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 255, 136, 0.4);
-  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.12);
-  animation: login-float-cloud 3s ease-in-out infinite;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-}
-.auth-page--login .login-float-register:hover {
-  background: rgba(0, 255, 136, 0.25);
-  border-color: rgba(0, 255, 136, 0.6);
-  color: var(--neon);
-}
-@keyframes login-float-cloud {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-/* 로그인 본판: 배열 = 네비 → (간격) → 로그인 창 → (간격) → 회원가입 */
+/* 로그인 본판: 네비 아래 간격 → 로그인 카드만, 여백 정리 */
 .auth-page--login {
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 2.5rem;
+  padding: 1.5rem 1.25rem 2rem;
   min-height: calc(100vh - 50px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
   box-sizing: border-box;
 }
 .auth-page--login .auth-card--login {
   flex: 0 0 auto;
   width: 100%;
   max-width: 420px;
-  margin-bottom: 2rem;
   animation: loginCardBorderGlow 2s ease-in-out 0.4s infinite;
 }
 @keyframes loginCardBorderGlow {

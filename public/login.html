@@ -22,9 +22,8 @@
       <a href="/" class="nav-logo">TornFi</a>
     </div>
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
-    <div class="nav-menu-wrap">
-      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    <div class="nav-right">
+      <a href="/register.html" class="nav-register">회원가입</a>
     </div>
   </nav>
 
@@ -51,7 +50,6 @@
         <button type="button" id="loginWithPasswordBtn" class="login-password-btn">로그인</button>
       </div>
     </div>
-    <a href="/register.html" class="login-float-register">회원가입</a>
   </div>
 
   <script src="js/rhythm.js"></script>
@@ -193,13 +191,6 @@
           if (nac) nac.style.display = 'none';
         }
       });
-      var navMenuBtn = document.getElementById('navMenuBtn');
-      var navMenuDropdown = document.getElementById('navMenuDropdown');
-      if (navMenuBtn && navMenuDropdown) {
-        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
-        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
-        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
-      }
     })();
   </script>
 </body>
