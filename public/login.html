@@ -97,7 +97,6 @@
             }
           },
           onComplete: function (timestamps) {
-            if (countEl) countEl.textContent = '확인 중…';
             drumArea.setAttribute('aria-disabled', 'true');
 
             var nickname = loginIdEl ? loginIdEl.value.trim() : '';

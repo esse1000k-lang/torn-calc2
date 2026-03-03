@@ -245,10 +245,6 @@ body::before {
   color: var(--neon);
   background: linear-gradient(180deg, #2a3c30 0%, #222e28 100%);
 }
-.nav-right .nav-menu-wrap {
-  margin-left: 0;
-  margin-right: 0;
-}
 
 /* 상단 우측 메뉴 (이모지만) */
 .nav-menu-wrap {
@@ -2329,43 +2325,6 @@ button.mobile-home-menu__btn {
   transform: scale(0.98);
 }
 
-/* 가입 완료 환영 화면 (탈퇴 완료 창과 동일 컨셉) */
-.register-welcome-layer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(180deg, rgba(10, 12, 14, 0.97) 0%, rgba(17, 17, 19, 0.98) 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 300;
-  padding: 1.5rem 1.5rem 2rem;
-  animation: withdrawnGoodbyeFadeIn 0.4s ease-out;
-}
-
-.register-welcome-card-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-
-.register-welcome-card {
-  background: var(--bg-card);
-  border: none;
-  border-radius: 16px;
-  padding: 3rem 2.5rem;
-  max-width: 440px;
-  width: 100%;
-  text-align: center;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-  animation: withdrawnGoodbyeCardIn 0.5s ease-out 0.1s both;
-}
-
 @keyframes register-welcome-clap-float {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-12px) scale(1.02); }
@@ -2395,6 +2354,7 @@ button.mobile-home-menu__btn {
   90%, 100% { opacity: 1; }
 }
 
+/* 반드시 한 줄로 표시 (앞으로 수정해도 한 줄 유지) */
 .register-welcome-remember {
   display: block;
   font-size: 1.45rem;
@@ -2411,38 +2371,13 @@ button.mobile-home-menu__btn {
   animation: register-remember-blink 4s ease-in-out 1;
   animation-fill-mode: forwards;
 }
+.register-welcome-remember--oneline {
+  white-space: nowrap;
+}
 
 .register-welcome-remember strong {
   color: var(--neon);
   font-weight: 800;
-}
-
-.register-welcome-title {
-  font-size: 1.35rem;
-  font-weight: 600;
-  color: var(--text);
-  margin: 0 0 0.75rem 0;
-  line-height: 1.4;
-  letter-spacing: -0.02em;
-}
-
-.register-welcome-desc {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  line-height: 1.65;
-  margin: 0 0 1.5rem 0;
-}
-
-.register-welcome-login {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--neon);
-  margin: 0 0 1.75rem 0;
-  letter-spacing: 0.02em;
-}
-
-.register-welcome-torn {
-  color: #fff;
 }
 
 /* 로그인 버튼: 회원가입 박스와 동일 — 내부 그라데이션만 */
@@ -2474,15 +2409,24 @@ button.mobile-home-menu__btn {
   text-align: center;
   padding-bottom: 8rem;
 }
-.register-step--welcome .register-step-welcome-footer {
+/* 4단계에서만 하단 로그인 버튼 표시 (track 밖에 두어 뷰포트 기준 fixed 동작) */
+.register-step-welcome-footer {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   padding: 0 1rem 2.75rem;
   padding-bottom: max(2.75rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
   text-align: center;
-  z-index: 10;
+  z-index: 20;
+  visibility: hidden;
+  pointer-events: none;
+}
+#registerSteps.register-steps--welcome .register-step-welcome-footer {
+  visibility: visible;
+  pointer-events: auto;
 }
 .register-step--welcome .register-welcome-subtitle {
   margin: 0 0 1.75rem 0;
@@ -2496,23 +2440,26 @@ button.mobile-home-menu__btn {
 .register-step--welcome .register-welcome-remember {
   margin-top: 0.5rem;
   margin-bottom: 0;
-  white-space: nowrap;
+  max-width: calc(100vw - 2rem);
+  width: 100%;
+  box-sizing: border-box;
   font-size: min(1.45rem, 5.2vw);
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+}
+.register-step--welcome .register-welcome-remember--oneline {
+  white-space: nowrap;
 }
 @media (min-width: 360px) {
   .register-step--welcome .register-welcome-remember {
     font-size: 1.35rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding: 0.75rem 1rem;
   }
 }
 @media (min-width: 380px) {
   .register-step--welcome .register-welcome-remember {
     font-size: 1.45rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
+    padding: 1rem 1.25rem;
   }
 }
 .register-step--welcome .register-welcome-btn {
@@ -2530,115 +2477,6 @@ button.mobile-home-menu__btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-/* 로그인 커스텀 모달 — 네비(50px) 아래부터만 덮어서 네비는 선명하게 */
-.login-modal-layer {
-  position: fixed;
-  top: 50px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 150;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.78);
-  -webkit-overflow-scrolling: touch;
-  animation: loginModalFadeIn 0.3s ease-out;
-}
-
-@keyframes loginModalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.login-modal-box {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 2rem));
-  max-width: 420px;
-  max-height: calc(100vh - 4rem);
-  box-sizing: border-box;
-  padding: 2.25rem;
-  overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid rgba(0, 255, 136, 0.2);
-  border-radius: 16px;
-  box-shadow: 0 0 24px rgba(0, 255, 136, 0.04), 0 12px 40px rgba(0, 0, 0, 0.45);
-  animation: loginModalBoxIn 0.35s ease-out, loginModalBorderGlow 2s ease-in-out 0.4s infinite;
-}
-@keyframes loginModalBorderGlow {
-  0%, 100% {
-    border-color: rgba(0, 255, 136, 0.2);
-    box-shadow: 0 0 24px rgba(0, 255, 136, 0.04), 0 12px 40px rgba(0, 0, 0, 0.45);
-  }
-  50% {
-    border-color: rgba(0, 255, 136, 0.6);
-    box-shadow: 0 0 28px rgba(0, 255, 136, 0.2), 0 0 48px rgba(0, 255, 136, 0.08), 0 12px 40px rgba(0, 0, 0, 0.45);
-  }
-}
-
-@keyframes loginModalBoxIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) translateY(-12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) translateY(0) scale(1);
-  }
-}
-
-.login-modal-back {
-  position: absolute;
-  top: 2.25rem;
-  right: 2.25rem;
-  width: 2.25rem;
-  height: 2.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  line-height: 1;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-radius: 8px;
-  transition: color 0.2s, background 0.2s;
-}
-.login-modal-back:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.login-modal-box .back-link {
-  margin-bottom: 1.5rem;
-  display: inline-block;
-}
-
-.login-modal-box .auth-card--login {
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  margin: 0;
-}
-
-.login-modal-box .auth-brand {
-  margin-top: 2rem;
-  margin-bottom: 0;
-  text-align: center;
-}
-.login-modal-box .auth-brand a {
-  display: inline-block;
-  color: var(--neon);
-  text-decoration: none;
-}
-.login-modal-box .auth-brand a:hover {
-  color: var(--neon-dim);
 }
 
 /* 로그인 본판: 네비 아래 간격 → 로그인 카드만, 여백 정리 */
@@ -2678,12 +2516,15 @@ button.mobile-home-menu__btn {
   max-width: 100%;
   margin: 0;
   padding: 0.5rem 1rem 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
   min-height: calc(100vh - 50px);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .auth-card {
@@ -2711,11 +2552,13 @@ button.mobile-home-menu__btn {
   background: transparent;
   width: 100%;
   max-width: 480px;
+  min-width: 0;
   margin: 0 auto;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-x: hidden;
 }
 
 .auth-card-head {
@@ -3367,7 +3210,7 @@ button.mobile-home-menu__btn {
   left: 50%;
   transform: translate(-50%, -50%);
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 5.25rem;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.35);
   pointer-events: none;
@@ -3435,12 +3278,29 @@ button.mobile-home-menu__btn {
   max-width: 320px;
 }
 
+.auth-page--steps .register-step .auth-error.auth-error--retry-hint {
+  color: var(--neon);
+}
+
 .auth-page--steps .register-steps {
   flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
   width: 100%;
+  overflow: hidden;
+}
+
+.register-steps-track {
+  display: flex;
+  width: 500%;
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.register-steps-track .register-step {
+  flex: 0 0 20%;
+  width: 20%;
+  min-width: 20%;
+  box-sizing: border-box;
 }
 
 .register-step {
@@ -3448,16 +3308,79 @@ button.mobile-home-menu__btn {
   flex-direction: column;
   flex: 0 0 auto;
   padding: 0.5rem 1rem 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
   min-height: 0;
   justify-content: flex-start;
   align-items: center;
   gap: 0.75rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   text-align: center;
+  overflow-x: hidden;
 }
 
 .register-step--hidden {
   display: none !important;
+}
+
+/* 2→3 사이 설명 페이지 (박자 틀렸을 때만 노출) */
+.register-step--retry {
+  justify-content: center;
+}
+.register-step-retry-body {
+  text-align: center;
+  max-width: 100%;
+  padding: 0.5rem 0;
+}
+/* 잘했어요 페이지 이모지(👏)와 같은 크기 */
+.register-step-retry-emoji {
+  font-size: 12rem;
+  line-height: 1;
+  margin: 0 0 2rem 0;
+}
+.register-step--retry .register-step-retry-emoji {
+  font-size: 13.5rem;
+  margin: 1.5rem 0 2.25rem 0;
+}
+.register-step-retry-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--neon);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.35;
+}
+.register-step-retry-desc {
+  font-size: 0.9375rem;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+}
+.register-step-retry-tips {
+  text-align: left;
+  list-style: none;
+  padding: 0 1rem;
+  margin: 0 0 1.25rem 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.register-step-retry-tips li {
+  position: relative;
+  padding-left: 1rem;
+  margin-bottom: 0.4rem;
+}
+.register-step-retry-tips li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--neon);
+  font-weight: 700;
+}
+.register-step-retry-body .register-step-btn {
+  margin-top: 0.25rem;
 }
 
 .register-step-label {
@@ -3480,7 +3403,9 @@ button.mobile-home-menu__btn {
   color: var(--text);
   line-height: 1.35;
   margin: 0;
-  max-width: 320px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
 .register-step-rhythm-words {
@@ -3489,6 +3414,10 @@ button.mobile-home-menu__btn {
   align-items: center;
   gap: 0.35rem;
   margin: 0 0 0.5rem 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 /* 북 치는 듯한 비트: 짧게 눌렀다가 살짝 튀었다가 복귀 */
@@ -3509,6 +3438,10 @@ button.mobile-home-menu__btn {
   text-shadow: 0 0 24px rgba(0, 255, 136, 0.35);
   animation: rhythm-word-beat 1.4s ease-out infinite;
   display: inline-block;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+  text-align: center;
 }
 
 /* 세 줄이 차례로 쿵-쿵-쿵 느낌으로 비트 */
@@ -3516,11 +3449,18 @@ button.mobile-home-menu__btn {
 .register-step-rhythm-words .rhythm-word:nth-child(2) { animation-delay: 0.28s; }
 .register-step-rhythm-words .rhythm-word:nth-child(3) { animation-delay: 0.56s; }
 
+@media (max-width: 380px) {
+  .register-step-rhythm-words .rhythm-word {
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+  }
+}
+
 .register-step-desc {
   font-size: 0.875rem;
   color: var(--text-muted);
   margin: 0;
-  max-width: 320px;
+  max-width: 100%;
 }
 
 .register-step-desc--below-drum {
@@ -3536,6 +3476,9 @@ button.mobile-home-menu__btn {
   justify-content: flex-start;
   align-items: stretch;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .register-step-inner input {
@@ -3557,8 +3500,11 @@ button.mobile-home-menu__btn {
 }
 
 .register-step-btn {
-  margin-top: 0.5rem;
+  margin-top: 0;
+  min-width: 0;
+  flex: 1 1 auto;
   width: 100%;
+  max-width: 100%;
   padding: 0.75rem 1rem;
   border-radius: 10px;
   font-size: 0.9375rem;
@@ -3567,6 +3513,7 @@ button.mobile-home-menu__btn {
   cursor: pointer;
   background: var(--neon);
   color: var(--bg-dark);
+  box-sizing: border-box;
 }
 
 .register-step-btn:hover:not(:disabled) {
@@ -3589,17 +3536,41 @@ button.mobile-home-menu__btn {
   border-color: var(--text-muted);
 }
 
+/* 2·3단계: 북 위 영역 동일 높이 → 전환해도 북 위치 고정 (좁은 화면에선 리듬 3줄이 잘리지 않도록 min-height만) */
+.register-step--drum .register-step-head {
+  flex: 0 0 auto;
+  min-height: 11.5rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
 .register-step .rhythm-drum-wrap {
   flex: 0 0 auto;
   justify-content: center;
   align-items: center;
   margin: 0.25rem 0;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .register-step-actions {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
 }
 
 /* 한 화면에 담기: 짧은 뷰포트에서 북 크기만 약간 축소 */
@@ -3610,65 +3581,16 @@ button.mobile-home-menu__btn {
   }
 }
 
-.auth-card--register .auth-link.auth-link--register {
-  margin-top: auto;
-  padding-top: 1.25rem;
-  padding-bottom: 2rem;
-  flex-shrink: 0;
-  font-size: 0.875rem;
-  text-align: center;
-}
-
-/* 성공: 잘하셨어요 */
-.register-success-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 10, 11, 0.9);
-  padding: 1.5rem;
-}
-
-.register-success-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(0, 255, 136, 0.3);
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
-  text-align: center;
-  max-width: 320px;
-  width: 100%;
-  box-shadow: 0 0 40px rgba(0, 255, 136, 0.1);
-}
-
-.register-success-emoji {
-  font-size: 3rem;
-  margin-bottom: 0.75rem;
-  line-height: 1;
-}
-
-.register-success-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--neon);
-  margin-bottom: 0.5rem;
-}
-
-.register-success-desc {
-  font-size: 1rem;
-  color: var(--text);
-  line-height: 1.5;
-  margin-bottom: 1rem;
-}
-
-.register-success-desc strong {
-  color: var(--neon);
-}
-
-.register-success-note {
-  font-size: 0.875rem;
-  color: var(--text-muted);
+/* 좁은 화면(아이폰 등): 가로 넘침 방지, 북·버튼 구분 유지 */
+@media (max-width: 380px) {
+  .auth-page--register .register-step {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .auth-page--register .register-step .rhythm-drum-wrap {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
 }
 
 /* 실시간 채팅 — 텔레그램 대화방 스타일, 사이트 컨셉(다크·네온) */
