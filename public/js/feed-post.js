@@ -138,6 +138,7 @@
       if (myId) {
         feedFloatingBar.style.display = 'block';
         feedFloatingBar.classList.add('is-visible');
+        if (window._feedPostFloatingBarViewport) window._feedPostFloatingBarViewport.attach();
         var feedComposeAvatarImg = document.getElementById('feedComposeAvatarImg');
         var feedComposeAvatar = document.getElementById('feedComposeAvatar');
         var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
@@ -154,6 +155,7 @@
       } else {
         feedFloatingBar.style.display = 'none';
         feedFloatingBar.classList.remove('is-visible');
+        if (window._feedPostFloatingBarViewport) window._feedPostFloatingBarViewport.detach();
       }
     }
   }
@@ -521,24 +523,78 @@
     var feedComposeText = document.getElementById('feedComposeText');
     var feedComposeCollapse = document.getElementById('feedComposeCollapse');
     var feedComposeSubmit = document.getElementById('feedComposeSubmit');
+    var initialViewportHeight = window.innerHeight;
+    var viewportListenerAttached = false;
+    function updateBarPositionForViewport() {
+      if (!feedFloatingBar) return;
+      var vv = window.visualViewport;
+      if (!vv) return;
+      var keyboardThreshold = 150;
+      var keyboardLikelyOpen = vv.height < initialViewportHeight - keyboardThreshold;
+      if (keyboardLikelyOpen) feedFloatingBar.classList.add('feed-floating-bar--keyboard-open');
+      else feedFloatingBar.classList.remove('feed-floating-bar--keyboard-open');
+      if (!feedFloatingBar.classList.contains('is-expanded')) return;
+      if (keyboardLikelyOpen) {
+        var barH = feedFloatingBar.offsetHeight;
+        var maxBarH = Math.max(80, vv.height - 24);
+        var top = vv.offsetTop + vv.height - Math.min(barH, maxBarH);
+        top = Math.max(0, top);
+        feedFloatingBar.style.top = top + 'px';
+        feedFloatingBar.style.left = vv.offsetLeft + 'px';
+        feedFloatingBar.style.width = vv.width + 'px';
+        feedFloatingBar.style.maxHeight = maxBarH + 'px';
+        feedFloatingBar.style.bottom = 'auto';
+        feedFloatingBar.classList.add('feed-floating-bar--viewport-fixed');
+      } else {
+        feedFloatingBar.style.top = '';
+        feedFloatingBar.style.left = '';
+        feedFloatingBar.style.width = '';
+        feedFloatingBar.style.maxHeight = '';
+        feedFloatingBar.style.bottom = '';
+        feedFloatingBar.classList.remove('feed-floating-bar--viewport-fixed');
+      }
+    }
+    function attachViewportListener() {
+      initialViewportHeight = window.innerHeight;
+      if (viewportListenerAttached || !window.visualViewport) return;
+      viewportListenerAttached = true;
+      window.visualViewport.addEventListener('resize', updateBarPositionForViewport);
+      window.visualViewport.addEventListener('scroll', updateBarPositionForViewport);
+    }
+    function detachViewportListener() {
+      if (!viewportListenerAttached || !window.visualViewport) return;
+      viewportListenerAttached = false;
+      window.visualViewport.removeEventListener('resize', updateBarPositionForViewport);
+      window.visualViewport.removeEventListener('scroll', updateBarPositionForViewport);
+    }
     function expandFloatingCompose() {
       if (feedFloatingBar) feedFloatingBar.classList.add('is-expanded');
       if (feedComposeText) {
         feedComposeText.style.display = 'block';
         feedComposeText.focus();
+        initialViewportHeight = window.innerHeight;
+        attachViewportListener();
         setTimeout(function () {
-          feedComposeText.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 200);
+          updateBarPositionForViewport();
+        }, 100);
       }
       if (feedComposePlaceholder) feedComposePlaceholder.style.display = 'none';
       if (feedComposeCollapse) feedComposeCollapse.style.display = '';
     }
     function collapseFloatingCompose() {
-      if (feedFloatingBar) feedFloatingBar.classList.remove('is-expanded');
+      if (feedFloatingBar) {
+        feedFloatingBar.classList.remove('is-expanded', 'feed-floating-bar--viewport-fixed');
+        feedFloatingBar.style.top = '';
+        feedFloatingBar.style.left = '';
+        feedFloatingBar.style.width = '';
+        feedFloatingBar.style.maxHeight = '';
+        feedFloatingBar.style.bottom = '';
+      }
       if (feedComposeText) feedComposeText.style.display = 'none';
       if (feedComposePlaceholder) feedComposePlaceholder.style.display = '';
       if (feedComposeCollapse) feedComposeCollapse.style.display = 'none';
     }
+    window._feedPostFloatingBarViewport = { attach: attachViewportListener, detach: detachViewportListener, update: updateBarPositionForViewport };
     if (feedFloatingBarTrigger) feedFloatingBarTrigger.addEventListener('click', function (e) { e.stopPropagation(); expandFloatingCompose(); });
     if (feedComposePlaceholder) feedComposePlaceholder.addEventListener('click', expandFloatingCompose);
     if (feedComposeCollapse) feedComposeCollapse.addEventListener('click', collapseFloatingCompose);

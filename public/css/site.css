@@ -1712,7 +1712,7 @@ button.mobile-home-menu__btn {
   text-decoration: underline;
 }
 
-/* ========== 플로팅 글쓰기 바 (접힌 상태) — 멋진 UI ========== */
+/* ========== 플로팅 글쓰기 바 — 탭 시 위로 확장 (슬라이드업) ========== */
 .feed-floating-bar {
   position: fixed;
   bottom: 0;
@@ -1721,7 +1721,8 @@ button.mobile-home-menu__btn {
   z-index: 50;
   padding: 0.75rem max(1rem, env(safe-area-inset-left)) max(0.875rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
   transform: translateY(100%);
-  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  max-height: 200px;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), max-height 0.45s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
 }
 .feed-floating-bar::before {
@@ -1734,12 +1735,30 @@ button.mobile-home-menu__btn {
   border-bottom: none;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+  transition: border-radius 0.45s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .feed-floating-bar.is-visible {
   transform: translateY(0);
 }
 .feed-floating-bar.is-visible::before {
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 255, 136, 0.06);
+}
+.feed-floating-bar.is-expanded .feed-floating-bar__invite,
+.feed-floating-bar.is-expanded .feed-floating-bar__trigger {
+  display: none;
+}
+.feed-floating-bar__expand {
+  overflow: hidden;
+  overflow-x: hidden;
+  max-height: 0;
+  transition: max-height 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+  border: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.feed-floating-bar.is-expanded .feed-floating-bar__expand {
+  max-height: calc(100vh - 4rem);
 }
 .feed-floating-bar__invite {
   position: relative;
@@ -1786,35 +1805,33 @@ button.mobile-home-menu__btn {
   flex: 1;
   letter-spacing: -0.01em;
 }
-.feed-floating-bar.is-expanded .feed-floating-bar__invite,
-.feed-floating-bar.is-expanded .feed-floating-bar__trigger {
-  display: none;
+/* 키보드가 올라온 동안에는 접힌 플로팅 바(트리거)만 숨김 — 펼친 입력창은 유지 */
+.feed-floating-bar.feed-floating-bar--keyboard-open:not(.is-expanded) {
+  visibility: hidden;
+  pointer-events: none;
 }
-.feed-floating-bar.is-expanded {
-  padding-left: max(0.5rem, env(safe-area-inset-left));
-  padding-right: max(0.5rem, env(safe-area-inset-right));
-}
-.feed-floating-bar__expand {
-  overflow: hidden;
-  overflow-x: hidden;
-  max-height: 0;
-  transition: max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-  border: none;
-}
-.feed-floating-bar.is-expanded .feed-floating-bar__expand {
-  max-height: 300px;
+/* 피드 상세: 키보드 올라올 때 입력창만 시각 뷰포트 하단에 고정, 본문은 안 밀리게 */
+.feed-floating-bar.feed-floating-bar--viewport-fixed {
+  transition: none;
+  transform: none;
+  right: auto;
+  bottom: auto;
+  max-height: 85vh;
 }
 
-/* ========== 펼쳐진 작성창 — [입력창] | [+][전송], 위 줄 제거·높이·간격 맞춤 ========== */
+/* ========== 펼쳐진 작성창 — [입력창] | [+][전송], 고급스러운 톤 유지 ========== */
 .feed-floating-bar__expand .feed-compose {
-  margin: 0.5rem 0 0 0;
+  margin: 0.65rem 0 0 0;
   padding: 0;
   border: none !important;
   border-top: none !important;
   box-shadow: none !important;
   background: transparent;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  overflow: hidden;
 }
 .feed-floating-bar__expand .feed-compose::before {
   display: none !important;
@@ -1823,12 +1840,20 @@ button.mobile-home-menu__btn {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 0.55rem;
+  gap: 0.6rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   border: none;
   border-top: none;
   padding: 0;
+  position: relative;
+  background: rgba(22, 25, 32, 0.75);
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 20px rgba(0, 0, 0, 0.25);
+  padding: 0.5rem;
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__row {
   flex: 1 1 0%;
@@ -1847,9 +1872,6 @@ button.mobile-home-menu__btn {
 .feed-floating-bar__expand .feed-compose .feed-compose__collapse,
 .feed-floating-bar__expand .feed-compose .feed-compose__send-btn {
   display: none !important;
-}
-.feed-floating-bar__expand .feed-compose .feed-compose__inner {
-  position: relative;
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__center {
   flex: 1;
@@ -1892,11 +1914,12 @@ button.mobile-home-menu__btn {
   position: relative;
   width: 56px;
   height: 56px;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
+  background: rgba(10, 10, 11, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__preview .feed-compose__preview-item img {
   width: 100%;
@@ -1906,14 +1929,15 @@ button.mobile-home-menu__btn {
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__preview .feed-compose__remove-img {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 3px;
+  right: 3px;
   width: 22px;
   height: 22px;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(120, 120, 120, 0.95);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
   color: #fff;
   font-size: 0.85rem;
   line-height: 1;
@@ -1921,10 +1945,11 @@ button.mobile-home-menu__btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s ease;
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__preview .feed-compose__remove-img:hover {
-  background: rgba(80, 80, 80, 0.95);
+  background: rgba(0, 0, 0, 0.85);
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__input {
   display: block;
@@ -1933,25 +1958,28 @@ button.mobile-home-menu__btn {
   height: 100%;
   min-height: 0;
   max-height: none;
-  padding: 0.75rem 0.9rem;
+  padding: 0.85rem 1rem;
   margin: 0;
   font-size: 1rem;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
   color: var(--text);
-  background: var(--bg-dark);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: rgba(10, 10, 11, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
   resize: none;
   outline: none;
-  box-shadow: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   box-sizing: border-box;
-  transition: border-color 0.2s;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__input:focus {
-  border-color: var(--neon);
+  border-color: rgba(0, 255, 136, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(0, 255, 136, 0.08);
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__input::placeholder {
   color: var(--text-muted);
+  opacity: 0.9;
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__actions {
   display: flex;
@@ -1969,15 +1997,21 @@ button.mobile-home-menu__btn {
   height: 48px;
   padding: 0;
   font-size: 1.25rem;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: #fff;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.85);
   filter: none;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.feed-floating-bar__expand .feed-compose .feed-compose__actions-left .feed-compose__action-btn:hover {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border-color: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.06);
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__submit {
   width: 48px;
@@ -1985,21 +2019,29 @@ button.mobile-home-menu__btn {
   min-width: 48px;
   padding: 0;
   font-size: 1.25rem;
-  border-radius: 12px;
-  background: linear-gradient(145deg, var(--neon) 0%, var(--neon-dim) 50%, #00a350 100%);
-  color: #fff;
+  border-radius: 14px;
+  background: linear-gradient(165deg, rgba(0, 255, 136, 0.95) 0%, var(--neon-dim) 45%, #009955 100%);
+  color: #0a0a0b;
+  font-weight: 600;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0, 255, 136, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__submit:hover:not(:disabled) {
-  opacity: 1;
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+.feed-floating-bar__expand .feed-compose .feed-compose__submit:active:not(:disabled) {
+  transform: translateY(0);
 }
 .feed-floating-bar__expand .feed-compose .feed-compose__submit:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* 피드 작성란 — 색으로 구분 (광고 네온과 다른 톤: 보라/인디고) */
