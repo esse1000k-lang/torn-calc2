@@ -346,6 +346,8 @@
         function useChatItemAndCooldown(apiPath, wrap, trig) {
           if (trig) trig.textContent = '❤️';
           if (wrap) wrap.dataset.selected = '';
+          var menu = wrap && wrap.querySelector('.chat-item-menu');
+          if (menu) menu.style.display = 'none';
           fetch(apiPath, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -568,6 +570,10 @@
               if (trig) trig.textContent = '❤️';
               updateChatItemMenu(lastMyShopItems);
             }
+          });
+          chatItemSelectWrap.addEventListener('mouseenter', function () {
+            var m = chatItemSelectWrap.querySelector('.chat-item-menu');
+            if (m) m.style.display = '';
           });
           var chatItemTrigger = document.getElementById('chatItemTrigger');
           var chatShopConfirmLayer = document.getElementById('chatShopConfirmLayer');

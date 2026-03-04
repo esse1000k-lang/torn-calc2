@@ -161,10 +161,10 @@
 
     <!-- 홈 전용: 나만 못 본 글이 위로 지나가면 나타나는 새 플로팅 바 → 탭 시 위로 확장 -->
     <div id="feedFloatingBar" class="feed-floating-bar" aria-label="글쓰기" style="display:none;">
-      <p class="feed-floating-bar__invite" id="feedFloatingBarInvite">투자 본질에 집중할 시간입니다.</p>
+      <p class="feed-floating-bar__invite" id="feedFloatingBarInvite">본질에 집중할 시간입니다.</p>
       <button type="button" class="feed-floating-bar__trigger" id="feedFloatingBarTrigger">
         <span class="feed-floating-bar__trigger-icon" aria-hidden="true">✏️</span>
-        <span class="feed-floating-bar__trigger-label">당신의 시선을 끈 인사이트는?</span>
+        <span class="feed-floating-bar__trigger-label">공유하고 싶은 정보가 있나요?</span>
       </button>
       <div class="feed-floating-bar__expand" id="feedFloatingBarExpand"></div>
     </div>
@@ -1121,6 +1121,8 @@
             if (bar.contains(e.target)) return;
             if (bar.classList.contains('feed-floating-bar--file-picker-open')) return;
             if (typeof window._feedPreviewRemoveTime === 'number' && (Date.now() - window._feedPreviewRemoveTime) < 500) return;
+            /* 사진 첨부 직후 OS가 보내는 클릭으로 바가 접히는 것 방지(입력창 탭 시 키보드 올라가도록) */
+            if (typeof window._feedFilePickerJustClosed === 'number' && (Date.now() - window._feedFilePickerJustClosed) < 500) return;
             bar.classList.remove('is-expanded');
             var text = document.getElementById('feedComposeText');
             var ph = document.getElementById('feedComposePlaceholder');
@@ -1157,7 +1159,7 @@
             feedComposeSubmit.disabled = !feedComposeText.value.trim();
           });
         }
-        /* 이미지 첨부: <label for>로 파일 피커만 안정적으로 오픈. 피커 열리면 키보드는 내려가고, 선택 후 입력창 다시 포커스 + 밖 클릭으로 접히는 것 방지 */
+        /* 이미지 첨부: 파일 피커 열리는 동안 밖 클릭으로 플로팅이 접히지 않도록 file-picker-open 유지 */
         if (feedComposeImage && feedFloatingBar) {
           feedComposeImage.addEventListener('focus', function () {
             feedFloatingBar.classList.add('feed-floating-bar--file-picker-open');
@@ -1167,6 +1169,7 @@
           });
           feedComposeImage.addEventListener('change', function () {
             feedFloatingBar.classList.remove('feed-floating-bar--file-picker-open');
+            window._feedFilePickerJustClosed = Date.now();
             var newFiles = Array.from(feedComposeImage.files || []);
             composeFiles = composeFiles.concat(newFiles).slice(0, 5);
             feedComposeImage.value = '';
@@ -1221,42 +1224,13 @@
               });
           });
         }
-        /* 모바일: 키보드 나올 때 플로팅 바를 키보드 바로 위에 붙이기 (시각 뷰포트 하단 기준으로 보정) */
-        if (feedCompose && feedComposeText && feedFloatingBar && window.matchMedia('(max-width: 768px)').matches) {
-          var vv = window.visualViewport;
-          function setBarAboveKeyboard() {
-            if (!feedFloatingBar || !feedFloatingBar.contains(feedCompose)) return;
-            if (!vv) return;
-            var innerH = window.innerHeight;
-            var vh = vv.height;
-            var offsetTop = (vv.offsetTop != null) ? vv.offsetTop : 0;
-            if (vh < innerH * 0.85) {
-              feedCompose.classList.add('feed-compose--keyboard-open');
-              /* 시각 뷰포트 하단에 맞춤: layout 뷰포트가 줄어든 경우 bottom=0, 아니면 innerH - (offsetTop + vh) */
-              feedFloatingBar.style.bottom = (innerH - (offsetTop + vh)) + 'px';
-            } else {
-              feedCompose.classList.remove('feed-compose--keyboard-open');
-              feedFloatingBar.style.bottom = '';
-            }
-          }
-          if (vv) {
-            vv.addEventListener('resize', setBarAboveKeyboard);
-            vv.addEventListener('scroll', setBarAboveKeyboard);
-          }
-          feedComposeText.addEventListener('focus', function () {
-            setBarAboveKeyboard();
-            setTimeout(setBarAboveKeyboard, 100);
-            setTimeout(setBarAboveKeyboard, 350);
-            setTimeout(setBarAboveKeyboard, 700);
-          });
+        /* 미리보기 이미지 제거 버튼 탭 시 blur로 플로팅이 접히지 않도록 입력창 다시 포커스 */
+        if (feedComposeText && feedFloatingBar) {
           feedComposeText.addEventListener('blur', function () {
             if (window._feedPreviewRemoveTouched) {
               window._feedPreviewRemoveTouched = false;
               setTimeout(function () { feedComposeText.focus(); }, 0);
-              return;
             }
-            feedCompose.classList.remove('feed-compose--keyboard-open');
-            if (feedFloatingBar) feedFloatingBar.style.bottom = '';
           });
         }
       })();

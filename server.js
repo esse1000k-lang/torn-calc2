@@ -2176,7 +2176,7 @@ app.post('/api/attendance', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 출석할 수 있습니다.' });
   const today = getTodayKST();
   const yesterday = getYesterdayKST();
-  const users = await db.readUsers();
+  let users = await db.readUsers();
   const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
   if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
   const u = users[idx];
