@@ -113,6 +113,7 @@
     footer += '</div>';
     var commentsHtml = '<span class="feed-card__comments"><span class="icon-comment" aria-hidden="true"></span> ' + commentCount + '</span>';
     var commentsListBlock = '<ul class="feed-card__comments-list">' + commentsListHtml + '</ul>';
+    var commentsSection = commentCount > 0 ? '<div class="feed-card__comments">' + commentsListBlock + '</div>' : '';
     currentPost = p;
     var cardInner = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
       '<div class="feed-card__link">' +
@@ -130,7 +131,7 @@
             (imagesHtml ? imagesHtml : '') +
             '<div class="feed-card__actions">' + footer + commentsHtml + '</div>' +
           '</div></div></div>' +
-      '<div class="feed-card__comments">' + commentsListBlock + '</div></article>';
+      commentsSection + '</article>';
     root.innerHTML = cardInner;
     var feedFloatingBar = document.getElementById('feedFloatingBar');
     if (feedFloatingBar) {
@@ -279,7 +280,14 @@
           .then(function (r) { return r.json(); })
           .then(function (data) {
             if (data.ok) {
-              if (li && li.parentNode) li.parentNode.removeChild(li);
+              if (li && li.parentNode) {
+                li.parentNode.removeChild(li);
+                var list = root.querySelector('.feed-card__comments-list');
+                if (list && list.children.length === 0) {
+                  var commentsWrap = list.closest('.feed-card__comments');
+                  if (commentsWrap && commentsWrap.parentNode) commentsWrap.parentNode.removeChild(commentsWrap);
+                }
+              }
               var countEl = root.querySelector('.feed-card__actions .feed-card__comments');
               if (countEl) countEl.innerHTML = '<span class="icon-comment" aria-hidden="true"></span> ' + root.querySelectorAll('.feed-comment').length;
               pendingCommentDelete = null;
@@ -515,7 +523,13 @@
     var feedComposeSubmit = document.getElementById('feedComposeSubmit');
     function expandFloatingCompose() {
       if (feedFloatingBar) feedFloatingBar.classList.add('is-expanded');
-      if (feedComposeText) { feedComposeText.style.display = 'block'; feedComposeText.focus(); }
+      if (feedComposeText) {
+        feedComposeText.style.display = 'block';
+        feedComposeText.focus();
+        setTimeout(function () {
+          feedComposeText.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+      }
       if (feedComposePlaceholder) feedComposePlaceholder.style.display = 'none';
       if (feedComposeCollapse) feedComposeCollapse.style.display = '';
     }
@@ -600,6 +614,17 @@
             var chip = document.querySelector('.feed-post-reply-chip');
             if (chip) chip.style.display = 'none';
             var list = root.querySelector('.feed-card__comments-list');
+            if (!list) {
+              var card = root.querySelector('.feed-card');
+              if (card) {
+                var wrap = document.createElement('div');
+                wrap.className = 'feed-card__comments';
+                list = document.createElement('ul');
+                list.className = 'feed-card__comments-list';
+                wrap.appendChild(list);
+                card.appendChild(wrap);
+              }
+            }
             if (list) {
               var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
               var myId = me ? me.id : null;
