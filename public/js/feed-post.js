@@ -183,10 +183,8 @@
     function openHeartModal(pid, authorName, commentId) {
       pendingPostId = pid;
       pendingCommentId = commentId || null;
-      if (feedSendHeartMessage) feedSendHeartMessage.textContent = (authorName || '이 사용자') + '님에게 하트 1개를 보내시겠습니까?';
-      fetch('/api/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (data) {
-        if (feedSendHeartMyHearts) feedSendHeartMyHearts.textContent = '보유 하트: ' + (data.ok && data.user && typeof data.user.points === 'number' ? data.user.points : 0) + '개';
-      });
+      if (feedSendHeartMessage) feedSendHeartMessage.textContent = (authorName || '이 글') + '에 좋아요를 누르시겠습니까?';
+      if (feedSendHeartMyHearts) feedSendHeartMyHearts.textContent = '';
       if (feedSendHeartLayer) feedSendHeartLayer.style.display = 'flex';
     }
     function closeHeartModal() {

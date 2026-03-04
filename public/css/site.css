@@ -5559,16 +5559,17 @@ button.mobile-home-menu__btn {
   right: 0;
   left: auto;
   margin-bottom: 2px;
-  min-width: 5rem;
+  min-width: 3rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 60;
   overflow: hidden;
+  flex-direction: column;
 }
 .chat-item-dropdown:hover .chat-item-menu {
-  display: block;
+  display: flex;
 }
 .chat-item-option {
   display: block;
@@ -5597,6 +5598,7 @@ button.mobile-home-menu__btn {
   padding: 0.35rem 0.5rem;
   border-bottom: 1px solid var(--border);
   align-items: center;
+  justify-content: center;
 }
 .chat-item-row:last-child {
   border-bottom: none;
@@ -5618,7 +5620,11 @@ button.mobile-home-menu__btn {
   flex-direction: row;
   justify-content: flex-end;
 }
-.chat-item-row--left .chat-item-option--icon:hover:not(:disabled) {
+.chat-item-row--vertical {
+  justify-content: center;
+}
+.chat-item-row--left .chat-item-option--icon:hover:not(:disabled),
+.chat-item-row--vertical .chat-item-option--icon:hover:not(:disabled) {
   background: rgba(0, 255, 136, 0.15);
 }
 

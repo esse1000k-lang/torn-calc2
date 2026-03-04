@@ -184,23 +184,8 @@
   <div class="ranking-page">
     <div class="ranking-hero">
       <h1>🏆 랭킹</h1>
-      <p>하트·스테이킹 순위를 한눈에 확인해 보세요.</p>
+      <p>스테이킹 순위를 한눈에 확인해 보세요.</p>
     </div>
-
-    <section class="ranking-section" aria-labelledby="hearts-title">
-      <h2 id="hearts-title" class="ranking-section-title"><span class="icon">❤️</span> 하트 랭킹</h2>
-      <p class="ranking-section-desc">압도적 하트 수, 진심 어린 소통의 훈장입니다.</p>
-      <div id="heartsLoading" class="ranking-loading">불러오는 중…</div>
-      <div id="heartsError" class="ranking-error" style="display:none;"></div>
-      <div id="heartsPodium" class="ranking-podium" style="display:none;"></div>
-      <div id="heartsListWrap" class="ranking-list-wrap" style="display:none;">
-        <table id="heartsTable" class="ranking-table">
-          <thead><tr><th class="col-rank">순위</th><th>닉네임</th><th class="col-value">하트</th></tr></thead>
-          <tbody id="heartsBody"></tbody>
-        </table>
-      </div>
-      <p id="heartsEmpty" class="ranking-empty" style="display:none;">랭킹 데이터가 없습니다.</p>
-    </section>
 
     <section class="ranking-section" aria-labelledby="staking-title">
       <h2 id="staking-title" class="ranking-section-title"><span class="icon">🌪️</span> 스테이킹 랭킹</h2>
@@ -265,29 +250,6 @@
         }).join('');
       }
 
-      function renderHearts(list) {
-        var loading = document.getElementById('heartsLoading');
-        var err = document.getElementById('heartsError');
-        var podium = document.getElementById('heartsPodium');
-        var listWrap = document.getElementById('heartsListWrap');
-        var body = document.getElementById('heartsBody');
-        var empty = document.getElementById('heartsEmpty');
-        loading.style.display = 'none';
-        err.style.display = 'none';
-        if (!list || list.length === 0) {
-          podium.style.display = 'none';
-          listWrap.style.display = 'none';
-          empty.style.display = 'block';
-          return;
-        }
-        empty.style.display = 'none';
-        var valueFmt = function (v) { return Number(v).toLocaleString(); };
-        podium.innerHTML = buildPodiumCards(list, 'hearts', valueFmt, '하트');
-        podium.style.display = 'flex';
-        body.innerHTML = buildTableRows(list, 'hearts', valueFmt);
-        listWrap.style.display = list.length >= RANK_LIST_START ? 'block' : 'none';
-      }
-
       function renderStaking(list) {
         var loading = document.getElementById('stakingLoading');
         var err = document.getElementById('stakingError');
@@ -310,18 +272,6 @@
         body.innerHTML = buildTableRows(list, 'staked', valueFmt);
         listWrap.style.display = list.length >= RANK_LIST_START ? 'block' : 'none';
       }
-
-      fetch('/api/ranking/hearts', { credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data.ok && data.list) renderHearts(data.list);
-          else renderHearts([]);
-        })
-        .catch(function () {
-          document.getElementById('heartsLoading').style.display = 'none';
-          document.getElementById('heartsError').style.display = 'block';
-          document.getElementById('heartsError').textContent = '하트 랭킹을 불러오지 못했습니다.';
-        });
 
       fetch('/api/ranking/staking', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })

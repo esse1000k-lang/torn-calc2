@@ -155,7 +155,6 @@
       <p id="infoBio" class="profile-bio-text empty">자기소개가 없습니다.</p>
 
       <div class="profile-meta">
-        <div class="profile-meta-row"><span class="icon" aria-hidden="true">❤️</span><span id="infoHearts" class="value">0</span></div>
         <div class="profile-meta-row"><span class="icon" aria-hidden="true">🔗</span><span id="infoWallet" class="value wallet">—</span></div>
         <div class="profile-meta-row"><span id="infoLevelIcon" class="icon" aria-hidden="true">—</span><span id="infoLevel" class="value">—</span></div>
       </div>
@@ -220,7 +219,6 @@
       var infoDisplayName = document.getElementById('infoDisplayName');
       var infoHandle = document.getElementById('infoHandle');
       var infoBio = document.getElementById('infoBio');
-      var infoHearts = document.getElementById('infoHearts');
       var infoWallet = document.getElementById('infoWallet');
       var infoLevel = document.getElementById('infoLevel');
       var infoLevelIcon = document.getElementById('infoLevelIcon');
@@ -263,7 +261,6 @@
           infoBio.textContent = bioStr || '자기소개가 없습니다.';
           infoBio.classList.toggle('empty', !bioStr);
         }
-        if (infoHearts) infoHearts.textContent = typeof user.points === 'number' ? user.points : 0;
         infoWallet.textContent = (user.walletAddress && user.walletAddress.trim()) ? user.walletAddress : '없음';
         if (infoLevelIcon) infoLevelIcon.textContent = user.isAdmin ? '🛠️' : (LEVEL_ICONS[user.level] || '—');
         if (infoLevel) {
@@ -644,7 +641,6 @@
                   infoBio.textContent = b || '자기소개가 없습니다.';
                   infoBio.classList.toggle('empty', !b);
                 }
-                if (infoHearts && data.user && typeof data.user.points === 'number') infoHearts.textContent = data.user.points;
               } else {
                 setBioFeedback(data.message || '저장에 실패했습니다.', true);
               }

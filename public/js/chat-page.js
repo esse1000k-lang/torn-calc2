@@ -271,7 +271,7 @@
             if (isMine) {
               actions += '<button type="button" class="chat-msg__action-btn" data-action="edit">수정</button><button type="button" class="chat-msg__action-btn" data-action="delete">삭제</button>';
             } else {
-              actions += '<button type="button" class="chat-msg__action-btn" data-action="sendHeart" title="하트 보내기">❤️</button>';
+              actions += '<button type="button" class="chat-msg__action-btn" data-action="sendHeart" title="좋아요">❤️</button>';
               if (isAdmin) actions += '<button type="button" class="chat-msg__action-btn" data-action="delete" title="관리자 삭제">삭제</button>';
             }
             var actionsRow = '<div class="chat-msg__actions">' + actions + '</div>';
@@ -305,8 +305,6 @@
           }
         }
 
-        var myHearts = 0;
-
         function playHeartReceivedSound() {
           try {
             var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -329,56 +327,37 @@
           } catch (e) {}
         }
 
-        var lastMyShopItems = {};
+        var chatPageCanUsePinMessage = false;
         var chatItemCooldownUntil = 0;
         var chatItemCooldownTimer = null;
         var CHAT_ITEM_COOLDOWN_MS = 10000;
         function startChatItemCooldown() {
           chatItemCooldownUntil = Date.now() + CHAT_ITEM_COOLDOWN_MS;
-          updateChatItemMenu(lastMyShopItems);
+          updateChatItemMenu();
           if (chatItemCooldownTimer) clearInterval(chatItemCooldownTimer);
           chatItemCooldownTimer = setInterval(function () {
             if (Date.now() >= chatItemCooldownUntil) { clearInterval(chatItemCooldownTimer); chatItemCooldownTimer = null; }
-            updateChatItemMenu(lastMyShopItems);
+            updateChatItemMenu();
           }, 1000);
         }
-        function updateChatItemMenu(shopItems) {
+        function updateChatItemMenu() {
           var menu = document.getElementById('chatItemMenu');
           if (!chatItemSelectWrap || !menu) return;
-          shopItems = shopItems || {};
-          var pinMessageN = (shopItems.pinMessage || 0) || 0;
-          var rewardPartyN = (shopItems.rewardParty || 0) || 0;
-          var risePrayerN = (shopItems.risePrayer || 0) || 0;
-          var broomN = (shopItems.broom || 0) || 0;
           var inCooldown = chatItemCooldownUntil > Date.now();
           var cooldownSec = inCooldown ? Math.ceil((chatItemCooldownUntil - Date.now()) / 1000) : 0;
-          var html = '<div class="chat-item-menu-hearts">❤️ ' + myHearts + '</div>';
+          var html = '';
           if (inCooldown) html += '<div class="chat-item-menu-cooldown">' + cooldownSec + '초 후 사용 가능</div>';
-          if (pinMessageN > 0) {
-            html += '<div class="chat-item-row chat-item-row--left">';
-            for (var p = 0; p < pinMessageN; p++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="pinMessage" title="고정 메시지"' + (inCooldown ? ' disabled' : '') + '>📌</button>';
-            html += '</div>';
+          if (chatPageCanUsePinMessage) {
+            html += '<div class="chat-item-row chat-item-row--vertical"><button type="button" class="chat-item-option chat-item-option--icon" data-value="pinMessage" title="고정 메시지 (관리자·지정자 전용)"' + (inCooldown ? ' disabled' : '') + '>📌</button></div>';
+            html += '<div class="chat-item-row chat-item-row--vertical"><button type="button" class="chat-item-option chat-item-option--icon" data-value="broom" title="빗자루 (관리자·지정자 전용)"' + (inCooldown ? ' disabled' : '') + '>🧹</button></div>';
           }
-          if (rewardPartyN > 0) {
-            html += '<div class="chat-item-row chat-item-row--left">';
-            for (var r = 0; r < rewardPartyN; r++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="rewardParty" title="배당 파티"' + (inCooldown ? ' disabled' : '') + '>🚁</button>';
-            html += '</div>';
-          }
-          if (risePrayerN > 0) {
-            html += '<div class="chat-item-row chat-item-row--left">';
-            for (var rp = 0; rp < risePrayerN; rp++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="risePrayer" title="떡상 기원"' + (inCooldown ? ' disabled' : '') + '>🙏</button>';
-            html += '</div>';
-          }
-          if (broomN > 0) {
-            html += '<div class="chat-item-row chat-item-row--left">';
-            for (var b = 0; b < broomN; b++) html += '<button type="button" class="chat-item-option chat-item-option--icon" data-value="broom" title="빗자루"' + (inCooldown ? ' disabled' : '') + '>🧹</button>';
-            html += '</div>';
-          }
+          html += '<div class="chat-item-row chat-item-row--vertical"><button type="button" class="chat-item-option chat-item-option--icon" data-value="rewardParty" title="배당 파티"' + (inCooldown ? ' disabled' : '') + '>🚁</button></div>';
+          html += '<div class="chat-item-row chat-item-row--vertical"><button type="button" class="chat-item-option chat-item-option--icon" data-value="risePrayer" title="떡상 기원"' + (inCooldown ? ' disabled' : '') + '>🙏</button></div>';
           menu.innerHTML = html;
         }
 
         function useChatItemAndCooldown(apiPath, wrap, trig) {
-          if (trig) trig.textContent = '❤️';
+          if (trig) trig.textContent = '🎁';
           if (wrap) wrap.dataset.selected = '';
           var menu = wrap && wrap.querySelector('.chat-item-menu');
           if (menu) menu.style.display = 'none';
@@ -386,10 +365,14 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
               if (data.ok) {
-                if (typeof data.myHearts === 'number') myHearts = data.myHearts;
-                if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
                 startChatItemCooldown();
-              } else if (data.message) alert(data.message);
+              } else if (data.message) {
+                var msg = data.message;
+                if (msg.indexOf('부족') !== -1) {
+                  msg = '채팅 아이템은 이제 무료로 사용할 수 있습니다. 10초 쿨다운이 지났는지 확인한 뒤 다시 눌러 주세요. (서버가 최신이 아닐 수 있습니다.)';
+                }
+                alert(msg);
+              }
             })
             .catch(function () { alert('사용에 실패했습니다.'); });
         }
@@ -436,10 +419,9 @@
                 processItemUsedToastQueue();
               }
               if (data.ok) {
-                if (typeof data.myHearts === 'number') myHearts = data.myHearts;
-                if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
                 chatPageIsAdmin = !!(data.me && data.me.isAdmin);
-                updateChatItemMenu(lastMyShopItems);
+                chatPageCanUsePinMessage = !!(data.me && data.me.canUsePinMessage);
+                updateChatItemMenu();
               }
               if (data.ok && data.messages) {
                 if (!isAnyChatItemOverlayVisible()) renderMessages(data.messages, effectiveMyId, chatPageIsAdmin);
@@ -467,7 +449,7 @@
                 if (chatItemSelectWrap) {
                   if ((resolvedId || me) && data.ok) {
                     chatItemSelectWrap.style.display = 'inline-block';
-                    updateChatItemMenu(lastMyShopItems);
+                    updateChatItemMenu();
                   } else {
                     chatItemSelectWrap.style.display = 'none';
                   }
@@ -555,7 +537,7 @@
                 lastMessageCount = 0;
                 if (chatItemSelectWrap) {
                   var trig = chatItemSelectWrap.querySelector('.chat-item-trigger');
-                  if (trig) trig.textContent = '❤️';
+                  if (trig) trig.textContent = '🎁';
                   chatItemSelectWrap.dataset.selected = '';
                 }
                 fetchChat();
@@ -609,13 +591,13 @@
             var trig = wrap && wrap.querySelector('.chat-item-trigger');
             if (trig) trig.textContent = btn.textContent;
             if (wrap) wrap.dataset.selected = sel;
-            updateChatItemMenu(lastMyShopItems);
+            updateChatItemMenu();
           });
           chatItemSelectWrap.addEventListener('mouseleave', function () {
             if (!chatItemSelectWrap.dataset.selected || chatItemSelectWrap.dataset.selected === '') {
               var trig = chatItemSelectWrap.querySelector('.chat-item-trigger');
-              if (trig) trig.textContent = '❤️';
-              updateChatItemMenu(lastMyShopItems);
+              if (trig) trig.textContent = '🎁';
+              updateChatItemMenu();
             }
           });
           chatItemSelectWrap.addEventListener('mouseenter', function () {
@@ -623,23 +605,7 @@
             if (m) m.style.display = '';
           });
           var chatItemTrigger = document.getElementById('chatItemTrigger');
-          var chatShopConfirmLayer = document.getElementById('chatShopConfirmLayer');
-          var chatShopConfirmNo = document.getElementById('chatShopConfirmNo');
-          var chatShopConfirmYes = document.getElementById('chatShopConfirmYes');
-          if (chatItemTrigger && chatShopConfirmLayer) {
-            chatItemTrigger.addEventListener('dblclick', function (e) {
-              e.preventDefault();
-              e.stopPropagation();
-              chatShopConfirmLayer.style.display = 'flex';
-            });
-          }
-          if (chatShopConfirmLayer) {
-            chatShopConfirmLayer.addEventListener('click', function (e) {
-              if (e.target === chatShopConfirmLayer) chatShopConfirmLayer.style.display = 'none';
-            });
-          }
-          if (chatShopConfirmNo) chatShopConfirmNo.addEventListener('click', function () { if (chatShopConfirmLayer) chatShopConfirmLayer.style.display = 'none'; });
-          if (chatShopConfirmYes) chatShopConfirmYes.addEventListener('click', function () { window.location.href = '/shop.html'; });
+          if (chatItemTrigger) chatItemTrigger.textContent = '🎁';
         }
 
         var chatPinModal = document.getElementById('chatPinModal');
@@ -669,7 +635,6 @@
                   chatPinModalConfirm.disabled = false;
                   closePinModal();
                   if (data.ok) {
-                    if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
                     startChatItemCooldown();
                     if (data.pinned && chatPinnedWrap && pinnedTextEl) {
                       pinnedTextEl.textContent = data.pinned.text;
@@ -911,8 +876,8 @@
 
         function openSendHeartModal(messageId, recipientName) {
           pendingSendHeartMessageId = messageId;
-          if (chatSendHeartMessage) chatSendHeartMessage.textContent = (recipientName || '이 사용자') + '님에게 하트 1개를 보내시겠습니까?';
-          if (chatSendHeartMyHearts) chatSendHeartMyHearts.textContent = '보유 하트: ' + myHearts + '개';
+          if (chatSendHeartMessage) chatSendHeartMessage.textContent = (recipientName || '이 메시지') + '에 좋아요를 누르시겠습니까?';
+          if (chatSendHeartMyHearts) chatSendHeartMyHearts.style.display = 'none';
           if (chatSendHeartLayer) chatSendHeartLayer.style.display = 'flex';
         }
         function closeSendHeartModal() {
@@ -935,9 +900,6 @@
               chatSendHeartOk.disabled = false;
               closeSendHeartModal();
               if (data.ok) {
-                if (typeof data.myHearts === 'number') myHearts = data.myHearts;
-                if (data.myShopItems != null && typeof data.myShopItems === 'object') lastMyShopItems = data.myShopItems;
-                updateChatItemMenu(lastMyShopItems);
                 lastMessageCount = 0;
                 fetchChat();
                 if (data.message) alert(data.message);
@@ -956,8 +918,7 @@
         function tryOpenSendHeartModal(row) {
           if (!row || !row.classList.contains('chat-msg--other')) return;
           var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
-          if (!me.id) { alert('로그인 후 하트를 보낼 수 있습니다.'); return; }
-          if (myHearts < 1) { alert('보유 하트가 없습니다.'); return; }
+          if (!me.id) { alert('로그인 후 좋아요를 누를 수 있습니다.'); return; }
           var msgId = row.dataset.messageId || row.getAttribute('data-message-id');
           if (!msgId && row.id && row.id.indexOf('chat-msg-') === 0) msgId = row.id.slice(9);
           var nameEl = row.querySelector('.chat-msg__name');

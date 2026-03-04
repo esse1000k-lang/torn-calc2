@@ -88,18 +88,9 @@
             <button type="button" id="chatAttach" class="chat-attach-btn" title="사진 첨부" aria-label="사진 첨부">📷</button>
             <input type="text" id="chatInput" class="chat-input" placeholder="메시지 입력 (로그인 후 전송)" maxlength="500" autocomplete="off">
             <div id="chatItemSelectWrap" class="chat-item-dropdown" style="display:none;" aria-label="아이템 선택">
-              <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true">❤️</button>
+              <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true">🎁</button>
               <div class="chat-item-menu" id="chatItemMenu"></div>
             </div>
-          <div id="chatShopConfirmLayer" class="chat-shop-confirm-layer" style="display:none;">
-            <div class="chat-shop-confirm-box">
-              <p class="chat-shop-confirm__text">상점으로 이동하시겠습니까?</p>
-              <div class="chat-shop-confirm__actions">
-                <button type="button" id="chatShopConfirmNo" class="chat-shop-confirm__btn chat-shop-confirm__btn--no">아니오</button>
-                <button type="button" id="chatShopConfirmYes" class="chat-shop-confirm__btn chat-shop-confirm__btn--yes">네</button>
-              </div>
-            </div>
-          </div>
             <button type="button" id="chatSend" class="chat-send">전송</button>
           </div>
           <div id="chatPinModal" class="chat-pin-modal" role="dialog" aria-labelledby="chatPinModalTitle" aria-modal="true" style="display:none;">
@@ -141,12 +132,12 @@
 
   <div id="chatSendHeartLayer" class="chat-send-heart-layer" style="display:none;">
     <div class="chat-send-heart-box">
-      <h3 class="chat-send-heart-title">❤️ 하트 보내기</h3>
+      <h3 class="chat-send-heart-title">❤️ 좋아요</h3>
       <p id="chatSendHeartMessage" class="chat-send-heart-message"></p>
-      <p id="chatSendHeartMyHearts" class="chat-send-heart-myhearts"></p>
+      <p id="chatSendHeartMyHearts" class="chat-send-heart-myhearts" style="display:none;"></p>
       <div class="chat-send-heart-actions">
         <button type="button" id="chatSendHeartCancel" class="chat-send-heart-btn chat-send-heart-btn--cancel">취소</button>
-        <button type="button" id="chatSendHeartOk" class="chat-send-heart-btn chat-send-heart-btn--ok">보내기</button>
+        <button type="button" id="chatSendHeartOk" class="chat-send-heart-btn chat-send-heart-btn--ok">좋아요</button>
       </div>
     </div>
   </div>

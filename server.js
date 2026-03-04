@@ -1567,7 +1567,7 @@ async function handleGetMe(req, res) {
     if (next.getTime() > Date.now()) nextDisplayNameChangeAt = next.toISOString();
   }
   const isAdminByWallet = dbUser && dbUser.walletAddress && ADMIN_WALLET_ADDRESSES.includes(dbUser.walletAddress.toLowerCase());
-  const isAdmin = isAdminByWallet || (dbUser && dbUser.boardAdmin === true);
+  const isAdmin = isAdminByWallet || (dbUser && (dbUser.boardAdmin === true || dbUser.levelAdmin === true));
   const user = {
     ...req.user,
     isAdmin: !!isAdmin,
@@ -1771,9 +1771,9 @@ app.get('/api/chat', async (req, res) => {
     const me = users.find((u) => String(u.id) === String(req.user.id));
     const myIdStr = me ? String(me.id) : String(req.user.id ?? '');
     const isAdmin = req.user.isAdmin === true || req.session?.isAdmin === true || !!(me && (me.levelAdmin || me.boardAdmin));
-    payload.me = me ? { id: myIdStr, displayName: me.displayName || '', isAdmin: !!isAdmin } : { id: myIdStr, displayName: req.user.displayName || '', isAdmin: !!isAdmin };
-    payload.myHearts = typeof me?.points === 'number' ? me.points : 0;
-    payload.myShopItems = me?.shopItems && typeof me.shopItems === 'object' ? me.shopItems : {};
+    const levelAdmin = !!(me && me.levelAdmin);
+    const canUsePinMessage = !!isAdmin || !!levelAdmin;
+    payload.me = me ? { id: myIdStr, displayName: me.displayName || '', isAdmin: !!isAdmin, levelAdmin: !!levelAdmin, canUsePinMessage } : { id: myIdStr, displayName: req.user.displayName || '', isAdmin: !!isAdmin, levelAdmin: false, canUsePinMessage: !!isAdmin };
     res.setHeader('X-Chat-Auth', req.user.id || '1');
   } else {
     res.setHeader('X-Chat-Auth', '0');
@@ -1817,30 +1817,25 @@ app.post('/api/chat', rateLimitWrites, authMiddleware, function (req, res) {
   });
 });
 
-// 고정 메시지 설정 — pinMessage 1개 소모, 4시간 유효. 고정이 없을 때만 사용 가능(덮어쓰기 불가). 동시 요청 시 먼저 처리된 쪽만 반영, 늦은 쪽은 아이템 소진 안 함
+// 고정 메시지 설정 — 관리자 또는 levelAdmin 지정 회원만 사용 가능, 4시간 유효
 const PINNED_DURATION_MS = 4 * 60 * 60 * 1000;
 app.post('/api/chat/set-pinned', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   if (checkChatItemCooldown(req, res)) return;
+  const users = await db.readUsers();
+  const me = users.find((u) => String(u.id) === String(req.user.id));
+  if (!me) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
+  const isAdmin = req.user.isAdmin === true || req.session?.isAdmin === true || !!(me.levelAdmin || me.boardAdmin);
+  if (!isAdmin) return res.status(403).json({ ok: false, message: '고정 메시지는 관리자 또는 지정된 회원만 사용할 수 있습니다.' });
   const pinnedText = typeof req.body?.pinnedText === 'string' ? req.body.pinnedText.trim().slice(0, 25) : '';
   if (!pinnedText) return res.status(400).json({ ok: false, message: '고정할 메시지를 입력해 주세요.' });
   const existing = await db.readPinned();
   if (existing && typeof existing.text === 'string' && existing.expiresAt && new Date(existing.expiresAt).getTime() > Date.now()) {
     return res.status(400).json({ ok: false, message: '이미 상단 고정이 있습니다. 만료 후 사용해 주세요.' });
   }
-  const users = await db.readUsers();
-  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const current = users[idx].shopItems && typeof users[idx].shopItems.pinMessage === 'number' ? users[idx].shopItems.pinMessage : 0;
-  if (current < 1) return res.status(400).json({ ok: false, message: '고정 메시지 아이템이 부족합니다.' });
-  users[idx].shopItems.pinMessage = current - 1;
-  if (!users[idx].shopItems) users[idx].shopItems = {};
-  await db.writeUsers(users);
   const again = await db.readPinned();
   if (again && typeof again.text === 'string' && again.expiresAt && new Date(again.expiresAt).getTime() > Date.now()) {
-    users[idx].shopItems.pinMessage = current;
-    await db.writeUsers(users);
-    return res.status(400).json({ ok: false, message: '이미 다른 회원이 고정했습니다. 아이템은 소진되지 않았습니다.' });
+    return res.status(400).json({ ok: false, message: '이미 다른 회원이 고정했습니다.' });
   }
   const expiresAt = new Date(Date.now() + PINNED_DURATION_MS).toISOString();
   const setByDisplayName = req.user.displayName || (req.user.walletAddress ? req.user.walletAddress.slice(0, 6) + '...' : '회원');
@@ -1852,27 +1847,15 @@ app.post('/api/chat/set-pinned', async (req, res) => {
     expiresAt,
     lastItemUse: { displayName: setByDisplayName, itemId: 'pinMessage', at: new Date().toISOString() },
   });
-  const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  const level = me ? getMemberLevel(me) : null;
-  res.json({ ok: true, message: '고정 메시지가 적용되었습니다. (4시간 유효)', myShopItems: me?.shopItems || {}, pinned: { text: pinnedText, setByDisplayName: me?.displayName || null, expiresAt, level } });
+  const level = getMemberLevel(me);
+  res.json({ ok: true, message: '고정 메시지가 적용되었습니다. (4시간 유효)', pinned: { text: pinnedText, setByDisplayName: me?.displayName || null, expiresAt, level } });
 });
 
-// 배당 파티 아이템 사용 — 하트 1 + rewardParty 1개 소모, lastItemUse 브로드캐스트(채팅 애니메이션)
+// 배당 파티 아이템 사용 — 일괄 고정(무료). shopItems/points 검사 금지.
 app.post('/api/chat/use-reward-party', async (req, res) => {
-    if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   if (checkChatItemCooldown(req, res)) return;
-    const users = await db.readUsers();
-  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const points = typeof users[idx].points === 'number' ? users[idx].points : 0;
-  if (points < 1) return res.status(400).json({ ok: false, message: '하트가 부족합니다.' });
-  const current = users[idx].shopItems && typeof users[idx].shopItems.rewardParty === 'number' ? users[idx].shopItems.rewardParty : 0;
-  if (current < 1) return res.status(400).json({ ok: false, message: '배당 파티 아이템이 부족합니다.' });
   setChatItemCooldown(req.user.id);
-  users[idx].points = points - 1;
-  if (!users[idx].shopItems) users[idx].shopItems = {};
-  users[idx].shopItems.rewardParty = current - 1;
-  await db.writeUsers(users);
   const pinned = await db.readPinned() || {};
   pinned.lastItemUse = {
     displayName: req.user.displayName || (req.user.walletAddress ? req.user.walletAddress.slice(0, 6) + '...' : '회원'),
@@ -1880,32 +1863,14 @@ app.post('/api/chat/use-reward-party', async (req, res) => {
     at: new Date().toISOString(),
   };
   await db.writePinned(pinned);
-  const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  req.session.save((err) => {
-    if (err) {
-      console.error('[chat/use-reward-party] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, message: '배당 파티를 사용했습니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
-  });
+  res.json({ ok: true, message: '배당 파티를 사용했습니다.' });
 });
 
-// 떡상 기원 아이템 사용 — 하트 1 + risePrayer 1개 소모, lastItemUse 브로드캐스트(채팅 애니메이션)
+// 떡상 기원 아이템 사용 — 일괄 고정(무료), lastItemUse 브로드캐스트
 app.post('/api/chat/use-rise-prayer', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   if (checkChatItemCooldown(req, res)) return;
-  const users = await db.readUsers();
-  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const points = typeof users[idx].points === 'number' ? users[idx].points : 0;
-  if (points < 1) return res.status(400).json({ ok: false, message: '하트가 부족합니다.' });
-  const current = users[idx].shopItems && typeof users[idx].shopItems.risePrayer === 'number' ? users[idx].shopItems.risePrayer : 0;
-  if (current < 1) return res.status(400).json({ ok: false, message: '떡상 기원 아이템이 부족합니다.' });
   setChatItemCooldown(req.user.id);
-  users[idx].points = points - 1;
-  if (!users[idx].shopItems) users[idx].shopItems = {};
-  users[idx].shopItems.risePrayer = current - 1;
-  await db.writeUsers(users);
   const pinned = await db.readPinned() || {};
   pinned.lastItemUse = {
     displayName: req.user.displayName || (req.user.walletAddress ? req.user.walletAddress.slice(0, 6) + '...' : '회원'),
@@ -1913,30 +1878,20 @@ app.post('/api/chat/use-rise-prayer', async (req, res) => {
     at: new Date().toISOString(),
   };
   await db.writePinned(pinned);
-  const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  req.session.save((err) => {
-    if (err) {
-      console.error('[chat/use-rise-prayer] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, message: '떡상 기원을 사용했습니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
-  });
+  res.json({ ok: true, message: '떡상 기원을 사용했습니다.' });
 });
 
-// 빗자루 아이템 사용 — broom 1개 소모, lastItemUse 브로드캐스트 후 5초 뒤 채팅 메시지 전체 삭제(고정 메시지는 유지)
+// 빗자루 아이템 사용 — 관리자 또는 levelAdmin 지정 회원만, lastItemUse 브로드캐스트 후 5초 뒤 채팅 전체 삭제
 const BROOM_CLEAR_DELAY_MS = 5000;
 app.post('/api/chat/use-broom', async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
   if (checkChatItemCooldown(req, res)) return;
   const users = await db.readUsers();
-  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const current = users[idx].shopItems && typeof users[idx].shopItems.broom === 'number' ? users[idx].shopItems.broom : 0;
-  if (current < 1) return res.status(400).json({ ok: false, message: '빗자루 아이템이 부족합니다.' });
+  const me = users.find((u) => String(u.id) === String(req.user.id));
+  if (!me) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
+  const isAdmin = req.user.isAdmin === true || req.session?.isAdmin === true || !!(me.levelAdmin || me.boardAdmin);
+  if (!isAdmin) return res.status(403).json({ ok: false, message: '빗자루는 관리자 또는 지정된 회원만 사용할 수 있습니다.' });
   setChatItemCooldown(req.user.id);
-  if (!users[idx].shopItems) users[idx].shopItems = {};
-  users[idx].shopItems.broom = current - 1;
-  await db.writeUsers(users);
   const pinned = await db.readPinned() || {};
   pinned.lastItemUse = {
     displayName: req.user.displayName || (req.user.walletAddress ? req.user.walletAddress.slice(0, 6) + '...' : '회원'),
@@ -1947,14 +1902,7 @@ app.post('/api/chat/use-broom', async (req, res) => {
   setTimeout(() => {
     db.clearChatMessages().catch(() => {});
   }, BROOM_CLEAR_DELAY_MS);
-  const me = (await db.readUsers()).find((u) => String(u.id) === String(req.user.id));
-  req.session.save((err) => {
-    if (err) {
-      console.error('[chat/use-broom] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, message: '빗자루를 사용했습니다. 잠시 후 채팅이 비워집니다.', myHearts: me?.points ?? 0, myShopItems: me?.shopItems || {} });
-  });
+  res.json({ ok: true, message: '빗자루를 사용했습니다. 잠시 후 채팅이 비워집니다.' });
 });
 
 // 채팅 메시지 수정 — 본인만 수정 가능
@@ -2000,11 +1948,10 @@ app.delete('/api/chat', async (req, res) => {
   res.json({ ok: true, message: '채팅이 비워졌습니다.' });
 });
 
-// 채팅 메시지에 하트 보내기 — 로그인 필요, 본인 메시지에는 불가, 1개 차감 후 수신자에게 지급
+// 채팅 메시지 좋아요 — 로그인 필요, 본인 메시지 불가, 포인트 없이 1회만(트위터 스타일)
 app.post('/api/chat/:messageId/send-heart', async (req, res) => {
-  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 하트를 보낼 수 있습니다.' });
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 좋아요를 누를 수 있습니다.' });
   const messageId = String(req.params.messageId || '').trim();
-  const amount = Math.max(1, Math.min(100, parseInt(req.body?.amount, 10) || 1));
   if (!messageId) return res.status(400).json({ ok: false, message: '메시지 ID가 필요합니다.' });
   const messages = await db.readChatMessages();
   let msg;
@@ -2016,74 +1963,9 @@ app.post('/api/chat/:messageId/send-heart', async (req, res) => {
     msg = messages.find((m) => String(m.id || '') === messageId);
   }
   if (!msg || !msg.userId) return res.status(404).json({ ok: false, message: '메시지를 찾을 수 없습니다.' });
-  if (String(msg.userId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 메시지에는 하트를 보낼 수 없습니다.' });
-  const users = await db.readUsers();
-  const senderIdx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  const recipientIdx = users.findIndex((u) => String(u.id) === String(msg.userId));
-  if (senderIdx === -1 || recipientIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
-  if (senderPoints < amount) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
-  users[senderIdx].points = senderPoints - amount;
-  const recipientPoints = typeof users[recipientIdx].points === 'number' ? users[recipientIdx].points : 0;
-  users[recipientIdx].points = recipientPoints + amount;
-  await db.writeUsers(users);
+  if (String(msg.userId) === String(req.user.id)) return res.status(400).json({ ok: false, message: '본인 메시지에는 좋아요를 누를 수 없습니다.' });
   await db.incrementMessageHearts(messageId);
-  req.session.save((err) => {
-    if (err) {
-      console.error('[chat/send-heart] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, myHearts: users[senderIdx].points, message: '하트를 보냈습니다.' });
-  });
-});
-
-// 상점: 하트로 채팅 아이템 교환
-const SHOP_ITEMS = {
-  pinMessage: { cost: 15, name: '고정 메시지' },
-  rewardParty: { cost: 1, name: '배당 파티' },
-  risePrayer: { cost: 1, name: '떡상 기원' },
-  broom: { cost: 10, name: '빗자루' },
-};
-app.post('/api/shop/exchange', async (req, res) => {
-  if (!req.user) return res.status(401).json({ ok: false, message: '로그인이 필요합니다.' });
-  const { itemId, quantity: rawQty = 1 } = req.body || {};
-  const quantity = Math.min(5, Math.max(1, parseInt(rawQty, 10) || 1));
-  const item = itemId && SHOP_ITEMS[itemId];
-  if (!item) return res.status(400).json({ ok: false, message: '유효하지 않은 아이템입니다.' });
-  const totalCost = item.cost * quantity;
-  const users = await db.readUsers();
-  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const currentPoints = typeof users[idx].points === 'number' ? users[idx].points : 0;
-  if (currentPoints < totalCost) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
-  const currentOwned = typeof users[idx].shopItems?.[itemId] === 'number' ? users[idx].shopItems[itemId] : 0;
-  if (currentOwned + quantity > 5) return res.status(400).json({ ok: false, message: '이 아이템은 종류당 최대 5개까지 보유할 수 있습니다.' });
-  users[idx].points = currentPoints - totalCost;
-  if (!users[idx].shopItems) users[idx].shopItems = {};
-  users[idx].shopItems[itemId] = currentOwned + quantity;
-
-  await db.writeUsers(users);
-
-  // 세션에 뭔가 추가 정보를 넣지 말고, 그냥 저장만 확실히 함 (req.login 호출 없음 — 다음 요청 시 deserializeUser가 DB에서 최신 정보 읽음)
-  req.session.save((err) => {
-    if (err) {
-      console.error('세션 저장 에러:', err);
-      return res.status(500).json({ ok: false, message: '세션 저장 실패' });
-    }
-    return res.json({ ok: true, message: item.name + ' ' + quantity + '개를 구매했습니다.', myHearts: users[idx].points, myShopItems: users[idx].shopItems });
-  });
-});
-
-// 랭킹: 하트(포인트) 많은 순 (공개, 승인된 회원만)
-app.get('/api/ranking/hearts', async (req, res) => {
-  const allUsers = await db.readUsers();
-  const users = allUsers
-    .filter((u) => u.approved !== false && !u.managementAccount && !u.isFake)
-    .map((u) => ({ displayName: u.displayName || '-', hearts: typeof u.points === 'number' ? u.points : 0 }))
-    .sort((a, b) => b.hearts - a.hearts)
-    .slice(0, 100)
-    .map((item, i) => ({ rank: i + 1, displayName: item.displayName, hearts: item.hearts }));
-  res.json({ ok: true, list: users });
+  res.json({ ok: true, message: '좋아요를 눌렀습니다.' });
 });
 
 // 랭킹: 스테이킹 많은 순 (공개, RPC 조회 후 정렬, 2분 캐시)
@@ -2117,135 +1999,6 @@ app.get('/api/ranking/staking', async (req, res) => {
   rankingStakingCache = list;
   rankingStakingCacheTime = now;
   res.json({ ok: true, list });
-});
-
-// 출석체크: 오늘 날짜 (KST)
-function getTodayKST() {
-  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
-}
-function getYesterdayKST() {
-  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
-}
-function padNum(n) { return n < 10 ? '0' + n : String(n); }
-function getDateStringsInMonth(year, month) {
-  const lastDay = new Date(year, month, 0).getDate();
-  const arr = [];
-  for (let d = 1; d <= lastDay; d++) arr.push(year + '-' + padNum(month) + '-' + padNum(d));
-  return arr;
-}
-
-// 출석체크: 내 상태 + 꾸준히 출석한 멤버 목록
-app.get('/api/attendance', async (req, res) => {
-  const today = getTodayKST();
-  const users = (await db.readUsers()).filter((u) => u.approved !== false && !u.managementAccount && !u.isFake);
-  const me = req.user ? users.find((u) => String(u.id) === String(req.user.id)) : null;
-  let todayChecked = false;
-  let streak = 0;
-  let lastDate = null;
-  let myHearts = 0;
-  if (me) {
-    lastDate = me.lastAttendanceDate || null;
-    todayChecked = lastDate === today;
-    streak = typeof me.attendanceStreak === 'number' ? me.attendanceStreak : 0;
-    if (todayChecked && streak < 1) streak = 1;
-    myHearts = typeof me.points === 'number' ? me.points : 0;
-  }
-  const leaderboard = users
-    .filter((u) => (u.lastAttendanceDate && (typeof u.attendanceStreak === 'number' ? u.attendanceStreak : 0) > 0))
-    .map((u) => ({ displayName: u.displayName || '-', streak: u.attendanceStreak || 0 }))
-    .sort((a, b) => b.streak - a.streak)
-    .slice(0, 15);
-  const attendanceHistory = me && Array.isArray(me.attendanceHistory) ? me.attendanceHistory.slice(-90) : [];
-  res.json({
-    ok: true,
-    today,
-    todayChecked,
-    streak,
-    lastDate,
-    myHearts,
-    rewards: { daily: 1, weekBonus: 7, monthFullBonus: 30 },
-    leaderboard,
-    attendanceHistory,
-  });
-});
-
-// 출석체크: 체크인 (하루 1회, 연속 시 보너스)
-app.post('/api/attendance', async (req, res) => {
-  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 출석할 수 있습니다.' });
-  const today = getTodayKST();
-  const yesterday = getYesterdayKST();
-  let users = await db.readUsers();
-  const idx = users.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다.' });
-  const u = users[idx];
-  if (u.approved === false || u.managementAccount || u.isFake) return res.status(403).json({ ok: false, message: '출석 대상이 아닙니다.' });
-  if (u.lastAttendanceDate === today) return res.status(400).json({ ok: false, message: '오늘 이미 출석했습니다.' });
-  let streak = typeof u.attendanceStreak === 'number' ? u.attendanceStreak : 0;
-  if (u.lastAttendanceDate === yesterday) streak += 1;
-  else streak = 1;
-  let granted = 1;
-  if (streak >= 7) granted += 7;
-  const currentPoints = typeof u.points === 'number' ? u.points : 0;
-  const history = Array.isArray(users[idx].attendanceHistory) ? users[idx].attendanceHistory : [];
-  if (!history.includes(today)) history.push(today);
-  const historySet = new Set(history.slice(-90));
-
-  const lastMonthFullBonusGiven = users[idx].lastMonthFullBonusGiven || null;
-  const [y, m] = today.split('-').map(Number);
-  const lastMonthKey = m === 1 ? (y - 1) + '-12' : y + '-' + padNum(m - 1);
-  const lastMonthY = m === 1 ? y - 1 : y;
-  const lastMonthM = m === 1 ? 12 : m - 1;
-  const datesInLastMonth = getDateStringsInMonth(lastMonthY, lastMonthM);
-  const lastMonthFull = datesInLastMonth.length > 0 && datesInLastMonth.every((d) => historySet.has(d));
-  if (lastMonthFull && lastMonthFullBonusGiven !== lastMonthKey) {
-    granted += 30;
-    users[idx].lastMonthFullBonusGiven = lastMonthKey;
-  }
-
-  users[idx].attendanceHistory = history.slice(-90);
-  users[idx].lastAttendanceDate = today;
-  users[idx].attendanceStreak = streak;
-  users[idx].points = currentPoints + granted;
-
-  const usersFresh = await db.readUsers();
-  const uFresh = usersFresh.find((u) => String(u.id) === String(req.user.id));
-  if (uFresh && uFresh.lastAttendanceDate === today) {
-    return res.status(400).json({ ok: false, message: '오늘 이미 출석했습니다.' });
-  }
-  const idxFresh = usersFresh.findIndex((u) => String(u.id) === String(req.user.id));
-  if (idxFresh !== -1) {
-    usersFresh[idxFresh].attendanceHistory = users[idx].attendanceHistory;
-    usersFresh[idxFresh].lastAttendanceDate = today;
-    usersFresh[idxFresh].attendanceStreak = streak;
-    usersFresh[idxFresh].points = currentPoints + granted;
-    if (users[idx].lastMonthFullBonusGiven) usersFresh[idxFresh].lastMonthFullBonusGiven = users[idx].lastMonthFullBonusGiven;
-    users = usersFresh;
-  }
-  await db.writeUsers(users);
-
-  const bonus = granted - 1;
-  const updatedPoints = currentPoints + granted;
-  let message = '출석 완료! 하트 1개 지급되었습니다.';
-  if (granted > 1) {
-    if (lastMonthFull && lastMonthFullBonusGiven !== lastMonthKey) message = `출석 완료! 한 달 연속 보너스 포함 하트 ${granted}개 지급되었습니다.`;
-    else message = `출석 완료! 연속 ${streak}일 보너스로 하트 ${granted}개 지급되었습니다.`;
-  }
-  req.session.save((err) => {
-    if (err) {
-      console.error('[attendance] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({
-      ok: true,
-      message,
-      granted,
-      streak,
-      myHearts: updatedPoints,
-      bonus: bonus > 0 ? bonus : undefined,
-    });
-  });
 });
 
 // (포인트/송금/교환 제거 — 커뮤니티 전용)
@@ -2523,21 +2276,6 @@ app.delete('/api/admin/users/:userId', adminMiddleware, async (req, res) => {
     if (sess && String(sess.id) === userId) sessions.delete(token);
   }
   res.json({ ok: true, message: isFake ? '테스트 회원이 삭제되었습니다.' : '회원이 삭제되었으며 강퇴 목록에 기록되었습니다.' });
-});
-
-// 관리자: 회원 포인트 지급/차감 (delta: 양수=지급, 음수=차감)
-app.patch('/api/admin/users/:userId/points', adminMiddleware, async (req, res) => {
-  const userId = String(req.params.userId || '').trim();
-  const delta = typeof req.body?.delta === 'number' ? Math.round(req.body.delta) : null;
-  if (!userId || delta === null) return res.status(400).json({ ok: false, message: 'userId와 delta(숫자)를 보내 주세요.' });
-  const users = await db.readUsers();
-  const idx = users.findIndex((u) => u.id === userId);
-  if (idx === -1) return res.status(404).json({ ok: false, message: '회원을 찾을 수 없습니다.' });
-  const current = typeof users[idx].points === 'number' ? users[idx].points : 0;
-  const next = Math.max(0, current + delta);
-  users[idx].points = next;
-  await db.writeUsers(users);
-  res.json({ ok: true, points: next, message: '하트가 반영되었습니다.' });
 });
 
 // 관리자: TORN 입금 주소 변경
@@ -3292,9 +3030,9 @@ app.post('/api/posts', rateLimitWrites, async (req, res, next) => {
   res.status(201).json({ ok: true, post: enrichPostWithHearts(newPost) });
 });
 
-// 가이드 글에 하트 보내기 (피드와 동일: 보유 하트 1 차감 → 글 작성자에게 1 지급, 글 받은 하트 +1)
+// 가이드 글 좋아요 (트위터 스타일: 포인트 이동 없이 1회만)
 app.post('/api/posts/:postId/send-heart', async (req, res) => {
-  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 하트를 보낼 수 있습니다.' });
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 좋아요를 누를 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
   const posts = await db.readPosts();
@@ -3307,21 +3045,9 @@ app.post('/api/posts/:postId/send-heart', async (req, res) => {
   }
   const authorIdx = users.findIndex((u) => String(u.id) === String(post.authorId));
   if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요.' });
-  if (String(users[senderIdx].id) === String(post.authorId)) return res.status(400).json({ ok: false, message: '본인 글에는 하트를 보낼 수 없습니다.' });
-  const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
-  if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
-  users[senderIdx].points = senderPoints - 1;
-  const authorPoints = typeof users[authorIdx].points === 'number' ? users[authorIdx].points : 0;
-  users[authorIdx].points = authorPoints + 1;
-  await db.writeUsers(users);
+  if (String(users[senderIdx].id) === String(post.authorId)) return res.status(400).json({ ok: false, message: '본인 글에는 좋아요를 누를 수 없습니다.' });
   const heartsReceived = await db.incrementPostHearts(postId);
-  req.session.save((err) => {
-    if (err) {
-      console.error('[posts/send-heart] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived, message: '하트를 보냈습니다.' });
-  });
+  res.json({ ok: true, heartsReceived, message: '좋아요를 눌렀습니다.' });
 });
 
 // (게시글 후원 기능 제거 — 커뮤니티 전용)
@@ -3526,6 +3252,42 @@ app.get('/api/admin/deleted-feed', adminMiddleware, async (req, res) => {
   res.json({ ok: true, posts });
 });
 
+// 관리자: 삭제된 피드/댓글 선택 영구 삭제 (일괄) — :postId 라우트보다 먼저 등록
+app.post('/api/admin/deleted-feed/permanent-delete-batch', adminMiddleware, async (req, res) => {
+  try {
+    const postIds = Array.isArray(req.body?.postIds) ? req.body.postIds.map((id) => String(id || '').trim()).filter(Boolean) : [];
+    const commentIds = Array.isArray(req.body?.commentIds) ? req.body.commentIds.map((id) => String(id || '').trim()).filter(Boolean) : [];
+    if (postIds.length === 0 && commentIds.length === 0) {
+      return res.status(400).json({ ok: false, message: '영구 삭제할 항목을 선택해 주세요.' });
+    }
+    const deletedPosts = await db.readDeletedFeedPosts();
+    const deletedComments = await db.readDeletedFeedComments();
+    let removedPosts = 0;
+    let removedComments = 0;
+    for (const postId of postIds) {
+      if (deletedPosts.some((p) => String(p.id) === postId)) {
+        await db.removeDeletedFeedPost(postId);
+        removedPosts++;
+      }
+    }
+    for (const commentId of commentIds) {
+      if (deletedComments.some((c) => String(c.id) === commentId)) {
+        await db.removeDeletedFeedComment(commentId);
+        removedComments++;
+      }
+    }
+    return res.json({
+      ok: true,
+      message: '선택한 항목이 영구 삭제되었습니다.',
+      removedPosts,
+      removedComments,
+    });
+  } catch (err) {
+    console.error('deleted-feed permanent-delete-batch error:', err);
+    return res.status(500).json({ ok: false, message: err.message || '영구 삭제 처리 중 오류가 발생했습니다.' });
+  }
+});
+
 // 관리자: 삭제된 피드 글 복구 (새 _id로 복구)
 app.post('/api/admin/deleted-feed/:postId/restore', adminMiddleware, async (req, res) => {
   const postId = String(req.params.postId || '').trim();
@@ -3555,6 +3317,22 @@ app.post('/api/admin/deleted-feed/:postId/restore', adminMiddleware, async (req,
   }
   await db.removeDeletedFeedPost(postId);
   res.json({ ok: true, postId: created.id, message: '피드 글이 복구되었습니다.' });
+});
+
+// 관리자: 삭제된 피드 글 영구 삭제 (복구 불가)
+app.delete('/api/admin/deleted-feed/:postId', adminMiddleware, async (req, res) => {
+  try {
+    const postId = String(req.params.postId || '').trim();
+    if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
+    const deletedList = await db.readDeletedFeedPosts();
+    const entry = deletedList.find((p) => String(p.id) === postId);
+    if (!entry) return res.status(404).json({ ok: false, message: '삭제된 글을 찾을 수 없습니다.' });
+    await db.removeDeletedFeedPost(postId);
+    return res.json({ ok: true, message: '삭제된 피드 글이 영구 삭제되었습니다.' });
+  } catch (err) {
+    console.error('deleted-feed permanent delete post error:', err);
+    return res.status(500).json({ ok: false, message: err.message || '영구 삭제 처리 중 오류가 발생했습니다.' });
+  }
 });
 
 // 피드 댓글 삭제 — 본인 댓글: 로그인 후 삭제 가능. 타인 댓글: 관리자만(PIN 필요). 삭제된 댓글 목록으로 이동
@@ -3616,6 +3394,22 @@ app.post('/api/admin/deleted-feed-comments/:commentId/restore', adminMiddleware,
   });
   await db.removeDeletedFeedComment(commentId);
   res.json({ ok: true, commentId: created.id, message: '댓글이 복구되었습니다.' });
+});
+
+// 관리자: 삭제된 댓글 영구 삭제 (복구 불가)
+app.delete('/api/admin/deleted-feed-comments/:commentId', adminMiddleware, async (req, res) => {
+  try {
+    const commentId = String(req.params.commentId || '').trim();
+    if (!commentId) return res.status(400).json({ ok: false, message: '댓글 ID가 필요합니다.' });
+    const deletedList = await db.readDeletedFeedComments();
+    const entry = deletedList.find((c) => String(c.id) === commentId);
+    if (!entry) return res.status(404).json({ ok: false, message: '삭제된 댓글을 찾을 수 없습니다.' });
+    await db.removeDeletedFeedComment(commentId);
+    return res.json({ ok: true, message: '삭제된 댓글이 영구 삭제되었습니다.' });
+  } catch (err) {
+    console.error('deleted-feed permanent delete comment error:', err);
+    return res.status(500).json({ ok: false, message: err.message || '영구 삭제 처리 중 오류가 발생했습니다.' });
+  }
 });
 
 // 피드 글에 댓글 작성 — 로그인 필요, multipart 시 이미지 첨부 가능
@@ -3687,9 +3481,9 @@ app.post('/api/feed/:postId/comments', rateLimitWrites, (req, res, next) => {
   res.status(201).json({ ok: true, comment: payload });
 });
 
-// 피드 글에 하트 보내기 — DB에 즉시 반영, 응답으로 새 숫자 반환(실시간 반영)
+// 피드 글 좋아요 — 트위터 스타일(포인트 이동 없이 1회만), DB 즉시 반영
 app.post('/api/feed/:postId/send-heart', async (req, res) => {
-  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 하트를 보낼 수 있습니다.' });
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 좋아요를 누를 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
   const post = await db.getFeedPostById(postId);
@@ -3701,26 +3495,14 @@ app.post('/api/feed/:postId/send-heart', async (req, res) => {
   }
   const authorIdx = users.findIndex((u) => String(u.id) === String(post.authorId));
   if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요.' });
-  if (String(users[senderIdx].id) === String(post.authorId)) return res.status(400).json({ ok: false, message: '본인 글에는 하트를 보낼 수 없습니다.' });
-  const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
-  if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
-  users[senderIdx].points = senderPoints - 1;
-  const authorPoints = typeof users[authorIdx].points === 'number' ? users[authorIdx].points : 0;
-  users[authorIdx].points = authorPoints + 1;
-  await db.writeUsers(users);
+  if (String(users[senderIdx].id) === String(post.authorId)) return res.status(400).json({ ok: false, message: '본인 글에는 좋아요를 누를 수 없습니다.' });
   const heartsReceived = await db.incrementFeedPostHearts(postId);
-  req.session.save((err) => {
-    if (err) {
-      console.error('[feed/send-heart] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived, message: '하트를 보냈습니다.' });
-  });
+  res.json({ ok: true, heartsReceived, message: '좋아요를 눌렀습니다.' });
 });
 
-// 피드 댓글에 하트 보내기 — DB에 즉시 반영, 응답으로 새 숫자 반환(실시간 반영)
+// 피드 댓글 좋아요 — 트위터 스타일(포인트 이동 없이 1회만), DB 즉시 반영
 app.post('/api/feed/:postId/comments/:commentId/send-heart', async (req, res) => {
-  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 하트를 보낼 수 있습니다.' });
+  if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 좋아요를 누를 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   const commentId = String(req.params.commentId || '').trim();
   if (!postId || !commentId) return res.status(400).json({ ok: false, message: '글 ID와 댓글 ID가 필요합니다.' });
@@ -3735,21 +3517,9 @@ app.post('/api/feed/:postId/comments/:commentId/send-heart', async (req, res) =>
   }
   const authorIdx = users.findIndex((u) => String(u.id) === String(comment.authorId));
   if (senderIdx === -1 || authorIdx === -1) return res.status(404).json({ ok: false, message: '회원 정보를 찾을 수 없습니다. 다시 로그인해 주세요.' });
-  if (String(users[senderIdx].id) === String(comment.authorId)) return res.status(400).json({ ok: false, message: '본인 댓글에는 하트를 보낼 수 없습니다.' });
-  const senderPoints = typeof users[senderIdx].points === 'number' ? users[senderIdx].points : 0;
-  if (senderPoints < 1) return res.status(400).json({ ok: false, message: '보유 하트가 부족합니다.' });
-  users[senderIdx].points = senderPoints - 1;
-  const authorPoints = typeof users[authorIdx].points === 'number' ? users[authorIdx].points : 0;
-  users[authorIdx].points = authorPoints + 1;
-  await db.writeUsers(users);
+  if (String(users[senderIdx].id) === String(comment.authorId)) return res.status(400).json({ ok: false, message: '본인 댓글에는 좋아요를 누를 수 없습니다.' });
   const heartsReceived = await db.incrementFeedCommentHearts(commentId);
-  req.session.save((err) => {
-    if (err) {
-      console.error('[feed/comment/send-heart] session.save err', err);
-      return res.status(500).json({ ok: false, message: '세션 저장에 실패했습니다.' });
-    }
-    res.json({ ok: true, myHearts: users[senderIdx].points, heartsReceived, message: '하트를 보냈습니다.' });
-  });
+  res.json({ ok: true, heartsReceived, message: '좋아요를 눌렀습니다.' });
 });
 
 // ——— 토네이도 뉴스 ———

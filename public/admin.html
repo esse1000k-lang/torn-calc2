@@ -387,6 +387,7 @@
         </div>
       </div>
       <a href="#" class="admin-nav-link" data-panel="adminDeletedFeedSection">🗑️ 삭제된 피드</a>
+      <a href="/shop.html" class="admin-nav-link" target="_blank" rel="noopener">💬 채팅 아이템 개발</a>
       <a href="#" class="admin-nav-link" data-panel="adminBannerSection">📢 홈 배너</a>
       <a href="#" class="admin-nav-link" data-panel="adminTornadoNewsSection">📰 뉴스 소스 · 수집</a>
     </nav>
@@ -519,9 +520,7 @@
                 <th>등급</th>
                 <th>관리자</th>
                 <th>스테이킹(TORN)</th>
-                <th>하트 ❤️</th>
                 <th>아이템</th>
-                <th>지급/차감</th>
                 <th>강퇴 / 삭제</th>
               </tr>
             </thead>
@@ -539,9 +538,13 @@
       <div class="admin-section-body">
         <p id="deletedFeedNone" class="text-muted" style="font-size:0.9rem; display:none;">삭제된 내역이 없습니다.</p>
         <div class="admin-table-wrap" id="deletedFeedTableWrap" style="display:none;">
+          <p style="margin-bottom:0.5rem;">
+            <button type="button" id="deletedFeedBulkPermDeleteBtn" class="admin-btn admin-btn--burn" style="padding:0.35rem 0.75rem; font-size:0.8rem;">선택 항목 영구 삭제</button>
+          </p>
           <table id="deletedFeedTable" class="admin-table">
             <thead>
               <tr>
+                <th style="width:44px; text-align:center;"><input type="checkbox" id="deletedFeedSelectAll" title="전체 선택" aria-label="전체 선택"></th>
                 <th>유형</th>
                 <th>작성자</th>
                 <th>내용 요약</th>
@@ -549,6 +552,7 @@
                 <th>삭제 일시</th>
                 <th>삭제한 사람</th>
                 <th style="width:72px; text-align:center;">복구</th>
+                <th style="width:72px; text-align:center;">영구 삭제</th>
               </tr>
             </thead>
             <tbody id="deletedFeedTbody"></tbody>
@@ -770,7 +774,6 @@
         attachDeleteUserHandlers(usersBody);
         attachForceWithdrawHandlers(usersBody);
         attachLevelAdminHandlers(usersBody);
-        attachUserPointsHandlers(usersBody);
         attachItemsDropdownHandlers(usersBody);
         attachWalletDropdownHandlers(usersBody);
       }
@@ -816,7 +819,6 @@
       function renderUserRows(list) {
         return list.map(function (u) {
           var lv = Math.min(6, Math.max(1, parseInt(u.level, 10) || 1));
-          var pts = typeof u.points === 'number' ? u.points : 0;
           var isFake = !!u.isFake;
           var zeroWallet = '0x0000000000000000000000000000000000000000';
           var walletDisplay = (isFake && (!u.walletAddress || u.walletAddress.toLowerCase() === zeroWallet.toLowerCase())) ? '—' : (u.walletAddress || '');
@@ -824,15 +826,13 @@
           var levelAdminChecked = !!u.levelAdmin;
           var levelAdminCell = '<td class="admin-cell-center"><input type="checkbox" class="level-admin-cb" data-user-id="' + u.id + '"' + (levelAdminChecked ? ' checked' : '') + ' title="관리자 지정"></td>';
           var stakedCell = '<td class="user-staked">' + formatStaked(u.staked) + '</td>';
-          var pointsCell = '<td class="points-current">' + pts + '</td>';
           var itemsCell = renderItemsCell(u.shopItems);
           var walletCell = renderWalletCell(walletDisplay);
-          var pointsAction = '<td class="admin-cell-actions"><input type="number" data-points-delta placeholder="+/-" style="width:5rem;margin-right:0.25rem;" step="1"> <button type="button" class="admin-btn" data-points-apply="' + u.id + '">적용</button></td>';
           var selectCell = isFake ? '<td></td>' : '<td><input type="checkbox" class="user-force-withdraw-cb" value="' + (u.id || '').replace(/"/g, '&quot;') + '" data-user-id="' + (u.id || '').replace(/"/g, '&quot;') + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '" title="강퇴 대상 선택"></td>';
           var btn = isFake
             ? '<button type="button" class="admin-btn admin-btn--burn" data-delete-user-btn="' + u.id + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">삭제</button>'
             : '<button type="button" class="admin-btn admin-btn--burn" data-force-withdraw-btn="' + (u.id || '').replace(/"/g, '&quot;') + '" data-display-name="' + (u.displayName || '').replace(/"/g, '&quot;') + '">강퇴</button>';
-          return '<tr data-user-id="' + u.id + '">' + selectCell + '<td>' + (u.displayName || '-') + '</td><td>' + badge + '</td>' + walletCell + '<td class="user-level">' + levelBadge(lv) + '</td>' + levelAdminCell + stakedCell + pointsCell + itemsCell + pointsAction + '<td class="admin-cell-actions">' + btn + '</td></tr>';
+          return '<tr data-user-id="' + u.id + '">' + selectCell + '<td>' + (u.displayName || '-') + '</td><td>' + badge + '</td>' + walletCell + '<td class="user-level">' + levelBadge(lv) + '</td>' + levelAdminCell + stakedCell + itemsCell + '<td class="admin-cell-actions">' + btn + '</td></tr>';
         }).join('');
       }
 
@@ -907,42 +907,6 @@
               })
               .catch(function () { el.checked = !levelAdmin; alert('관리자 설정 중 오류가 발생했습니다.'); })
               .finally(function () { el.disabled = false; });
-          });
-        });
-      }
-
-      function attachUserPointsHandlers(tbody) {
-        if (!tbody) return;
-        tbody.querySelectorAll('[data-points-apply]').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var userId = this.getAttribute('data-points-apply');
-            var row = this.closest('tr');
-            var input = row ? row.querySelector('[data-points-delta]') : null;
-            var deltaVal = input && input.value.trim() !== '' ? parseInt(input.value, 10) : NaN;
-            if (isNaN(deltaVal) || deltaVal === 0) {
-              alert('지급/차감할 하트를 숫자로 입력해 주세요. 양수=지급, 음수=차감.');
-              return;
-            }
-            btn.disabled = true;
-            fetch('/api/admin/users/' + encodeURIComponent(userId) + '/points', {
-              method: 'PATCH',
-              credentials: 'same-origin',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ delta: deltaVal }),
-            })
-              .then(function (r) { return r.json(); })
-              .then(function (data) {
-                if (data.ok && typeof data.points === 'number') {
-                  var cell = row ? row.querySelector('.points-current') : null;
-                  if (cell) cell.textContent = data.points;
-                  var u = lastRegularUsers.find(function (x) { return x.id === userId; });
-                  if (u) u.points = data.points;
-                  if (input) input.value = '';
-                  if (data.message) alert(data.message);
-                } else if (data && data.message) alert(data.message);
-              })
-              .catch(function () { alert('하트 반영 중 오류가 발생했습니다.'); })
-              .finally(function () { btn.disabled = false; });
           });
         });
       }
@@ -1564,7 +1528,7 @@
         var wrap = document.getElementById('deletedFeedTableWrap');
         var noneEl = document.getElementById('deletedFeedNone');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">불러오는 중…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-muted">불러오는 중…</td></tr>';
         if (wrap) wrap.style.display = 'block';
         if (noneEl) noneEl.style.display = 'none';
         Promise.all([
@@ -1620,8 +1584,10 @@
           if (wrap) wrap.style.display = 'block';
           tbody.innerHTML = list.map(function (row) {
             var deletedAtStr = row.deletedAt ? new Date(row.deletedAt).toLocaleString('ko-KR') : '—';
+            var cb = '<input type="checkbox" class="deleted-feed-row-cb" data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '" aria-label="선택">';
             var restoreBtn = '<button type="button" class="admin-btn admin-btn--outline admin-deleted-restore-btn" data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '" style="padding:0.3rem 0.5rem; font-size:0.75rem;">복구</button>';
-            return '<tr data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '"><td>' + escapeHtmlTn(row.typeLabel) + '</td><td>' + escapeHtmlTn(row.author) + '</td><td style="max-width:260px; overflow:hidden; text-overflow:ellipsis;" title="' + escapeHtmlTn(row.bodyFull) + '">' + escapeHtmlTn(row.bodyPreview) + '</td><td>' + escapeHtmlTn(row.postId) + '</td><td>' + escapeHtmlTn(deletedAtStr) + '</td><td>' + escapeHtmlTn(row.deletedBy) + '</td><td style="text-align:center;">' + restoreBtn + '</td></tr>';
+            var permDeleteBtn = '<button type="button" class="admin-btn admin-btn--burn admin-deleted-perm-delete-btn" data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '" style="padding:0.3rem 0.5rem; font-size:0.75rem;">영구 삭제</button>';
+            return '<tr data-kind="' + escapeHtmlTn(row.kind) + '" data-id="' + escapeHtmlTn(row.id) + '"><td style="text-align:center;">' + cb + '</td><td>' + escapeHtmlTn(row.typeLabel) + '</td><td>' + escapeHtmlTn(row.author) + '</td><td style="max-width:260px; overflow:hidden; text-overflow:ellipsis;" title="' + escapeHtmlTn(row.bodyFull) + '">' + escapeHtmlTn(row.bodyPreview) + '</td><td>' + escapeHtmlTn(row.postId) + '</td><td>' + escapeHtmlTn(deletedAtStr) + '</td><td>' + escapeHtmlTn(row.deletedBy) + '</td><td style="text-align:center;">' + restoreBtn + '</td><td style="text-align:center;">' + permDeleteBtn + '</td></tr>';
           }).join('');
           tbody.querySelectorAll('.admin-deleted-restore-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -1643,8 +1609,83 @@
                 .catch(function () { alert('복구 요청에 실패했습니다.'); if (row) row.style.opacity = '1'; });
             });
           });
+          tbody.querySelectorAll('.admin-deleted-perm-delete-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var kind = this.getAttribute('data-kind');
+              var id = this.getAttribute('data-id');
+              if (!id) return;
+              var label = kind === 'feed' ? '피드 글' : '댓글';
+              if (!confirm('이 삭제된 ' + label + '을(를) 영구 삭제합니다. 복구할 수 없습니다. 계속할까요?')) return;
+              var row = this.closest('tr');
+              if (row) row.style.opacity = '0.5';
+              var url = kind === 'feed'
+                ? '/api/admin/deleted-feed/' + encodeURIComponent(id)
+                : '/api/admin/deleted-feed-comments/' + encodeURIComponent(id);
+              fetch(url, { method: 'DELETE', credentials: 'same-origin' })
+                .then(function (r) {
+                  return r.text().then(function (text) {
+                    try { return JSON.parse(text); } catch (_) { return { ok: false, message: r.ok ? null : '서버 응답을 처리할 수 없습니다.' }; }
+                  });
+                })
+                .then(function (res) {
+                  if (res && res.ok) { loadDeletedFeedAll(); } else { alert((res && res.message) || '영구 삭제에 실패했습니다.'); if (row) row.style.opacity = '1'; }
+                })
+                .catch(function () { alert('영구 삭제 요청에 실패했습니다.'); if (row) row.style.opacity = '1'; });
+            });
+          });
+          var selectAllCb = document.getElementById('deletedFeedSelectAll');
+          if (selectAllCb) {
+            selectAllCb.checked = false;
+            selectAllCb.onclick = function () {
+              tbody.querySelectorAll('.deleted-feed-row-cb').forEach(function (cbEl) { cbEl.checked = selectAllCb.checked; });
+            };
+          }
+          var bulkBtn = document.getElementById('deletedFeedBulkPermDeleteBtn');
+          if (bulkBtn) {
+            bulkBtn.onclick = function () {
+              var postIds = [];
+              var commentIds = [];
+              tbody.querySelectorAll('.deleted-feed-row-cb:checked').forEach(function (cbEl) {
+                var k = cbEl.getAttribute('data-kind');
+                var id = cbEl.getAttribute('data-id');
+                if (!id) return;
+                if (k === 'feed') postIds.push(id); else commentIds.push(id);
+              });
+              if (postIds.length === 0 && commentIds.length === 0) {
+                alert('영구 삭제할 항목을 선택해 주세요.');
+                return;
+              }
+              if (!confirm('선택한 ' + (postIds.length + commentIds.length) + '개 항목을 영구 삭제합니다. 복구할 수 없습니다. 계속할까요?')) return;
+              bulkBtn.disabled = true;
+              fetch('/api/admin/deleted-feed/permanent-delete-batch', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postIds: postIds, commentIds: commentIds }),
+              })
+                .then(function (r) {
+                  return r.text().then(function (text) {
+                    try { return JSON.parse(text); } catch (_) { return { ok: false, message: r.ok ? null : '서버 응답을 처리할 수 없습니다.' }; }
+                  });
+                })
+                .then(function (res) {
+                  bulkBtn.disabled = false;
+                  if (res && res.ok) {
+                    if (selectAllCb) selectAllCb.checked = false;
+                    loadDeletedFeedAll();
+                    alert(res.message || '선택한 항목이 영구 삭제되었습니다.');
+                  } else {
+                    alert((res && res.message) || '영구 삭제에 실패했습니다.');
+                  }
+                })
+                .catch(function () {
+                  bulkBtn.disabled = false;
+                  alert('요청에 실패했습니다.');
+                });
+            };
+          }
       }).catch(function () {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-muted">목록을 불러올 수 없습니다.</td></tr>';
       });
       }
 

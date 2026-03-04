@@ -44,12 +44,12 @@
 
   <div id="feedSendHeartLayer" class="feed-send-heart-layer" style="display:none;">
     <div class="feed-send-heart-box">
-      <h3 class="feed-send-heart-title"><span class="icon-heart" aria-hidden="true"></span> 하트 보내기</h3>
+      <h3 class="feed-send-heart-title"><span class="icon-heart" aria-hidden="true"></span> 좋아요</h3>
       <p id="feedSendHeartMessage" class="feed-send-heart-message"></p>
-      <p id="feedSendHeartMyHearts" class="feed-send-heart-myhearts"></p>
+      <p id="feedSendHeartMyHearts" class="feed-send-heart-myhearts" style="display:none;"></p>
       <div class="feed-send-heart-actions">
         <button type="button" id="feedSendHeartCancel" class="feed-send-heart-btn feed-send-heart-btn--cancel">취소</button>
-        <button type="button" id="feedSendHeartOk" class="feed-send-heart-btn feed-send-heart-btn--ok">보내기</button>
+        <button type="button" id="feedSendHeartOk" class="feed-send-heart-btn feed-send-heart-btn--ok">좋아요</button>
       </div>
     </div>
   </div>
@@ -236,11 +236,11 @@
       var pendingFeedHeartPostId = null;
       function openFeedSendHeartModal(postId, authorName) {
         pendingFeedHeartPostId = postId;
-        if (feedSendHeartMessage) feedSendHeartMessage.textContent = (authorName || '이 사용자') + '님에게 하트 1개를 보내시겠습니까?';
+        if (feedSendHeartMessage) feedSendHeartMessage.textContent = (authorName || '이 글') + '에 좋아요를 누르시겠습니까?';
         fetch('/api/me', { credentials: 'same-origin' })
           .then(function (r) { return r.json(); })
           .then(function (data) {
-            if (feedSendHeartMyHearts) feedSendHeartMyHearts.textContent = '보유 하트: ' + (data.ok && data.user && typeof data.user.points === 'number' ? data.user.points : 0) + '개';
+            if (feedSendHeartMyHearts) feedSendHeartMyHearts.textContent = '';
           });
         if (feedSendHeartLayer) feedSendHeartLayer.style.display = 'flex';
       }
