@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>검색 | TornFi</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="css/site.css">
+  <style>
+    .feed-search-page { max-width: 100%; margin: 0 auto; padding: 1rem 0.5rem 4rem; }
+    .feed-search-back { display: inline-block; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; }
+    .feed-search-back:hover { color: var(--neon); }
+    .feed-search-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .feed-search-bar__input { flex: 1; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card); color: var(--text); font-size: 1rem; }
+    .feed-search-bar__submit { padding: 0.6rem 1rem; background: var(--neon); color: var(--bg-dark); border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .feed-search-title { font-size: 1.1rem; font-weight: 600; color: var(--text); margin: 0 0 0.75rem 0; }
+  </style>
+</head>
+<body>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo">TornFi</a>
+    </div>
+    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
+      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
+    </div>
+  </nav>
+
+  <main class="site-main">
+    <section class="section feed-section feed-search-page">
+      <a href="/" class="feed-search-back">← 피드로 돌아가기</a>
+      <form class="feed-search-bar" action="feed-search.html" method="get" role="search">
+        <input type="text" name="q" id="feedSearchInput" class="feed-search-bar__input" placeholder="글 검색" autocomplete="off" aria-label="검색어">
+        <button type="submit" class="feed-search-bar__submit" aria-label="검색">검색</button>
+      </form>
+      <h1 class="feed-search-title" id="feedSearchTitle">검색 결과</h1>
+      <p class="text-muted feed-loading" id="feedLoading" style="display:none;">불러오는 중…</p>
+      <p class="text-muted feed-empty" id="feedEmpty" style="display:none;"></p>
+      <div id="feedList" class="feed-list feed-list--search" aria-live="polite"></div>
+      <div class="feed-more-wrap" id="feedMoreWrap" style="display:none;">
+        <button type="button" id="feedMoreBtn" class="feed-more-btn">더보기</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="feedSendHeartLayer" class="feed-send-heart-layer" style="display:none;">
+    <div class="feed-send-heart-box">
+      <h3 class="feed-send-heart-title"><span class="icon-heart" aria-hidden="true"></span> 하트 보내기</h3>
+      <p id="feedSendHeartMessage" class="feed-send-heart-message"></p>
+      <p id="feedSendHeartMyHearts" class="feed-send-heart-myhearts"></p>
+      <div class="feed-send-heart-actions">
+        <button type="button" id="feedSendHeartCancel" class="feed-send-heart-btn feed-send-heart-btn--cancel">취소</button>
+        <button type="button" id="feedSendHeartOk" class="feed-send-heart-btn feed-send-heart-btn--ok">보내기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="feedAlertLayer" class="feed-alert-layer" style="display:none;" aria-modal="true" role="dialog" aria-labelledby="feedAlertTitle">
+    <div class="feed-alert-box">
+      <h3 id="feedAlertTitle" class="feed-alert-title">알림</h3>
+      <p id="feedAlertMessage" class="feed-alert-message"></p>
+      <div class="feed-alert-actions">
+        <button type="button" id="feedAlertOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/nav-logo.js"></script>
+  <script>
+    (function () {
+      var feedList = document.getElementById('feedList');
+      var feedLoading = document.getElementById('feedLoading');
+      var feedEmpty = document.getElementById('feedEmpty');
+      var feedMoreWrap = document.getElementById('feedMoreWrap');
+      var feedMoreBtn = document.getElementById('feedMoreBtn');
+      var feedSearchInput = document.getElementById('feedSearchInput');
+      var feedSearchTitle = document.getElementById('feedSearchTitle');
+      var feedAlertLayer = document.getElementById('feedAlertLayer');
+      var feedAlertMessage = document.getElementById('feedAlertMessage');
+      var feedAlertOk = document.getElementById('feedAlertOk');
+      var FEED_PAGE_SIZE = 10;
+      var currentOffset = 0;
+      var totalLoaded = 0;
+      var totalPosts = 0;
+      var currentQ = '';
+
+      function getQ() {
+        var params = new URLSearchParams(window.location.search);
+        return (params.get('q') || '').trim();
+      }
+
+      function showFeedAlert(msg) {
+        if (feedAlertMessage) feedAlertMessage.textContent = msg || '';
+        if (feedAlertLayer) feedAlertLayer.style.display = 'flex';
+      }
+      if (feedAlertOk && feedAlertLayer) {
+        feedAlertOk.addEventListener('click', function () { feedAlertLayer.style.display = 'none'; });
+        feedAlertLayer.addEventListener('click', function (e) { if (e.target === feedAlertLayer) feedAlertLayer.style.display = 'none'; });
+      }
+
+      function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      function excerpt(text, maxLen) {
+        if (!text) return '';
+        var plain = text.replace(/\s+/g, ' ').trim();
+        if (plain.length <= maxLen) return escapeHtml(plain);
+        return escapeHtml(plain.substring(0, maxLen)) + '…';
+      }
+      function formatDate(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        var now = new Date();
+        var diff = now - d;
+        if (diff < 60000) return '방금 전';
+        if (diff < 3600000) return Math.floor(diff / 60000) + '분 전';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
+        if (diff < 604800000) return Math.floor(diff / 86400000) + '일 전';
+        return d.toLocaleDateString('ko-KR');
+      }
+
+      function renderCard(p, myId, isAdmin) {
+        var author = p.authorDisplayName || '—';
+        var isMine = !!(myId && p.authorId != null && String(p.authorId) === String(myId));
+        var heartsReceived = (p.heartsReceived || 0) > 0 ? (p.heartsReceived || 0) : 0;
+        var comments = p.comments || [];
+        var bodyExcerpt = excerpt(p.body, 200);
+        var dateStr = formatDate(p.createdAt);
+        var hasImg = !!(p.images && p.images[0]);
+        var imgHtml = hasImg ? '<div class="feed-card__media"><img src="' + escapeHtml(p.images[0]) + '" alt="" class="feed-card__thumb" loading="lazy"></div>' : '';
+        var footer = '<div class="feed-card__footer">';
+        if (isMine) {
+          footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + (heartsReceived || 0) + '</span>';
+        } else if (heartsReceived > 0) {
+          footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + heartsReceived + '</span>';
+        } else {
+          footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="icon-heart" aria-hidden="true"></span> 0</button>';
+        }
+        footer += '</div>';
+        var showDeleteBtn = isAdmin || isMine;
+        var deleteBtn = showDeleteBtn ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑</button></div>' : '';
+        var commentsHtml = '<span class="feed-card__comments"><span class="icon-comment" aria-hidden="true"></span> ' + comments.length + '</span>';
+        var dateHtml = '<time class="feed-card__date" datetime="' + (p.createdAt || '') + '">' + dateStr + '</time>';
+        var cardInner =
+          '<article class="feed-card feed-card--list" data-post-id="' + escapeHtml(p.id) + '" data-author-id="' + escapeHtml(p.authorId || '') + '">' +
+            '<a href="feed-post.html?id=' + encodeURIComponent(p.id) + '" class="feed-card__link">' +
+              '<div class="feed-card__row">' + imgHtml +
+              '<div class="feed-card__content">' +
+                (bodyExcerpt ? '<p class="feed-card__excerpt">' + bodyExcerpt + '</p>' : '') +
+              '</div></div>' +
+              '<div class="feed-card__actions">' + footer + commentsHtml + dateHtml + '</div>' +
+            '</a></article>';
+        return showDeleteBtn ? '<div class="feed-card-wrap">' + cardInner + deleteBtn + '</div>' : cardInner;
+      }
+
+      function loadFeed(append) {
+        var q = currentQ;
+        if (!q && !append) {
+          if (feedSearchTitle) feedSearchTitle.textContent = '검색 결과';
+          if (feedEmpty) { feedEmpty.textContent = '검색어를 입력해 주세요.'; feedEmpty.style.display = 'block'; }
+          if (feedList) feedList.innerHTML = '';
+          if (feedMoreWrap) feedMoreWrap.style.display = 'none';
+          return;
+        }
+        if (!append) { currentOffset = 0; totalLoaded = 0; }
+        if (!append && feedLoading) feedLoading.style.display = 'block';
+        if (!append && feedEmpty) feedEmpty.style.display = 'none';
+        if (!append && feedSearchTitle) feedSearchTitle.textContent = q ? '검색: "' + escapeHtml(q) + '"' : '검색 결과';
+
+        var url = '/api/feed?limit=' + FEED_PAGE_SIZE + '&offset=' + currentOffset;
+        if (q) url += '&q=' + encodeURIComponent(q);
+        fetch(url, { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (feedLoading) feedLoading.style.display = 'none';
+            if (!data.ok) {
+              if (feedEmpty) { feedEmpty.textContent = '불러오기에 실패했습니다.'; feedEmpty.style.display = 'block'; }
+              return;
+            }
+            var posts = data.posts || [];
+            totalPosts = data.total != null ? data.total : totalLoaded + posts.length;
+            if (posts.length === 0 && !append) {
+              if (feedEmpty) { feedEmpty.textContent = '검색 결과가 없습니다.'; feedEmpty.style.display = 'block'; }
+              if (feedList) feedList.innerHTML = '';
+              if (feedMoreWrap) feedMoreWrap.style.display = 'none';
+              return;
+            }
+            if (feedEmpty) feedEmpty.style.display = 'none';
+            var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+            var myId = me ? me.id : null;
+            var isAdmin = !!(me && me.isAdmin);
+            var html = posts.map(function (p) { return renderCard(p, myId, isAdmin); }).join('');
+            if (append && feedList) {
+              var wrap = document.createElement('div');
+              wrap.className = 'feed-list__page';
+              wrap.innerHTML = html;
+              feedList.appendChild(wrap);
+            } else if (feedList) {
+              feedList.innerHTML = '<div class="feed-list__page">' + html + '</div>';
+            }
+            totalLoaded += posts.length;
+            currentOffset += posts.length;
+            if (feedMoreWrap) feedMoreWrap.style.display = (currentOffset < totalPosts) ? 'block' : 'none';
+          })
+          .catch(function () {
+            if (feedLoading) feedLoading.style.display = 'none';
+            if (feedEmpty) { feedEmpty.textContent = '불러오기에 실패했습니다.'; feedEmpty.style.display = 'block'; }
+          });
+      }
+
+      currentQ = getQ();
+      if (feedSearchInput && currentQ) feedSearchInput.value = currentQ;
+      loadFeed(false);
+
+      if (feedMoreBtn) feedMoreBtn.addEventListener('click', function () { loadFeed(true); });
+
+      if (feedList) {
+        feedList.addEventListener('click', function (e) {
+          var link = e.target && e.target.closest && e.target.closest('a.feed-card__link');
+          if (!link) return;
+          var heartBtn = e.target.closest && e.target.closest('.feed-card-heart-btn');
+          if (heartBtn) { e.preventDefault(); return; }
+          var adminBtn = e.target.closest && e.target.closest('.feed-card__admin-delete');
+          if (adminBtn) { e.preventDefault(); return; }
+        });
+      }
+
+      var feedSendHeartLayer = document.getElementById('feedSendHeartLayer');
+      var feedSendHeartMessage = document.getElementById('feedSendHeartMessage');
+      var feedSendHeartMyHearts = document.getElementById('feedSendHeartMyHearts');
+      var feedSendHeartCancel = document.getElementById('feedSendHeartCancel');
+      var feedSendHeartOk = document.getElementById('feedSendHeartOk');
+      var pendingFeedHeartPostId = null;
+      function openFeedSendHeartModal(postId, authorName) {
+        pendingFeedHeartPostId = postId;
+        if (feedSendHeartMessage) feedSendHeartMessage.textContent = (authorName || '이 사용자') + '님에게 하트 1개를 보내시겠습니까?';
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (feedSendHeartMyHearts) feedSendHeartMyHearts.textContent = '보유 하트: ' + (data.ok && data.user && typeof data.user.points === 'number' ? data.user.points : 0) + '개';
+          });
+        if (feedSendHeartLayer) feedSendHeartLayer.style.display = 'flex';
+      }
+      function closeFeedSendHeartModal() {
+        pendingFeedHeartPostId = null;
+        if (feedSendHeartLayer) feedSendHeartLayer.style.display = 'none';
+      }
+      if (feedSendHeartCancel) feedSendHeartCancel.addEventListener('click', closeFeedSendHeartModal);
+      if (feedSendHeartOk) feedSendHeartOk.addEventListener('click', function () {
+        if (!pendingFeedHeartPostId) return;
+        var postId = pendingFeedHeartPostId;
+        feedSendHeartOk.disabled = true;
+        fetch('/api/feed/' + encodeURIComponent(postId) + '/send-heart', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            feedSendHeartOk.disabled = false;
+            closeFeedSendHeartModal();
+            if (data.ok) {
+              var card = feedList && feedList.querySelector('.feed-card[data-post-id="' + postId + '"]');
+              if (card) {
+                var footer = card.querySelector('.feed-card__footer');
+                if (footer) {
+                  var btn = footer.querySelector('.feed-card-heart-btn');
+                  if (btn) btn.remove();
+                  var heartsEl = footer.querySelector('.feed-card__hearts');
+                  var nextCount = data.heartsReceived || 0;
+                  if (heartsEl) heartsEl.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + nextCount;
+                  else {
+                    var span = document.createElement('span');
+                    span.className = 'feed-card__hearts';
+                    span.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + nextCount;
+                    footer.insertBefore(span, footer.firstChild);
+                  }
+                }
+              }
+              if (data.message) showFeedAlert(data.message);
+            } else if (data.message) showFeedAlert(data.message);
+          })
+          .catch(function () { feedSendHeartOk.disabled = false; showFeedAlert('하트 전송 중 오류가 발생했습니다.'); });
+      });
+      if (feedSendHeartLayer && feedSendHeartLayer.querySelector('.feed-send-heart-box')) {
+        feedSendHeartLayer.addEventListener('click', function (e) { if (e.target === feedSendHeartLayer) closeFeedSendHeartModal(); });
+      }
+
+      document.addEventListener('click', function (e) {
+        var heartBtn = e.target.closest && e.target.closest('.feed-card-heart-btn');
+        if (heartBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (heartBtn.getAttribute('data-own-post') === '1') {
+            showFeedAlert('본인 글에는 하트를 줄 수 없습니다.');
+            return;
+          }
+          var pid = heartBtn.getAttribute('data-post-id');
+          var authorName = heartBtn.getAttribute('data-author-name') || '이 사용자';
+          if (!pid) return;
+          var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || {};
+          if (!me.id) { showFeedAlert('로그인 후 하트를 보낼 수 있습니다.'); return; }
+          openFeedSendHeartModal(pid, authorName);
+        }
+      });
+
+      if (document.getElementById('navMenuBtn') && document.getElementById('navMenuDropdown')) {
+        var navMenuBtn = document.getElementById('navMenuBtn');
+        var navMenuDropdown = document.getElementById('navMenuDropdown');
+        navMenuBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = navMenuDropdown.classList.toggle('is-open');
+          navMenuBtn.setAttribute('aria-expanded', open);
+        });
+        document.addEventListener('click', function () {
+          navMenuDropdown.classList.remove('is-open');
+          navMenuBtn.setAttribute('aria-expanded', 'false');
+        });
+      }
+      if (window.TornFiAuth) {
+        window.TornFiAuth.onUser(function (user) {
+          var nac = document.getElementById('navAdminCenter');
+          if (nac) nac.style.display = (user && user.isAdmin) ? 'inline-flex' : 'none';
+        });
+        var u = window.TornFiAuth.getUser();
+        var nac = document.getElementById('navAdminCenter');
+        if (nac) nac.style.display = (u && u.isAdmin) ? 'inline-flex' : 'none';
+      }
+    })();
+  </script>
+</body>
+</html>

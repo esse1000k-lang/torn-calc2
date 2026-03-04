@@ -3617,14 +3617,44 @@ app.post('/api/admin/deleted-feed-comments/:commentId/restore', adminMiddleware,
   res.json({ ok: true, commentId: created.id, message: '댓글이 복구되었습니다.' });
 });
 
-// 피드 글에 댓글 작성 — 로그인 필요, 생성된 댓글 반환으로 화면 즉시 반영
+// 피드 글에 댓글 작성 — 로그인 필요, multipart 시 이미지 첨부 가능
 const FEED_COMMENT_BODY_MAX = 1000;
 const FEED_COMMENTS_MAX = 200;
-app.post('/api/feed/:postId/comments', rateLimitWrites, async (req, res) => {
+const FEED_COMMENT_IMAGE_MAX = 3;
+app.post('/api/feed/:postId/comments', rateLimitWrites, (req, res, next) => {
+  const ct = req.get('content-type') || '';
+  if (ct.indexOf('multipart/form-data') !== -1) {
+    const uploadCommentImages = multer({
+      storage: storagePostImages,
+      limits: { fileSize: IMAGE_MAX_SIZE, files: FEED_COMMENT_IMAGE_MAX },
+      fileFilter: fileFilterImages,
+    }).array('images', FEED_COMMENT_IMAGE_MAX);
+    return uploadCommentImages(req, res, (err) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ ok: false, message: '이미지는 한 장당 2MB 이하여야 합니다.' });
+        if (err.code === 'LIMIT_FILE_COUNT') return res.status(400).json({ ok: false, message: '댓글 이미지는 최대 3장까지 첨부할 수 있습니다.' });
+        return res.status(400).json({ ok: false, message: err.message || '이미지 형식이 올바르지 않습니다.' });
+      }
+      next();
+    });
+  }
+  next();
+}, async (req, res) => {
   if (!req.user) return res.status(401).json({ ok: false, message: '로그인 후 댓글을 남길 수 있습니다.' });
   const postId = String(req.params.postId || '').trim();
   const body = String(req.body?.body || '').trim();
   const replyToCommentId = String(req.body?.replyToCommentId || '').trim() || null;
+  const files = req.files || [];
+  for (const f of files) {
+    if (f.path) {
+      const ext = path.extname(f.filename || f.originalname || '').toLowerCase();
+      if (!validateImageMagic(f.path, ext)) {
+        files.forEach((x) => { try { if (x.path) fs.unlinkSync(x.path); } catch (_) {} });
+        return res.status(400).json({ ok: false, message: '이미지 파일이 올바르지 않습니다.' });
+      }
+    }
+  }
+  const imagePaths = files.map((f) => '/uploads/' + f.filename);
   if (!postId) return res.status(400).json({ ok: false, message: '글 ID가 필요합니다.' });
   if (!body || body.length > FEED_COMMENT_BODY_MAX) return res.status(400).json({ ok: false, message: '댓글을 1~' + FEED_COMMENT_BODY_MAX + '자로 입력해 주세요.' });
   const post = await db.getFeedPostById(postId);
@@ -3646,6 +3676,7 @@ app.post('/api/feed/:postId/comments', rateLimitWrites, async (req, res) => {
     authorDisplayName: author ? (author.displayName || '—') : (req.user.displayName || '—'),
     authorProfileImageUrl: author && author.profileImageUrl ? author.profileImageUrl : null,
     body,
+    images: imagePaths,
     replyToCommentId: replyToCommentId || null,
     replyToDisplayName: replyToDisplayName || null,
     createdAt: new Date(),

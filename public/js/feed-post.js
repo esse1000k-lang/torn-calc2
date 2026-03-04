@@ -51,13 +51,19 @@
     if (heartRow) heartRow = '<div class="feed-comment__footer">' + heartRow + '</div>';
     var canDeleteComment = (isAdmin || isMine) && pid && c && c.id;
     var adminDeleteHtml = canDeleteComment ? '<div class="feed-comment-admin-outer"><button type="button" class="feed-card__admin-delete feed-comment-admin-delete" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" aria-label="댓글 삭제">🗑 삭제</button></div>' : '';
+    var imagesHtml = '';
+    if (c && c.images && c.images.length > 0) {
+      imagesHtml = '<div class="feed-comment__images feed-card__images">' + c.images.map(function (src) {
+        return '<div class="feed-card__images-item"><img src="' + escapeHtml(src) + '" alt="" class="feed-card__thumb" loading="lazy"></div>';
+      }).join('') + '</div>';
+    }
     var liClass = 'feed-comment' + (opts.isThreadHead ? ' feed-comment--thread-head' : '');
     return '<li class="' + liClass + '" data-comment-id="' + escapeHtml(c.id) + '">' + avatar +
       '<div class="feed-comment__body">' + replyToLine +
       '<span class="feed-comment__author">' + escapeHtml(name) + '</span>' +
       (levelEmoji ? ' <span class="feed-card__level" aria-hidden="true">' + levelEmoji + '</span>' : '') +
       ' <span class="feed-comment__date">' + dateStr + '</span>' +
-      '<p class="feed-comment__text">' + escapeHtml((c && c.body) ? c.body : '') + '</p>' + heartRow + '</div>' + adminDeleteHtml + '</li>';
+      '<p class="feed-comment__text">' + escapeHtml((c && c.body) ? c.body : '') + '</p>' + imagesHtml + heartRow + '</div>' + adminDeleteHtml + '</li>';
   }
 
   function renderPost(p) {
@@ -104,11 +110,7 @@
       footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> 0</span>';
     }
     footer += '</div>';
-    var commentsCountLabel = '댓글 ' + comments.length;
-    var commentFormHtml = myId ? '<div class="feed-card__comment-form feed-post-compose-bar__form" data-post-id="' + escapeHtml(p.id) + '">' +
-      '<div class="feed-card__reply-to-chip" style="display:none;">답글: <span class="feed-card__reply-to-name"></span> <button type="button" class="feed-card__reply-to-cancel">취소</button></div>' +
-      '<input type="text" class="feed-card__comment-input" placeholder="댓글을 입력하세요..." maxlength="1000" data-post-id="' + escapeHtml(p.id) + '">' +
-      '<button type="button" class="feed-card__comment-submit">댓글</button></div>' : '';
+    var commentsHtml = '<span class="feed-card__comments"><span class="icon-comment" aria-hidden="true"></span> ' + comments.length + '</span>';
     var commentsListBlock = '<ul class="feed-card__comments-list">' + commentsListHtml + '</ul>';
     currentPost = p;
     var cardInner = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
@@ -125,18 +127,31 @@
               '</div></div>' +
             (bodyHtml ? '<div class="feed-card__body"><p class="feed-card__excerpt feed-card__body-full">' + bodyHtml + '</p></div>' : '') +
             (imagesHtml ? imagesHtml : '') +
-            '<div class="feed-card__actions">' + footer + '<span class="feed-card__comments-count">' + commentsCountLabel + '</span></div>' +
+            '<div class="feed-card__actions">' + footer + commentsHtml + '</div>' +
           '</div></div></div>' +
       '<div class="feed-card__comments">' + commentsListBlock + '</div></article>';
     root.innerHTML = cardInner;
-    var bar = document.getElementById('feedPostCommentBar');
-    if (bar) {
+    var feedFloatingBar = document.getElementById('feedFloatingBar');
+    if (feedFloatingBar) {
       if (myId) {
-        bar.innerHTML = commentFormHtml;
-        bar.style.display = 'block';
+        feedFloatingBar.style.display = 'block';
+        feedFloatingBar.classList.add('is-visible');
+        var feedComposeAvatarImg = document.getElementById('feedComposeAvatarImg');
+        var feedComposeAvatar = document.getElementById('feedComposeAvatar');
+        var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+        if (me && feedComposeAvatar) {
+          if (me.profileImageUrl && String(me.profileImageUrl).trim()) {
+            if (feedComposeAvatarImg) { feedComposeAvatarImg.src = me.profileImageUrl; feedComposeAvatarImg.style.display = ''; }
+            feedComposeAvatar.style.display = 'none';
+          } else {
+            if (feedComposeAvatarImg) feedComposeAvatarImg.style.display = 'none';
+            feedComposeAvatar.textContent = (me.displayName && me.displayName.charAt(0)) ? me.displayName.charAt(0).toUpperCase() : '?';
+            feedComposeAvatar.style.display = '';
+          }
+        }
       } else {
-        bar.innerHTML = '';
-        bar.style.display = 'none';
+        feedFloatingBar.style.display = 'none';
+        feedFloatingBar.classList.remove('is-visible');
       }
     }
   }
@@ -150,6 +165,7 @@
   window.showFeedAlert = showFeedAlert;
 
   function attachHandlers() {
+    var replyToCommentIdForCompose = '';
     var feedAlertLayer = document.getElementById('feedAlertLayer');
     var feedAlertOk = document.getElementById('feedAlertOk');
     if (feedAlertOk && feedAlertLayer) {
@@ -265,8 +281,8 @@
           .then(function (data) {
             if (data.ok) {
               if (li && li.parentNode) li.parentNode.removeChild(li);
-              var countEl = root.querySelector('.feed-card__comments-count');
-              if (countEl) countEl.textContent = '댓글 ' + root.querySelectorAll('.feed-comment').length;
+              var countEl = root.querySelector('.feed-card__actions .feed-card__comments');
+              if (countEl) countEl.innerHTML = '<span class="icon-comment" aria-hidden="true"></span> ' + root.querySelectorAll('.feed-comment').length;
               pendingCommentDelete = null;
             } else if (data.needPin && feedAdminPinLayer) {
               feedAdminPinLayer.style.display = 'flex';
@@ -321,6 +337,21 @@
         feedAdminPinInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitFeedAdminPin(); } });
       }
       root.addEventListener('click', function (e) {
+        var imagesWrap = e.target && e.target.closest && e.target.closest('.feed-card__images');
+        if (imagesWrap) {
+          var img = e.target.tagName === 'IMG' ? e.target : imagesWrap.querySelector('img');
+          if (img && img.src) {
+            e.preventDefault();
+            e.stopPropagation();
+            var layer = document.getElementById('feedImageFullscreen');
+            var fullImg = document.getElementById('feedImageFullscreenImg');
+            if (layer && fullImg) {
+              fullImg.src = img.src;
+              layer.style.display = 'flex';
+            }
+            return;
+          }
+        }
         var commentDeleteBtn = e.target && e.target.closest && e.target.closest('.feed-comment-admin-delete');
         if (commentDeleteBtn) {
           e.preventDefault();
@@ -334,7 +365,7 @@
           if (feedDeleteConfirmMsg) feedDeleteConfirmMsg.textContent = '이 댓글을 삭제하시겠습니까? 삭제된 댓글은 관리자 페이지에서 복구할 수 있습니다.';
           if (feedDeleteLayer) feedDeleteLayer.style.display = 'flex';
         }
-      });
+      }, true);
     }
 
     var feedAuthorPopover = document.getElementById('feedAuthorPopover');
@@ -467,87 +498,151 @@
         openHeartModal(pid, authorName, cid);
         return;
       }
-      var replyToCancel = e.target.closest && e.target.closest('.feed-card__reply-to-cancel');
-      if (replyToCancel) {
+      var replyCancelBtn = e.target.closest && e.target.closest('.feed-post-reply-cancel');
+      if (replyCancelBtn) {
         e.preventDefault();
-        var formWrap = replyToCancel.closest('.feed-card__comment-form');
-        if (formWrap) {
-          formWrap.dataset.replyToCommentId = '';
-          formWrap.dataset.replyToDisplayName = '';
-          var chip = formWrap.querySelector('.feed-card__reply-to-chip');
-          if (chip) chip.style.display = 'none';
-          var input = formWrap.querySelector('.feed-card__comment-input');
-          if (input) input.placeholder = '댓글을 입력하세요...';
-        }
+        replyToCommentIdForCompose = '';
+        var chip = document.querySelector('.feed-post-reply-chip');
+        if (chip) chip.style.display = 'none';
         return;
       }
-      var commentSubmit = e.target.closest && e.target.closest('.feed-card__comment-submit');
-      if (commentSubmit) {
-        e.preventDefault();
-        var formWrap = commentSubmit.closest('.feed-card__comment-form');
-        var input = formWrap && formWrap.querySelector('.feed-card__comment-input');
-        var pid = formWrap && formWrap.getAttribute('data-post-id');
-        var body = input && input.value ? input.value.trim() : '';
-        var replyToCommentId = formWrap && formWrap.dataset.replyToCommentId ? formWrap.dataset.replyToCommentId.trim() : '';
-        if (!pid || !body) return;
-        commentSubmit.disabled = true;
-        var payload = { body: body };
-        if (replyToCommentId) payload.replyToCommentId = replyToCommentId;
-        fetch('/api/feed/' + encodeURIComponent(pid) + '/comments', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            commentSubmit.disabled = false;
-            if (data.ok && data.comment) {
-              input.value = '';
-              if (formWrap) {
-                formWrap.dataset.replyToCommentId = '';
-                formWrap.dataset.replyToDisplayName = '';
-                var chip = formWrap.querySelector('.feed-card__reply-to-chip');
-                if (chip) chip.style.display = 'none';
-                if (input) input.placeholder = '댓글을 입력하세요...';
-              }
-              var list = root.querySelector('.feed-card__comments-list');
-              var countEl = root.querySelector('.feed-card__comments-count');
-              if (list) {
-                var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
-                var myId = me ? me.id : null;
-                var isAdmin = !!(me && me.isAdmin);
-                var isReply = !!(data.comment.replyToCommentId && data.comment.replyToCommentId !== '');
-                var html = renderComment(data.comment, myId, pid, isAdmin, { showReplyTo: isReply });
-                list.insertAdjacentHTML('beforeend', html);
-              }
-              if (countEl) countEl.textContent = '댓글 ' + root.querySelectorAll('.feed-comment').length;
-            } else if (data.message) showFeedAlert(data.message);
-          })
-          .catch(function () { commentSubmit.disabled = false; showFeedAlert('댓글 전송에 실패했습니다.'); });
-      }
     });
-    container.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      var input = e.target.closest && e.target.closest('.feed-card__comment-input');
-      if (!input) return;
-      var formWrap = input.closest('.feed-card__comment-form');
-      var btn = formWrap && formWrap.querySelector('.feed-card__comment-submit');
-      if (btn) { e.preventDefault(); btn.click(); }
-    });
-    if (window.matchMedia('(max-width: 768px)').matches) {
-      container.addEventListener('focus', function (e) {
-        var input = e.target && e.target.closest && e.target.closest('.feed-card__comment-input');
-        if (input) {
-          var form = input.closest('.feed-card__comment-form');
-          if (form) form.classList.add('feed-card__comment-form--keyboard-open');
-        }
-      }, true);
-      container.addEventListener('focusout', function (e) {
-        var form = e.target && e.target.closest && e.target.closest('.feed-card__comment-form');
-        if (form && !form.contains(e.relatedTarget)) form.classList.remove('feed-card__comment-form--keyboard-open');
-      }, true);
+
+    var feedFloatingBar = document.getElementById('feedFloatingBar');
+    var feedFloatingBarTrigger = document.getElementById('feedFloatingBarTrigger');
+    var feedComposePlaceholder = document.getElementById('feedComposePlaceholder');
+    var feedComposeText = document.getElementById('feedComposeText');
+    var feedComposeCollapse = document.getElementById('feedComposeCollapse');
+    var feedComposeSubmit = document.getElementById('feedComposeSubmit');
+    function expandFloatingCompose() {
+      if (feedFloatingBar) feedFloatingBar.classList.add('is-expanded');
+      if (feedComposeText) { feedComposeText.style.display = 'block'; feedComposeText.focus(); }
+      if (feedComposePlaceholder) feedComposePlaceholder.style.display = 'none';
+      if (feedComposeCollapse) feedComposeCollapse.style.display = '';
     }
+    function collapseFloatingCompose() {
+      if (feedFloatingBar) feedFloatingBar.classList.remove('is-expanded');
+      if (feedComposeText) feedComposeText.style.display = 'none';
+      if (feedComposePlaceholder) feedComposePlaceholder.style.display = '';
+      if (feedComposeCollapse) feedComposeCollapse.style.display = 'none';
+    }
+    if (feedFloatingBarTrigger) feedFloatingBarTrigger.addEventListener('click', function (e) { e.stopPropagation(); expandFloatingCompose(); });
+    if (feedComposePlaceholder) feedComposePlaceholder.addEventListener('click', expandFloatingCompose);
+    if (feedComposeCollapse) feedComposeCollapse.addEventListener('click', collapseFloatingCompose);
+
+    var feedComposeImage = document.getElementById('feedComposeImage');
+    var feedComposePreview = document.getElementById('feedComposePreview');
+    var composeFiles = [];
+    var COMMENT_IMAGE_MAX = 3;
+    function updateComposePreview() {
+      if (!feedComposePreview) return;
+      feedComposePreview.innerHTML = '';
+      composeFiles.forEach(function (file, i) {
+        var url = typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '';
+        var item = document.createElement('div');
+        item.className = 'feed-compose__preview-item';
+        item.innerHTML = '<img src="' + (url || '') + '" alt=""><button type="button" class="feed-compose__remove-img" data-index="' + i + '" aria-label="제거">×</button>';
+        feedComposePreview.appendChild(item);
+      });
+      var inner = document.getElementById('feedComposeInner');
+      if (inner) inner.classList.toggle('has-preview', feedComposePreview.children.length > 0);
+    }
+    function getRemoveBtnFromEvent(e) {
+      var t = e.target;
+      while (t && t !== feedComposePreview) {
+        if (t.classList && t.classList.contains('feed-compose__remove-img')) return t;
+        t = t.parentNode;
+      }
+      return null;
+    }
+    if (feedComposeImage) {
+      feedComposeImage.addEventListener('change', function () {
+        var files = this.files ? Array.prototype.slice.call(this.files) : [];
+        for (var i = 0; i < files.length && composeFiles.length < COMMENT_IMAGE_MAX; i++) {
+          composeFiles.push(files[i]);
+        }
+        if (composeFiles.length > COMMENT_IMAGE_MAX) composeFiles.length = COMMENT_IMAGE_MAX;
+        updateComposePreview();
+        this.value = '';
+      });
+    }
+    if (feedComposePreview) {
+      feedComposePreview.addEventListener('click', function (e) {
+        var btn = getRemoveBtnFromEvent(e);
+        if (!btn) return;
+        e.preventDefault();
+        var idx = parseInt(btn.getAttribute('data-index'), 10);
+        if (!isNaN(idx) && idx >= 0 && idx < composeFiles.length) {
+          composeFiles.splice(idx, 1);
+          updateComposePreview();
+        }
+      });
+    }
+
+    if (feedComposeSubmit && feedComposeText) {
+      function updateSubmitState() { feedComposeSubmit.disabled = !feedComposeText.value.trim(); }
+      feedComposeText.addEventListener('input', updateSubmitState);
+      feedComposeText.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); feedComposeSubmit.click(); } });
+      feedComposeSubmit.addEventListener('click', function () {
+        if (!currentPost || !currentPost.id) return;
+        var body = feedComposeText.value ? feedComposeText.value.trim() : '';
+        if (!body) return;
+        feedComposeSubmit.disabled = true;
+        var url = '/api/feed/' + encodeURIComponent(currentPost.id) + '/comments';
+        var hasFiles = composeFiles.length > 0;
+        function done(data) {
+          feedComposeSubmit.disabled = false;
+          if (data.ok && data.comment) {
+            feedComposeText.value = '';
+            composeFiles.length = 0;
+            if (feedComposeImage) feedComposeImage.value = '';
+            updateComposePreview();
+            replyToCommentIdForCompose = '';
+            var chip = document.querySelector('.feed-post-reply-chip');
+            if (chip) chip.style.display = 'none';
+            var list = root.querySelector('.feed-card__comments-list');
+            if (list) {
+              var me = (window.TornFiAuth && window.TornFiAuth.getUser()) || null;
+              var myId = me ? me.id : null;
+              var isAdmin = !!(me && me.isAdmin);
+              var isReply = !!(data.comment.replyToCommentId && data.comment.replyToCommentId !== '');
+              var html = renderComment(data.comment, myId, currentPost.id, isAdmin, { showReplyTo: isReply });
+              list.insertAdjacentHTML('beforeend', html);
+            }
+            var countEl = root.querySelector('.feed-card__actions .feed-card__comments');
+            if (countEl) countEl.innerHTML = '<span class="icon-comment" aria-hidden="true"></span> ' + root.querySelectorAll('.feed-comment').length;
+            collapseFloatingCompose();
+          } else if (data.message) showFeedAlert(data.message);
+        }
+        if (hasFiles) {
+          var fd = new FormData();
+          fd.append('body', body);
+          if (replyToCommentIdForCompose) fd.append('replyToCommentId', replyToCommentIdForCompose);
+          composeFiles.forEach(function (f) { fd.append('images', f); });
+          fetch(url, { method: 'POST', credentials: 'same-origin', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(done)
+            .catch(function () { feedComposeSubmit.disabled = false; showFeedAlert('댓글 전송에 실패했습니다.'); });
+        } else {
+          var payload = { body: body };
+          if (replyToCommentIdForCompose) payload.replyToCommentId = replyToCommentIdForCompose;
+          fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+            .then(function (r) { return r.json(); })
+            .then(done)
+            .catch(function () { feedComposeSubmit.disabled = false; showFeedAlert('댓글 전송에 실패했습니다.'); });
+        }
+      });
+    }
+    document.addEventListener('click', function (e) {
+      if (!feedFloatingBar || !feedFloatingBar.classList.contains('is-expanded')) return;
+      if (feedFloatingBar.contains(e.target)) return;
+      collapseFloatingCompose();
+    });
   }
 
   function showError(msg) {
@@ -585,6 +680,16 @@
 
   function init() {
     initNav();
+    (function setupFullscreenImage() {
+      var layer = document.getElementById('feedImageFullscreen');
+      var fullImg = document.getElementById('feedImageFullscreenImg');
+      var closeBtn = layer && layer.querySelector('.feed-image-fullscreen__close');
+      function closeFullscreen() { if (layer) layer.style.display = 'none'; }
+      if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
+      if (layer) layer.addEventListener('click', function (e) {
+        if (e.target === layer || e.target === fullImg) closeFullscreen();
+      });
+    })();
     var params = new URLSearchParams(window.location.search);
     var postId = (params.get('id') || '').trim();
     root = document.getElementById('feedPostRoot');

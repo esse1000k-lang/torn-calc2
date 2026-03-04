@@ -12,15 +12,38 @@
     .feed-post-page .feed-card { border: none; overflow: visible; background: transparent; }
     .feed-post-page .feed-card__link {
       display: block; padding: 1rem 1.25rem; margin-bottom: 0.75rem;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.06) 0%, rgba(17, 17, 19, 0.98) 50%, rgba(0, 255, 136, 0.04) 100%);
+      border: 1px solid rgba(0, 255, 136, 0.15);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .feed-post-page .feed-card__link::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.08), transparent);
+      animation: feed-post-shine 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes feed-post-shine {
+      0%, 100% { transform: translateX(0); opacity: 0; }
+      50% { transform: translateX(200%); opacity: 1; }
     }
     .feed-post-page .feed-card__body { margin-top: 0.35rem; }
     .feed-post-page .feed-card__body-full { white-space: pre-wrap; word-break: break-word; font-size: 0.95rem; line-height: 1.5; color: var(--text); }
     .feed-post-page .feed-card__images { margin-top: 0.75rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; }
     .feed-post-page .feed-card__images-item { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-dark); }
-    .feed-post-page .feed-card__images-item .feed-card__thumb { width: 100%; height: auto; display: block; object-fit: cover; max-height: 280px; }
+    .feed-post-page .feed-card__images-item .feed-card__thumb { width: 100%; height: auto; display: block; object-fit: cover; max-height: 280px; cursor: pointer; }
     .feed-post-page .feed-card__actions { margin-top: 0.5rem; padding-top: 0.5rem; gap: 0.5rem 0.75rem; font-size: 0.8rem; }
+    .feed-post-page .feed-card__actions .feed-card__hearts,
+    .feed-post-page .feed-card__actions .feed-card__comments { font-size: 0.8rem; color: var(--text-muted); }
     .feed-post-page .feed-card__comments { margin: 0; padding: 0; background: transparent; }
+    .feed-post-page .feed-comment__hearts,
+    .feed-post-page .feed-comment-heart-btn { color: var(--text-muted); font-size: 0.8rem; }
     .feed-post-page .feed-card__comments-list {
       margin: 0; padding: 1rem 1.25rem;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
@@ -29,6 +52,9 @@
     .feed-post-page .feed-comment__date { font-size: 0.8rem; }
     .feed-post-page .feed-comment__text { font-size: 0.95rem; line-height: 1.5; }
     .feed-post-page .feed-comment__footer { font-size: 0.8rem; }
+    .feed-post-page .feed-comment__images { margin-top: 0.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.35rem; }
+    .feed-post-page .feed-comment__images .feed-card__images-item { border-radius: 6px; }
+    .feed-post-page .feed-comment__images .feed-card__thumb { max-height: 120px; cursor: pointer; }
     @media (max-width: 768px) {
       .feed-post-page { padding-left: 0.35rem; padding-right: 0.35rem; }
       .feed-post-page .feed-card__link { padding: 1rem 1rem; }
@@ -69,6 +95,17 @@
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 255, 136, 0.2);
     }
     .feed-post-fab:active { transform: scale(0.94); animation: none; }
+    .feed-image-fullscreen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center;
+      padding: 2rem; box-sizing: border-box;
+      isolation: isolate;
+    }
+    .feed-image-fullscreen__close {
+      position: absolute; top: max(0.5rem, env(safe-area-inset-top)); right: max(0.5rem, env(safe-area-inset-right));
+      width: 44px; height: 44px; border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; border-radius: 50%;
+    }
+    .feed-image-fullscreen__img { max-width: 100%; max-height: 100%; object-fit: contain; }
   </style>
 </head>
 <body>
@@ -86,7 +123,41 @@
   <main class="site-main site-main--feed-post">
     <div class="feed-post-page">
       <div id="feedPostRoot"></div>
-      <div id="feedPostCommentBar" class="feed-post-compose-bar" aria-label="댓글 입력" style="display:none;"></div>
+    </div>
+    <!-- 피드 상세 전용: 플로팅 바 → 탭 시 메인과 동일한 댓글 입력 창 -->
+    <div id="feedFloatingBar" class="feed-floating-bar feed-floating-bar--post" aria-label="댓글 쓰기" style="display:none;">
+      <p class="feed-floating-bar__invite" id="feedFloatingBarInvite">댓글 매너가 곧 투자의 그릇</p>
+      <button type="button" class="feed-floating-bar__trigger" id="feedFloatingBarTrigger">
+        <span class="feed-floating-bar__trigger-icon" aria-hidden="true">✏️</span>
+        <span class="feed-floating-bar__trigger-label">한마디 남겨주실래요?</span>
+      </button>
+      <div class="feed-floating-bar__expand" id="feedFloatingBarExpand">
+        <div id="feedCompose" class="feed-compose feed-compose--comment-mode" aria-label="댓글 입력">
+          <div class="feed-compose__inner feed-compose__expand-wrap" id="feedComposeInner">
+            <div class="feed-compose__reply-to-chip feed-post-reply-chip" style="display:none;">답글: <span class="feed-post-reply-name"></span> <button type="button" class="feed-post-reply-cancel" aria-label="취소">취소</button></div>
+            <div class="feed-compose__row">
+              <button type="button" class="feed-compose__collapse" id="feedComposeCollapse" aria-label="접기" style="display:none;">접기</button>
+              <div class="feed-compose__avatar-wrap" id="feedComposeAvatarWrap">
+                <img class="feed-compose__avatar-img" id="feedComposeAvatarImg" src="" alt="" style="display:none;">
+                <span class="feed-compose__avatar feed-compose__avatar--letter" id="feedComposeAvatar" aria-hidden="true">?</span>
+              </div>
+              <div class="feed-compose__center">
+                <button type="button" class="feed-compose__placeholder" id="feedComposePlaceholder">한마디 남겨주실래요?</button>
+                <textarea id="feedComposeText" class="feed-compose__input" placeholder="한마디 남겨주실래요?" rows="3" maxlength="1000" aria-label="댓글 내용" style="display:none;"></textarea>
+              </div>
+              <button type="button" class="feed-compose__send-btn" id="feedComposeSendBtn" aria-label="펼치기" style="display:none;">➤</button>
+            </div>
+            <div class="feed-compose__actions" id="feedComposeActions">
+              <div class="feed-compose__actions-left">
+                <input type="file" id="feedComposeImage" accept="image/jpeg,image/png,image/gif,image/webp" multiple class="feed-compose__file-input" aria-label="이미지 첨부" tabindex="-1">
+                <label for="feedComposeImage" class="feed-compose__action-btn feed-compose__image-btn" id="feedComposeImageBtn" aria-hidden="true">+</label>
+              </div>
+              <div class="feed-compose__preview" id="feedComposePreview"></div>
+              <button type="button" class="feed-compose__submit" id="feedComposeSubmit" disabled aria-label="보내기">↗</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <a href="/" class="feed-post-fab" id="feedPostFab" aria-label="피드 목록으로 돌아가기">←</a>
     <div id="feedAuthorPopover" class="feed-author-popover" role="tooltip" aria-hidden="true" style="display:none;">
@@ -139,6 +210,10 @@
           <button type="button" id="feedAlertOk" class="feed-delete-confirm-btn feed-delete-confirm-btn--ok">확인</button>
         </div>
       </div>
+    </div>
+    <div id="feedImageFullscreen" class="feed-image-fullscreen" style="display:none;" aria-modal="true" role="dialog" aria-label="이미지 전체 화면">
+      <button type="button" class="feed-image-fullscreen__close" aria-label="닫기">×</button>
+      <img id="feedImageFullscreenImg" class="feed-image-fullscreen__img" src="" alt="">
     </div>
   </main>
 

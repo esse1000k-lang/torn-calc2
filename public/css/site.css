@@ -1064,21 +1064,6 @@ button.mobile-home-menu__btn {
   padding: 2rem 1rem;
   margin-bottom: 1rem;
 }
-.feed-search-hint {
-  text-align: center;
-  padding: 0.5rem 1rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-.feed-search-hint a {
-  color: var(--neon);
-  text-decoration: none;
-  margin-left: 0.35rem;
-}
-.feed-search-hint a:hover {
-  text-decoration: underline;
-}
 .feed-list {
   display: flex;
   flex-direction: column;

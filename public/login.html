@@ -57,6 +57,14 @@
   <script src="js/nav-logo.js"></script>
   <script>
     (function () {
+      /* 이미 로그인된 상태로 이 페이지에 들어오면(뒤로가기 포함) 곧바로 홈으로 보내서 로그인 폼이 안 보이게 함 */
+      fetch('/api/me', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok && data.user && data.user.id) window.location.replace('/');
+        })
+        .catch(function () {});
+
       var errorEl = document.getElementById('authError');
       var loginIdEl = document.getElementById('loginId');
       var drumArea = document.getElementById('rhythmDrum');
@@ -117,7 +125,7 @@
 
             window.TornFiAuth.loginWithRhythm(nickname, timestamps)
               .then(function () {
-                window.location.href = '/';
+                window.location.replace('/');
               })
               .catch(function (err) {
                 if (errorEl) errorEl.textContent = (err && err.message) || '닉네임 또는 리듬이 맞지 않아요. 다시 두드려 주세요.';
@@ -170,7 +178,7 @@
             if (errorEl) errorEl.textContent = '';
             passwordBtn.disabled = true;
             window.TornFiAuth.login(nickname, pwd)
-              .then(function () { window.location.href = '/'; })
+              .then(function () { window.location.replace('/'); })
               .catch(function (err) {
                 if (errorEl) errorEl.textContent = (err && err.message) || '닉네임 또는 비밀번호가 맞지 않아요.';
                 passwordBtn.disabled = false;
