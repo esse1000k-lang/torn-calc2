@@ -1171,9 +1171,7 @@
             composeFiles = composeFiles.concat(newFiles).slice(0, 5);
             feedComposeImage.value = '';
             updateComposePreview();
-            if (feedComposeText && feedFloatingBar.classList.contains('is-expanded')) {
-              setTimeout(function () { feedComposeText.focus(); }, 300);
-            }
+            /* 첨부 후에는 키보드를 다시 올리지 않음(OS가 이미 내렸고, 그게 정상 동작) */
           });
         } else if (feedComposeImage) {
           feedComposeImage.addEventListener('change', function () {

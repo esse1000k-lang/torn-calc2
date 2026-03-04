@@ -877,7 +877,8 @@ button.mobile-home-menu__btn {
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding-bottom: 0.25rem;
-  touch-action: pan-x;
+  /* pan-x만 쓰면 세로 스크롤(엄지로 내리기)이 이 영역에서 동작 안 함 → manipulation으로 세로도 문서 스크롤에 전달 */
+  touch-action: manipulation;
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
   cursor: grab;
