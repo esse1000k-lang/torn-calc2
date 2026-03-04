@@ -1,15 +1,12 @@
 ---
-description: 채팅 아이템 애니메이션·오버레이 수정 시 chat-page.js와 chat.js 동기화 규칙
-globs: public/js/chat*.js
+description: 채팅 아이템 애니메이션·오버레이 수정 시 chat-page.js 기준
+globs: public/js/chat-page.js
 alwaysApply: false
 ---
 
 # 채팅 아이템 애니메이션 규칙
 
 - **채팅 페이지**(`/chat.html`)는 **`public/js/chat-page.js`** 만 로드한다. 로컬에서 동작 확인은 이 파일 기준으로 한다.
-- **애니메이션·오버레이 수정 시** 반드시 **두 파일 모두** 같은 내용으로 수정한다.
-  - `public/js/chat-page.js` (실제 사용)
-  - `public/js/chat.js` (동기화 유지)
 
 ## 새 아이템 추가 시
 
@@ -20,8 +17,7 @@ alwaysApply: false
    `CHAT_ITEM_NAMES`에 표시명 추가.
 3. **애니메이션 함수**  
    `playXxxAnimation()` 같은 함수 추가 후, `data.lastItemUse.itemId === 'xxx'` 분기에서 호출.
-4. **위 1~3 변경을 `chat-page.js`와 `chat.js` 둘 다에 동일하게 반영.**
 
 ## 기존 아이템 수정 시
 
-- 리워드 파티, 떡상 기원, 빗자루 등 **애니메이션 타이밍/로직**을 바꿀 때도 **두 파일 모두** 같은 내용으로 수정한다.
+- 리워드 파티, 떡상 기원, 빗자루 등 **애니메이션 타이밍/로직**을 바꿀 때 **chat-page.js** 한 파일만 수정하면 된다.

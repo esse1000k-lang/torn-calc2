@@ -188,15 +188,8 @@
       })();
 
       window.TornFiAuth.onUser(function (u) {
-        var nbtn = document.getElementById('navMenuBtn');
         var nac = document.getElementById('navAdminCenter');
-        if (u) {
-          if (nbtn) nbtn.style.display = 'none';
-          if (nac) nac.style.display = u.isAdmin ? 'inline-flex' : 'none';
-        } else {
-          if (nbtn) nbtn.style.display = 'none';
-          if (nac) nac.style.display = 'none';
-        }
+        if (nac) nac.style.display = (u && u.isAdmin) ? 'inline-flex' : 'none';
       });
     })();
   </script>

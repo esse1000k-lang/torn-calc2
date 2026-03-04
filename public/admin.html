@@ -351,10 +351,6 @@
       <a href="/" class="nav-logo">TornFi</a>
     </div>
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
-    <div class="nav-menu-wrap">
-      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
-    </div>
   </nav>
 
   <div id="adminDenied" class="admin-denied" style="display:none;">
@@ -2186,15 +2182,7 @@
           adminPinGate.style.display = 'block';
           adminContent.style.display = 'none';
           var nac = document.getElementById('navAdminCenter');
-          var navMenuBtn = document.getElementById('navMenuBtn');
-          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (nac) nac.style.display = 'inline-flex';
-          var navMenuDropdown = document.getElementById('navMenuDropdown');
-          if (navMenuBtn && navMenuDropdown) {
-            navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
-            navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
-            document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
-          }
           fetch('/api/admin/status', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
@@ -2212,9 +2200,7 @@
         } else {
           adminDenied.style.display = 'block';
           adminPage.style.display = 'none';
-          var navMenuBtn = document.getElementById('navMenuBtn');
           var nac = document.getElementById('navAdminCenter');
-          if (navMenuBtn) navMenuBtn.style.display = 'none';
           if (nac) nac.style.display = 'none';
         }
       }

@@ -23,10 +23,6 @@
       <a href="/" class="nav-logo">TornFi</a>
     </div>
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
-    <div class="nav-menu-wrap">
-      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
-    </div>
   </nav>
 
   <main class="site-main">
@@ -307,19 +303,6 @@
         }
       });
 
-      if (document.getElementById('navMenuBtn') && document.getElementById('navMenuDropdown')) {
-        var navMenuBtn = document.getElementById('navMenuBtn');
-        var navMenuDropdown = document.getElementById('navMenuDropdown');
-        navMenuBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var open = navMenuDropdown.classList.toggle('is-open');
-          navMenuBtn.setAttribute('aria-expanded', open);
-        });
-        document.addEventListener('click', function () {
-          navMenuDropdown.classList.remove('is-open');
-          navMenuBtn.setAttribute('aria-expanded', 'false');
-        });
-      }
       if (window.TornFiAuth) {
         window.TornFiAuth.onUser(function (user) {
           var nac = document.getElementById('navAdminCenter');

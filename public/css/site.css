@@ -246,82 +246,6 @@ body::before {
   background: linear-gradient(180deg, #2a3c30 0%, #222e28 100%);
 }
 
-/* 상단 우측 메뉴 (이모지만) */
-.nav-menu-wrap {
-  position: relative;
-  margin-left: auto;
-  margin-right: -0.5rem;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  flex-shrink: 0;
-}
-.nav-menu-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-width: 2rem;
-  padding: 0 0.5rem;
-  font-size: 1.35rem;
-  line-height: 1;
-  background: none;
-  border: none;
-  color: var(--neon);
-  cursor: pointer;
-  transition: opacity 0.2s;
-  transform: translateY(-3px);
-}
-.nav-menu-btn:hover {
-  opacity: 0.85;
-}
-.nav-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  margin-top: 0.5rem;
-  min-width: 11rem;
-  padding: 0.5rem 0;
-  background: rgba(18, 18, 20, 0.98);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 255, 136, 0.08);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-6px);
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-  z-index: 20;
-}
-.nav-menu-dropdown.is-open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-.nav-menu-dropdown a,
-.nav-menu-dropdown button {
-  display: block;
-  width: 100%;
-  padding: 0.55rem 1.25rem;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  font-family: inherit;
-  text-align: left;
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.2s, background 0.2s;
-}
-.nav-menu-dropdown a:hover,
-.nav-menu-dropdown button:hover {
-  color: var(--neon);
-  background: rgba(255, 255, 255, 0.04);
-}
-.nav-menu-user a,
-.nav-menu-user button {
-  display: block;
-}
-
 .nav-right {
   display: flex;
   align-items: center;
@@ -880,7 +804,7 @@ button.mobile-home-menu__btn {
 /* 인기글 (댓글 많은 순, 스와이프 최대 5개) — 한 박스 안에 제목+카드 */
 .feed-popular-wrap {
   display: block;
-  margin-bottom: 1rem;
+  margin-bottom: var(--home-gap, 1.25rem);
   min-height: 72px;
   padding: 1rem 1rem 0.75rem;
   background: var(--bg-card);
@@ -1085,6 +1009,19 @@ button.mobile-home-menu__btn {
 .feed-list__page .feed-card:first-child {
   border-top: 1px solid var(--border);
 }
+/* 홈 피드 층별 배경 차이 (글 쌓이는 느낌) */
+.site-main--home .feed-list__page > .feed-card-wrap:nth-child(3n+1) .feed-card,
+.site-main--home .feed-list__page > .feed-card:nth-child(3n+1) {
+  background: var(--bg-card);
+}
+.site-main--home .feed-list__page > .feed-card-wrap:nth-child(3n+2) .feed-card,
+.site-main--home .feed-list__page > .feed-card:nth-child(3n+2) {
+  background: linear-gradient(180deg, rgba(0, 255, 136, 0.03) 0%, var(--bg-card) 100%);
+}
+.site-main--home .feed-list__page > .feed-card-wrap:nth-child(3n+3) .feed-card,
+.site-main--home .feed-list__page > .feed-card:nth-child(3n+3) {
+  background: linear-gradient(180deg, rgba(0, 255, 136, 0.06) 0%, var(--bg-card) 100%);
+}
 .feed-card__link {
   display: block;
   padding: 1rem 1.25rem;
@@ -1161,7 +1098,8 @@ button.mobile-home-menu__btn {
   display: flex;
   align-items: center;
 }
-.feed-card--list .feed-card__actions .feed-card__comments {
+.feed-card--list .feed-card__actions .feed-card__comments,
+.feed-card--list .feed-card__link .feed-card__actions .feed-card__comments {
   color: var(--text-muted);
 }
 .feed-card--list .feed-card__actions .feed-card__comments::before {
@@ -1182,11 +1120,6 @@ button.mobile-home-menu__btn {
   opacity: 0.6;
   font-weight: 600;
 }
-.feed-card--list .feed-card__actions .feed-card__hearts {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
 .feed-card__top {
   display: flex;
   align-items: flex-start;
@@ -1429,6 +1362,20 @@ button.mobile-home-menu__btn {
   color: var(--neon);
   font-size: 0.95rem;
   line-height: 1;
+}
+/* 홈 피드 리스트: 하트 숫자/버튼은 말풍선(댓글)과 동일한 색 (링크 안 상속 방지) */
+.feed-card--list .feed-card__link .feed-card__actions .feed-card__hearts,
+.feed-card--list .feed-card__link .feed-card__actions .feed-card__footer .feed-card__hearts {
+  font-size: 0.8rem;
+  color: var(--text-muted) !important;
+}
+/* 로그아웃 시 하트는 button.feed-card-heart-btn으로 렌더됨 → 동일 색 적용 */
+.feed-card--list .feed-card__link .feed-card__actions .feed-card__footer .feed-card-heart-btn {
+  font-size: 0.8rem;
+  color: var(--text-muted) !important;
+}
+.feed-card--list .feed-card__link .feed-card__actions .feed-card__footer .feed-card-heart-btn .icon-heart {
+  color: var(--text-muted);
 }
 .feed-card-heart-btn {
   padding: 0.2rem;

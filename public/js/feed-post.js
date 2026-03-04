@@ -73,6 +73,7 @@
     var myId = me ? (me.id || null) : null;
     var isAdmin = !!(me && me.isAdmin);
     var comments = Array.isArray(p.comments) ? p.comments : [];
+    var commentCount = comments.length;
     var topLevel = comments.filter(function (c) { return !c.replyToCommentId || c.replyToCommentId === ''; });
     var commentsListHtml = topLevel.map(function (c) {
       var replyCount = comments.filter(function (r) { return r.replyToCommentId === c.id; }).length;
@@ -97,11 +98,11 @@
         return '<div class="feed-card__images-item"><img src="' + escapeHtml(src) + '" alt="" class="feed-card__thumb" loading="lazy"></div>';
       }).join('') + '</div>';
     }
-    var heartsReceived = (p.heartsReceived || 0) > 0 ? p.heartsReceived : 0;
+    var heartsReceived = Number(p.heartsReceived) || 0;
     var isMine = !!(myId && p.authorId != null && String(p.authorId) === String(myId));
     var footer = '<div class="feed-card__footer">';
     if (isMine) {
-      footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + (heartsReceived || 0) + '</span>';
+      footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + heartsReceived + '</span>';
     } else if (heartsReceived > 0) {
       footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + heartsReceived + '</span>';
     } else if (myId) {
@@ -110,7 +111,7 @@
       footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> 0</span>';
     }
     footer += '</div>';
-    var commentsHtml = '<span class="feed-card__comments"><span class="icon-comment" aria-hidden="true"></span> ' + comments.length + '</span>';
+    var commentsHtml = '<span class="feed-card__comments"><span class="icon-comment" aria-hidden="true"></span> ' + commentCount + '</span>';
     var commentsListBlock = '<ul class="feed-card__comments-list">' + commentsListHtml + '</ul>';
     currentPost = p;
     var cardInner = '<article class="feed-card" data-post-id="' + escapeHtml(p.id) + '">' +
@@ -651,31 +652,11 @@
 
   function initNav() {
     var navAdminCenter = document.getElementById('navAdminCenter');
-    var navMenuBtn = document.getElementById('navMenuBtn');
-    var navMenuDropdown = document.getElementById('navMenuDropdown');
     function updateNav(user) {
-      if (user) {
-        if (navMenuBtn) navMenuBtn.style.display = 'none';
-        if (navAdminCenter) navAdminCenter.style.display = user.isAdmin ? 'inline-flex' : 'none';
-      } else {
-        if (navMenuBtn) navMenuBtn.style.display = 'none';
-        if (navAdminCenter) navAdminCenter.style.display = 'none';
-      }
+      if (navAdminCenter) navAdminCenter.style.display = (user && user.isAdmin) ? 'inline-flex' : 'none';
     }
     if (window.TornFiAuth) window.TornFiAuth.onUser(updateNav);
     updateNav(window.TornFiAuth ? window.TornFiAuth.getUser() : null);
-    if (navMenuBtn && navMenuDropdown) {
-      navMenuBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var open = navMenuDropdown.classList.toggle('is-open');
-        navMenuBtn.setAttribute('aria-expanded', open);
-      });
-      navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
-      document.addEventListener('click', function () {
-        navMenuDropdown.classList.remove('is-open');
-        navMenuBtn.setAttribute('aria-expanded', 'false');
-      });
-    }
   }
 
   function init() {

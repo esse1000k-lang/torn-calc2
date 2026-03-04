@@ -22,10 +22,6 @@
       <a href="/" class="nav-logo">TornFi</a>
     </div>
     <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
-    <div class="nav-menu-wrap">
-      <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-label="메뉴" aria-expanded="false" aria-haspopup="true">☰</button>
-      <div class="nav-menu-dropdown" id="navMenuDropdown" role="menu"></div>
-    </div>
   </nav>
 
   <div class="auth-page auth-page--register auth-page--steps">
@@ -438,23 +434,9 @@
       }
 
       window.TornFiAuth.onUser(function (u) {
-        var nbtn = document.getElementById('navMenuBtn');
         var nac = document.getElementById('navAdminCenter');
-        if (u) {
-          if (nbtn) nbtn.style.display = 'none';
-          if (nac) nac.style.display = u.isAdmin ? 'inline-flex' : 'none';
-        } else {
-          if (nbtn) nbtn.style.display = 'none';
-          if (nac) nac.style.display = 'none';
-        }
+        if (nac) nac.style.display = (u && u.isAdmin) ? 'inline-flex' : 'none';
       });
-      var navMenuBtn = document.getElementById('navMenuBtn');
-      var navMenuDropdown = document.getElementById('navMenuDropdown');
-      if (navMenuBtn && navMenuDropdown) {
-        navMenuBtn.addEventListener('click', function (e) { e.stopPropagation(); navMenuDropdown.classList.toggle('is-open'); navMenuBtn.setAttribute('aria-expanded', navMenuDropdown.classList.contains('is-open')); });
-        navMenuDropdown.addEventListener('click', function (e) { e.stopPropagation(); });
-        document.addEventListener('click', function () { navMenuDropdown.classList.remove('is-open'); navMenuBtn.setAttribute('aria-expanded', 'false'); });
-      }
     })();
   </script>
 </body>

@@ -3444,12 +3444,13 @@ app.get('/api/feed/:postId', async (req, res) => {
   });
   const post = {
     ...p,
+    heartsReceived: typeof p.heartsReceived === 'number' ? p.heartsReceived : (Number(p.heartsReceived) || 0),
     authorDisplayName: p.authorDisplayName || (author && author.displayName ? author.displayName : '—'),
     authorProfileImageUrl: author && author.profileImageUrl ? author.profileImageUrl : null,
     authorLevel,
     authorBio: author && typeof author.bio === 'string' ? author.bio : '',
     authorPoints: author && typeof author.points === 'number' ? author.points : 0,
-    comments,
+    comments: Array.isArray(comments) ? comments : [],
   };
   res.json({ ok: true, post });
 });
