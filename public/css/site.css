@@ -835,6 +835,48 @@ button.mobile-home-menu__btn {
   width: 100%;
 }
 
+/* 피드 아이콘: SVG mask로 색상은 time과 맞춤( text-muted ), 하트 개수 영역만 neon */
+.icon-heart,
+.feed-heart-empty.icon-heart {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") no-repeat center/contain;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E") no-repeat center/contain;
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  color: var(--text-muted);
+}
+.icon-comment {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E") no-repeat center/contain;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E") no-repeat center/contain;
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  color: var(--text-muted);
+}
+.feed-heart-empty.icon-heart {
+  min-width: 1em;
+  min-height: 1em;
+}
+/* 액션 줄(시간·하트·댓글) 아이콘은 시간과 같은 색 */
+.feed-card--list .feed-card__actions .icon-heart,
+.feed-card--list .feed-card__actions .icon-comment,
+.feed-popular-card__comments .icon-comment {
+  color: var(--text-muted);
+}
+/* 하트 보내기 레이어·팝오버 등 제목 옆 아이콘 */
+.feed-send-heart-title .icon-heart,
+.feed-author-popover__hearts .icon-heart {
+  color: var(--text-muted);
+}
+
 /* 인기글 (댓글 많은 순, 스와이프 최대 5개) — 한 박스 안에 제목+카드 */
 .feed-popular-wrap {
   display: block;
@@ -918,15 +960,14 @@ button.mobile-home-menu__btn {
   flex: 0 0 auto;
   width: 128px;
   height: 128px;
-  background: var(--bg-dark);
+  background: linear-gradient(145deg, rgba(17, 17, 19, 0.98) 0%, rgba(10, 10, 11, 0.99) 45%, rgba(0, 255, 136, 0.06) 100%);
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s;
 }
 .feed-popular-card:hover {
-  border-color: rgba(0, 255, 136, 0.4);
-  box-shadow: 0 0 12px var(--neon-glow);
+  border-color: var(--border);
 }
 .feed-popular-card__link {
   display: flex;
@@ -1156,8 +1197,9 @@ button.mobile-home-menu__btn {
   opacity: 0.6;
   font-weight: 600;
 }
-.feed-card--list .feed-card__hearts {
-  color: var(--neon);
+.feed-card--list .feed-card__actions .feed-card__hearts {
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .feed-card__top {
@@ -1414,22 +1456,13 @@ button.mobile-home-menu__btn {
   min-width: 1.4em;
   min-height: 1.4em;
 }
-.feed-card-heart-btn:hover .feed-heart-empty,
-.feed-comment-heart-btn:hover .feed-heart-empty {
-  opacity: 1;
-}
 .feed-card-heart-btn--own {
   cursor: default;
-}
-.feed-card-heart-btn--own:hover .feed-heart-empty {
-  opacity: 0.15;
 }
 .feed-heart-empty {
   display: inline-block;
   font-size: 1em;
   line-height: 1;
-  opacity: 0.15;
-  transition: opacity 0.2s;
 }
 .feed-card__comments {
   margin-top: 1rem;

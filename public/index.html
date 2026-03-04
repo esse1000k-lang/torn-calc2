@@ -171,7 +171,7 @@
 
     <div id="feedSendHeartLayer" class="feed-send-heart-layer" style="display:none;">
       <div class="feed-send-heart-box">
-        <h3 class="feed-send-heart-title">❤️ 하트 보내기</h3>
+        <h3 class="feed-send-heart-title"><span class="icon-heart" aria-hidden="true"></span> 하트 보내기</h3>
         <p id="feedSendHeartMessage" class="feed-send-heart-message"></p>
         <p id="feedSendHeartMyHearts" class="feed-send-heart-myhearts"></p>
         <div class="feed-send-heart-actions">
@@ -441,13 +441,17 @@
           var hasImg = !!(p.images && p.images[0]);
           var imgHtml = hasImg ? '<div class="feed-card__media"><img src="' + escapeHtml(p.images[0]) + '" alt="" class="feed-card__thumb" loading="lazy"></div>' : '';
           var footer = '<div class="feed-card__footer">';
-          if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
-          else if (isMine) footer += '<button type="button" class="feed-card-heart-btn feed-card-heart-btn--own" data-post-id="' + escapeHtml(p.id) + '" data-own-post="1" aria-label="본인 글"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
-          else footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+          if (isMine) {
+            footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + (heartsReceived || 0) + '</span>';
+          } else if (heartsReceived > 0) {
+            footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + heartsReceived + '</span>';
+          } else {
+            footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="icon-heart" aria-hidden="true"></span> 0</button>';
+          }
           footer += '</div>';
           var showDeleteBtn = isAdmin || isMine;
           var deleteBtn = showDeleteBtn ? '<div class="feed-card-admin-outer"><button type="button" class="feed-card__admin-delete" data-post-id="' + escapeHtml(p.id) + '" aria-label="피드 삭제">🗑</button></div>' : '';
-          var commentsHtml = '<span class="feed-card__comments">💬 ' + comments.length + '</span>';
+          var commentsHtml = '<span class="feed-card__comments"><span class="icon-comment" aria-hidden="true"></span> ' + comments.length + '</span>';
           var dateHtml = '<time class="feed-card__date" datetime="' + (p.createdAt || '') + '">' + dateStr + '</time>';
           var cardInner =
             '<article class="feed-card feed-card--list" data-post-id="' + escapeHtml(p.id) + '" data-author-id="' + escapeHtml(p.authorId || '') + '">' +
@@ -566,6 +570,7 @@
           if (listEl) {
             listEl.innerHTML = '<p class="feed-popular-empty">불러오는 중…</p>';
             listEl.classList.add('feed-popular-list--empty');
+            listEl.removeAttribute('data-popular-loaded');
           }
           fetch('/api/feed/popular?limit=5', { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -574,7 +579,9 @@
                 if (listEl) {
                   listEl.innerHTML = emptyHtml;
                   listEl.classList.add('feed-popular-list--empty');
+                  listEl.setAttribute('data-popular-loaded', 'true');
                 }
+                window.dispatchEvent(new CustomEvent('feedPopularUpdated'));
                 return;
               }
               var html = data.posts.map(function (p) {
@@ -585,19 +592,23 @@
                   '<a href="feed-post.html?id=' + encodeURIComponent(p.id) + '" class="feed-popular-card__link">' +
                   '<span class="feed-popular-card__time">' + escapeHtml(dateStr) + '</span>' +
                   '<p class="feed-popular-card__body">' + bodyExcerpt + '</p>' +
-                  '<span class="feed-popular-card__comments"><span class="feed-popular-card__comments-icon" aria-hidden="true">💬</span>' + commentCount + '</span>' +
+                  '<span class="feed-popular-card__comments"><span class="feed-popular-card__comments-icon icon-comment" aria-hidden="true"></span>' + commentCount + '</span>' +
                   '</a></article>';
               }).join('');
               if (listEl) {
                 listEl.innerHTML = html;
                 listEl.classList.remove('feed-popular-list--empty');
+                listEl.setAttribute('data-popular-loaded', 'true');
               }
+              window.dispatchEvent(new CustomEvent('feedPopularUpdated'));
             })
             .catch(function () {
               if (listEl) {
                 listEl.innerHTML = errHtml;
                 listEl.classList.add('feed-popular-list--empty');
+                listEl.setAttribute('data-popular-loaded', 'true');
               }
+              window.dispatchEvent(new CustomEvent('feedPopularUpdated'));
             });
         }
 
@@ -799,7 +810,7 @@
           var heartsEl = feedAuthorPopover.querySelector('.feed-author-popover__hearts');
           if (heartsEl) {
             var pts = typeof post.authorPoints === 'number' ? post.authorPoints : 0;
-            heartsEl.textContent = '❤️ ' + pts + '개';
+            heartsEl.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + pts + '개';
             heartsEl.style.display = 'block';
           }
           if (bioEl) {
@@ -938,11 +949,11 @@
                     if (btn) btn.remove();
                     var heartsEl = footer.querySelector('.feed-card__hearts');
                     var nextCount = data.heartsReceived || 0;
-                    if (heartsEl) heartsEl.textContent = '❤️ ' + nextCount;
-                    else if (nextCount > 0) {
+                    if (heartsEl) heartsEl.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + nextCount;
+                    else {
                       var span = document.createElement('span');
                       span.className = 'feed-card__hearts';
-                      span.textContent = '❤️ ' + nextCount;
+                      span.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + nextCount;
                       footer.insertBefore(span, footer.firstChild);
                     }
                   }
@@ -1121,8 +1132,8 @@
             if (bar.contains(e.target)) return;
             if (bar.classList.contains('feed-floating-bar--file-picker-open')) return;
             if (typeof window._feedPreviewRemoveTime === 'number' && (Date.now() - window._feedPreviewRemoveTime) < 500) return;
-            /* 사진 첨부 직후 OS가 보내는 클릭으로 바가 접히는 것 방지(입력창 탭 시 키보드 올라가도록) */
-            if (typeof window._feedFilePickerJustClosed === 'number' && (Date.now() - window._feedFilePickerJustClosed) < 500) return;
+            /* 사진 첨부 직후 OS/브라우저가 보내는 클릭으로 바가 접히는 것 방지(삼성·에뮬 등 타이밍 차이 대비) */
+            if (typeof window._feedFilePickerJustClosed === 'number' && (Date.now() - window._feedFilePickerJustClosed) < 1000) return;
             bar.classList.remove('is-expanded');
             var text = document.getElementById('feedComposeText');
             var ph = document.getElementById('feedComposePlaceholder');
@@ -1134,16 +1145,16 @@
             if (sendBtn) sendBtn.style.display = '';
           });
         })();
+        /* 플로팅 바: 최상단 글 검색 바가 스크롤로 화면 밖으로 사라지면 표시, 다시 올리면 숨김 */
         (function setupFeedFloatingBarScrollReveal() {
-          var wrap = document.getElementById('feedPopularWrap');
+          var searchBar = document.getElementById('homeSearchForm');
           var bar = document.getElementById('feedFloatingBar');
-          if (!wrap || !bar) return;
+          if (!searchBar || !bar) return;
           var ticking = false;
           function updateVisible() {
             if (bar.style.display === 'none') { ticking = false; return; }
-            var rect = wrap.getBoundingClientRect();
-            var threshold = window.innerHeight * 0.55;
-            if (rect.bottom < threshold) bar.classList.add('is-visible');
+            var rect = searchBar.getBoundingClientRect();
+            if (rect.bottom < 0) bar.classList.add('is-visible');
             else bar.classList.remove('is-visible');
             ticking = false;
           }
@@ -1153,6 +1164,8 @@
             requestAnimationFrame(updateVisible);
           }
           window.addEventListener('scroll', onScroll, { passive: true });
+          updateVisible();
+          window.addEventListener('load', updateVisible);
         })();
         if (feedComposeText && feedComposeSubmit) {
           feedComposeText.addEventListener('input', function () {
@@ -1168,12 +1181,13 @@
             setTimeout(function () { feedFloatingBar.classList.remove('feed-floating-bar--file-picker-open'); }, 400);
           });
           feedComposeImage.addEventListener('change', function () {
-            feedFloatingBar.classList.remove('feed-floating-bar--file-picker-open');
             window._feedFilePickerJustClosed = Date.now();
             var newFiles = Array.from(feedComposeImage.files || []);
             composeFiles = composeFiles.concat(newFiles).slice(0, 5);
             feedComposeImage.value = '';
             updateComposePreview();
+            /* 삼성/에뮬 등에서 피커 닫힌 뒤 밖 클릭이 늦게 들어오는 경우 대비: class 제거만 지연 */
+            setTimeout(function () { feedFloatingBar.classList.remove('feed-floating-bar--file-picker-open'); }, 600);
             /* 첨부 후에는 키보드를 다시 올리지 않음(OS가 이미 내렸고, 그게 정상 동작) */
           });
         } else if (feedComposeImage) {

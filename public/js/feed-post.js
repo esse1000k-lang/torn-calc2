@@ -41,8 +41,10 @@
       ? '<div class="feed-comment__reply-to">답글: <span class="feed-comment__reply-to-name">@' + escapeHtml(c.replyToDisplayName) + '</span></div>'
       : '';
     var heartRow = '';
-    if (hearts > 0) heartRow += '<span class="feed-comment__hearts">❤️ ' + hearts + '</span>';
-    else if (!isMine && myId && pid) heartRow += '<button type="button" class="feed-comment-heart-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+    if (hearts > 0) heartRow += '<span class="feed-comment__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + hearts + '</span>';
+    else if (isMine) heartRow += '<span class="feed-comment__hearts"><span class="icon-heart" aria-hidden="true"></span> 0</span>';
+    else if (myId && pid) heartRow += '<button type="button" class="feed-comment-heart-btn" data-post-id="' + escapeHtml(pid) + '" data-comment-id="' + escapeHtml(c.id) + '" data-author-name="' + escapeHtml(name) + '" aria-label="하트 보내기"><span class="icon-heart" aria-hidden="true"></span> 0</button>';
+    else heartRow += '<span class="feed-comment__hearts"><span class="icon-heart" aria-hidden="true"></span> 0</span>';
     if (opts.replyCount != null && opts.replyCount > 0) {
       heartRow += '<span class="feed-comment__reply-count">답글 ' + opts.replyCount + '</span>';
     }
@@ -92,9 +94,15 @@
     var heartsReceived = (p.heartsReceived || 0) > 0 ? p.heartsReceived : 0;
     var isMine = !!(myId && p.authorId != null && String(p.authorId) === String(myId));
     var footer = '<div class="feed-card__footer">';
-    if (heartsReceived > 0) footer += '<span class="feed-card__hearts">❤️ ' + heartsReceived + '</span>';
-    else if (isMine) footer += '<button type="button" class="feed-card-heart-btn feed-card-heart-btn--own" data-post-id="' + escapeHtml(p.id) + '" data-own-post="1" aria-label="본인 글"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
-    else if (myId) footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="feed-heart-empty" aria-hidden="true">❤️</span></button>';
+    if (isMine) {
+      footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + (heartsReceived || 0) + '</span>';
+    } else if (heartsReceived > 0) {
+      footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> ' + heartsReceived + '</span>';
+    } else if (myId) {
+      footer += '<button type="button" class="feed-card-heart-btn" data-post-id="' + escapeHtml(p.id) + '" data-author-name="' + escapeHtml(author) + '" aria-label="하트 보내기"><span class="icon-heart" aria-hidden="true"></span> 0</button>';
+    } else {
+      footer += '<span class="feed-card__hearts"><span class="icon-heart" aria-hidden="true"></span> 0</span>';
+    }
     footer += '</div>';
     var commentsCountLabel = '댓글 ' + comments.length;
     var commentFormHtml = myId ? '<div class="feed-card__comment-form feed-post-compose-bar__form" data-post-id="' + escapeHtml(p.id) + '">' +
@@ -191,8 +199,8 @@
                 if (f) {
                   var he = f.querySelector('.feed-comment__hearts');
                   var n = data.heartsReceived || 0;
-                  if (he) he.textContent = '❤️ ' + n;
-                  else if (n > 0) { var s = document.createElement('span'); s.className = 'feed-comment__hearts'; s.textContent = '❤️ ' + n; f.insertBefore(s, f.firstChild); }
+                  if (he) he.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + n;
+                  else { var s = document.createElement('span'); s.className = 'feed-comment__hearts'; s.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + n; f.insertBefore(s, f.firstChild); }
                   var b = f.querySelector('.feed-comment-heart-btn');
                   if (b) b.remove();
                 }
@@ -206,8 +214,8 @@
                 if (f) {
                   var he = f.querySelector('.feed-card__hearts');
                   var n = data.heartsReceived || 0;
-                  if (he) he.textContent = '❤️ ' + n;
-                  else if (n > 0) { var s = document.createElement('span'); s.className = 'feed-card__hearts'; s.textContent = '❤️ ' + n; f.insertBefore(s, f.firstChild); }
+                  if (he) he.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + n;
+                  else { var s = document.createElement('span'); s.className = 'feed-card__hearts'; s.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + n; f.insertBefore(s, f.firstChild); }
                 }
               }
             }
@@ -362,7 +370,7 @@
       var heartsEl = feedAuthorPopover.querySelector('.feed-author-popover__hearts');
       if (heartsEl) {
         var pts = typeof post.authorPoints === 'number' ? post.authorPoints : 0;
-        heartsEl.textContent = '❤️ ' + pts + '개';
+        heartsEl.innerHTML = '<span class="icon-heart" aria-hidden="true"></span> ' + pts + '개';
         heartsEl.style.display = 'block';
       }
       if (bioEl) {
