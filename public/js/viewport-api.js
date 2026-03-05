@@ -12,13 +12,54 @@
   }
   
   var vv = window.visualViewport;
+  var chatPage = document.querySelector('.chat-page');
+  var isActive = false;
   
   /**
-   * 입력창 키보드 핸들러
-   * @param {string} inputSelector - 입력창 선택자
-   * @param {string} containerSelector - 컨테이너 선택자 (선택사항)
+   * 화면 높이 억지 고정 및 레이아웃 조정
    */
-  function setupKeyboardHandler(inputSelector, containerSelector) {
+  function handleViewportChange() {
+    if (!window.visualViewport || !chatPage) return;
+
+    // 1. 화면 높이 억지 고정 (visualViewport.height)
+    const vvHeight = window.visualViewport.height;
+    const vvOffsetTop = window.visualViewport.offsetTop;
+    
+    console.log('[ViewportAPI] 뷰포트 변경:', {
+      height: vvHeight,
+      offsetTop: vvOffsetTop
+    });
+
+    // 2. 채팅 페이지 높이 조정
+    chatPage.style.height = `${vvHeight}px`;
+    
+    // 3. iOS offsetTop 보정
+    if (vvOffsetTop > 0) {
+      chatPage.style.transform = `translateY(${vvOffsetTop}px)`;
+    } else {
+      chatPage.style.transform = '';
+    }
+
+    // 4. 메시지 스크롤 유지
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+      setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 100);
+    }
+  }
+  
+  // Viewport API 이벤트 등록
+  vv.addEventListener('resize', handleViewportChange);
+  vv.addEventListener('scroll', handleViewportChange);
+  
+  // 초기 실행
+  handleViewportChange();
+  
+  console.log('[ViewportAPI] 채팅 1번 수정 완료: 화면 높이 억지 고정 + flex-item');
+  
+  // 전역 함수 등록
+  window.setupKeyboardHandler = function setupKeyboardHandler(inputSelector, containerSelector) {
     var input = document.querySelector(inputSelector);
     if (!input) return;
     
@@ -118,9 +159,6 @@
       }, 100);
     });
   }
-  
-  // 전역 함수 등록
-  window.setupKeyboardHandler = setupKeyboardHandler;
   
   console.log('[ViewportAPI] Module loaded');
 })();

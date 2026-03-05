@@ -87,25 +87,24 @@
             <span id="chatReplyText" class="chat-reply-bar__text"></span>
             <button type="button" id="chatReplyCancel" class="chat-reply-bar__cancel">취소</button>
           </div>
+          <div id="chatPreviewWrap" class="chat-preview-wrap" style="display:none;">
+            <img id="chatPreviewImg" class="chat-preview-img" alt="첨부 미리보기">
+            <button type="button" id="chatPreviewRemove" class="chat-preview-remove" aria-label="첨부 취소">×</button>
+          </div>
+          <div class="chat-input-wrap">
+            <input type="file" id="chatImage" class="chat-file-input" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="사진 첨부">
+            <button type="button" id="chatAttach" class="chat-attach-btn" title="사진 첨부" aria-label="사진 첨부"></button>
+            <input type="text" id="chatInput" class="chat-input" placeholder="메시지 입력 (로그인 후 전송)" maxlength="500" autocomplete="off">
+            <div id="chatItemSelectWrap" class="chat-item-dropdown" aria-label="아이템 선택">
+              <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true"></button>
+              <div class="chat-item-menu" id="chatItemMenu"></div>
+            </div>
+            <button type="button" id="chatSend" class="chat-send">전송</button>
+          </div>
         </div>
       </div>
     </section>
   </main>
-
-  <div id="chatPreviewWrap" class="chat-preview-wrap" style="display:none;">
-    <img id="chatPreviewImg" class="chat-preview-img" alt="첨부 미리보기">
-    <button type="button" id="chatPreviewRemove" class="chat-preview-remove" aria-label="첨부 취소">×</button>
-  </div>
-  <div class="chat-input-wrap">
-    <input type="file" id="chatImage" class="chat-file-input" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="사진 첨부">
-    <button type="button" id="chatAttach" class="chat-attach-btn" title="사진 첨부" aria-label="사진 첨부"></button>
-    <input type="text" id="chatInput" class="chat-input" placeholder="메시지 입력 (로그인 후 전송)" maxlength="500" autocomplete="off">
-    <div id="chatItemSelectWrap" class="chat-item-dropdown" aria-label="아이템 선택">
-      <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true"></button>
-      <div class="chat-item-menu" id="chatItemMenu"></div>
-    </div>
-    <button type="button" id="chatSend" class="chat-send">전송</button>
-  </div>
 
   <div id="chatPinModal" class="chat-pin-modal" role="dialog" aria-labelledby="chatPinModalTitle" aria-modal="true" style="display:none;">
             <div class="chat-pin-modal__backdrop"></div>
