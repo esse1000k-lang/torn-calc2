@@ -23,8 +23,10 @@
     if (!input) return;
     
     var container = containerSelector ? document.querySelector(containerSelector) : input;
+    var chatMessages = document.querySelector('#chatMessages');
     var isActive = false;
     var originalStyles = {};
+    var originalMessagesStyles = {};
     
     function saveOriginalStyles() {
       originalStyles = {
@@ -32,12 +34,24 @@
         bottom: container.style.bottom || '',
         zIndex: container.style.zIndex || ''
       };
+      
+      if (chatMessages) {
+        originalMessagesStyles = {
+          paddingBottom: chatMessages.style.paddingBottom || ''
+        };
+      }
     }
     
     function restoreOriginalStyles() {
       Object.keys(originalStyles).forEach(function(key) {
         container.style[key] = originalStyles[key];
       });
+      
+      if (chatMessages) {
+        Object.keys(originalMessagesStyles).forEach(function(key) {
+          chatMessages.style[key] = originalMessagesStyles[key];
+        });
+      }
     }
     
     function handleKeyboard() {
@@ -46,13 +60,38 @@
       
       if (isKeyboardOpen && !isActive) {
         saveOriginalStyles();
+        
+        // 채팅바 위치 조정
         container.style.position = 'fixed';
         container.style.bottom = keyboardHeight + 'px';
         container.style.zIndex = '1000';
+        
+        // 채팅 메시지 영역 조정
+        if (chatMessages) {
+          var currentPadding = window.getComputedStyle(chatMessages).paddingBottom;
+          var currentPaddingNum = parseFloat(currentPadding) || 0;
+          chatMessages.style.paddingBottom = (currentPaddingNum + keyboardHeight) + 'px';
+        }
+        
         isActive = true;
+        
+        // 스크롤을 맨 아래로
+        setTimeout(function() {
+          if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+        }, 100);
+        
       } else if (!isKeyboardOpen && isActive) {
         restoreOriginalStyles();
         isActive = false;
+        
+        // 스크롤을 맨 아래로
+        setTimeout(function() {
+          if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          }
+        }, 100);
       }
     }
     
