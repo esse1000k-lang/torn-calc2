@@ -357,7 +357,7 @@
         }
 
         function useChatItemAndCooldown(apiPath, wrap, trig) {
-          if (trig) trig.textContent = '🎁';
+          if (trig) trig.textContent = '';
           if (wrap) wrap.dataset.selected = '';
           var menu = wrap && wrap.querySelector('.chat-item-menu');
           if (menu) menu.style.display = 'none';
@@ -537,7 +537,7 @@
                 lastMessageCount = 0;
                 if (chatItemSelectWrap) {
                   var trig = chatItemSelectWrap.querySelector('.chat-item-trigger');
-                  if (trig) trig.textContent = '🎁';
+                  if (trig) trig.textContent = '';
                   chatItemSelectWrap.dataset.selected = '';
                 }
                 fetchChat();
@@ -596,7 +596,7 @@
           chatItemSelectWrap.addEventListener('mouseleave', function () {
             if (!chatItemSelectWrap.dataset.selected || chatItemSelectWrap.dataset.selected === '') {
               var trig = chatItemSelectWrap.querySelector('.chat-item-trigger');
-              if (trig) trig.textContent = '🎁';
+              if (trig) trig.textContent = '';
               updateChatItemMenu();
             }
           });
@@ -604,8 +604,6 @@
             var m = chatItemSelectWrap.querySelector('.chat-item-menu');
             if (m) m.style.display = '';
           });
-          var chatItemTrigger = document.getElementById('chatItemTrigger');
-          if (chatItemTrigger) chatItemTrigger.textContent = '🎁';
         }
 
         var chatPinModal = document.getElementById('chatPinModal');

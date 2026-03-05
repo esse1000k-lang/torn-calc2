@@ -30,7 +30,9 @@
   <main class="site-main chat-page-main">
     <!-- 채팅 화면 중앙 로고 워터마크 -->
     <div class="chat-watermark">
-      <div class="chat-watermark__logo">TornFi</div>
+      <div class="chat-watermark__logo">
+        <span class="watermark-torn">Torn</span><span class="watermark-fi">Fi</span>
+      </div>
     </div>
     
     <section id="chat" class="section chat-section">
@@ -91,10 +93,10 @@
           </div>
           <div class="chat-input-wrap">
             <input type="file" id="chatImage" class="chat-file-input" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="사진 첨부">
-            <button type="button" id="chatAttach" class="chat-attach-btn" title="사진 첨부" aria-label="사진 첨부">📷</button>
+            <button type="button" id="chatAttach" class="chat-attach-btn" title="사진 첨부" aria-label="사진 첨부"></button>
             <input type="text" id="chatInput" class="chat-input" placeholder="메시지 입력 (로그인 후 전송)" maxlength="500" autocomplete="off">
-            <div id="chatItemSelectWrap" class="chat-item-dropdown" style="display:none;" aria-label="아이템 선택">
-              <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true">🎁</button>
+            <div id="chatItemSelectWrap" class="chat-item-dropdown" aria-label="아이템 선택">
+              <button type="button" id="chatItemTrigger" class="chat-item-trigger" aria-haspopup="true"></button>
               <div class="chat-item-menu" id="chatItemMenu"></div>
             </div>
             <button type="button" id="chatSend" class="chat-send">전송</button>

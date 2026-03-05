@@ -86,9 +86,11 @@ body::before {
 }
 
 .nav-logo-torn {
-  color: var(--text);
+  color: white;
 }
-.nav-logo-fi { color: var(--neon); }
+.nav-logo-fi { 
+  color: var(--neon);
+}
 
 /* 차오르기: 그라데이션으로 아래부터 녹색 채움 */
 .nav-logo--tfi .nav-logo-torn {
@@ -5443,22 +5445,48 @@ button.mobile-home-menu__btn {
 }
 
 .chat-attach-btn {
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
   background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: 0.75rem;
   line-height: 1;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
   box-sizing: border-box;
+  position: relative;
+  margin: 0;
+}
+
+/* 카메라 CSS 그림 - 24px 버튼에 맞게 조정 */
+.chat-attach-btn::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-radius: 1.5px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.chat-attach-btn::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 .chat-attach-btn:hover {
   border-color: var(--neon);
@@ -5506,31 +5534,37 @@ button.mobile-home-menu__btn {
 .chat-input-wrap {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.5rem;
-  min-height: 48px;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  min-height: 32px;
   border-top: 1px solid var(--border);
   background: var(--bg-card);
   flex-shrink: 0;
   box-sizing: border-box;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
 }
 
 /* 바 안 요소 높이 통일(로그인 여부와 관계없이 동일한 한 줄) */
 .chat-input {
   flex: 1;
   min-width: 0;
-  height: 40px;
-  padding: 0 0.85rem;
+  height: 24px;
+  padding: 0 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 4px;
   background: var(--bg-dark);
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-family: inherit;
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
-  line-height: 1.25;
+  line-height: 1.2;
+  margin: 0;
 }
 .chat-input::placeholder {
   color: var(--text-muted);
@@ -5574,22 +5608,53 @@ button.mobile-home-menu__btn {
   text-align: center;
   white-space: nowrap;
 }
+
 .chat-item-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   background: var(--bg-dark);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 4px;
   color: var(--text);
-  font-size: 1.1rem;
+  font-size: 0.75rem;
   line-height: 1;
   font-family: inherit;
   cursor: pointer;
   box-sizing: border-box;
+  position: relative;
+  margin: 0;
+}
+
+.chat-item-trigger::before {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  background-color: var(--text-muted);
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.chat-item-dropdown:hover .chat-item-trigger::before {
+  background-color: var(--neon);
+}
+
+.chat-item-trigger::after {
+  display: none;
 }
 .chat-item-dropdown:hover .chat-item-trigger {
   border-color: var(--neon);
@@ -5671,26 +5736,24 @@ button.mobile-home-menu__btn {
 }
 
 .chat-send {
-  height: 40px;
-  padding: 0 1.1rem;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(0, 255, 136, 0.95) 0%, rgba(0, 204, 106, 0.95) 50%, rgba(0, 230, 120, 0.95) 100%);
-  color: var(--bg-dark);
-  font-weight: 600;
-  font-size: 0.9rem;
+  height: 24px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--neon);
+  background: transparent;
+  color: var(--neon);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
-  white-space: nowrap;
-  transition: opacity 0.2s, box-shadow 0.2s;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  display: inline-flex;
+  transition: border-color 0.2s, color 0.2s;
+  display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 255, 136, 0.25);
+  margin: 0;
 }
 .chat-send:hover:not(:disabled) {
-  box-shadow: 0 4px 14px rgba(0, 255, 136, 0.35);
+  border-color: var(--neon);
+  color: var(--neon);
 }
 .chat-send:disabled {
   opacity: 0.6;
@@ -5802,7 +5865,7 @@ main.chat-page-main {
 /* 채팅 페이지 홈 버튼 */
 .chat-home-btn {
   position: fixed;
-  top: 1rem;
+  top: 1.5rem;
   right: 1rem;
   z-index: 1000;
 }
@@ -5812,17 +5875,30 @@ main.chat-page-main {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: rgba(10, 10, 11, 0.8);
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 50%, #00ff88 100%);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  border: 1px solid rgba(0, 255, 136, 0.3);
   border-radius: 20px;
-  color: var(--text);
+  color: black;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  animation: button-float 3s ease-in-out infinite;
+}
+
+/* 버튼이 구름처럼 둥둥 떠다니는 애니메이션 */
+@keyframes button-float {
+  0%, 100% {
+    transform: translateY(0px);
+    box-shadow: 0 2px 8px rgba(0, 255, 136, 0.2);
+  }
+  50% {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 20px rgba(0, 255, 136, 0.4);
+  }
 }
 
 .chat-home-link::before {
@@ -5843,57 +5919,25 @@ main.chat-page-main {
 }
 
 .chat-home-link:hover {
-  background: rgba(10, 10, 11, 0.9);
-  border-color: var(--neon);
-  color: var(--neon);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 50%, #00ff88 100%);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: black;
+  transform: none;
+  box-shadow: none;
 }
 
 .chat-home-arrow {
   font-size: 1.1rem;
-  transition: transform 0.3s ease;
+  transition: none;
 }
 
 .chat-home-link:hover .chat-home-arrow {
-  transform: translateX(-2px);
+  transform: none;
 }
 
 .chat-home-text {
   font-weight: 600;
-}
-
-/* 구름 애니메이션 */
-@keyframes cloud-float {
-  0%, 100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.6;
-  }
-  25% {
-    transform: translateY(-3px) scale(1.05);
-    opacity: 0.8;
-  }
-  50% {
-    transform: translateY(-5px) scale(1.1);
-    opacity: 1;
-  }
-  75% {
-    transform: translateY(-3px) scale(1.05);
-    opacity: 0.8;
-  }
-}
-
-.chat-home-link::after {
-  content: '';
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 30px;
-  height: 15px;
-  background: radial-gradient(ellipse at center, rgba(0, 255, 136, 0.2) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: cloud-float 3s ease-in-out infinite;
+  color: black;
 }
 
 /* 채팅 워터마크 */
@@ -5911,9 +5955,19 @@ main.chat-page-main {
   font-family: 'Outfit', sans-serif;
   font-size: 4rem;
   font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-watermark__logo .watermark-torn {
+  color: white;
+}
+
+.chat-watermark__logo .watermark-fi {
   color: var(--neon);
-  text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
-  letter-spacing: 0.1em;
 }
 /* 세로도 가로처럼 뷰포트에 딱 맞게: 높이 고정, 페이지 스크롤 없음, 메시지 영역만 스크롤 */
 .chat-page {
@@ -5922,7 +5976,6 @@ main.chat-page-main {
   height: 100vh;
   min-height: 100vh;
   max-height: 100vh;
-  overflow: hidden;
 }
 .chat-page .chat-page-main {
   display: flex;
@@ -5931,6 +5984,7 @@ main.chat-page-main {
   min-height: 0;
   overflow: hidden;
   padding: 0.375rem; /* 상하좌우 동일 */
+  padding-bottom: 36px; /* 독립된 채팅바 공간 확보 */
 }
 .chat-page .chat-section {
   flex: 1;
