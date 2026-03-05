@@ -211,6 +211,7 @@
   </div>
 
   <script src="js/auth.js"></script>
+  <script src="js/viewport-handler.js"></script>
   <script src="js/nav-logo.js"></script>
   <script>
     (function () {
@@ -732,6 +733,13 @@
         window.TornFiAuth.init().then(init);
       }
     })();
+    
+    // 공통 Visual Viewport 핸들러 적용
+    if (window.setupViewportHandler) {
+      window.setupViewportHandler('#inputBio');
+      window.setupViewportHandler('#inputDisplayName');
+      window.setupViewportHandler('#inputWallet');
+    }
   </script>
 </body>
 </html>

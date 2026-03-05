@@ -144,6 +144,7 @@
 
   <script src="js/auth.js"></script>
   <script src="js/nav-logo.js"></script>
+  <script src="js/viewport-api.js"></script>
   <script>
     (function () {
       var navAdminCenter = document.getElementById('navAdminCenter');
@@ -158,6 +159,11 @@
   </script>
   <script src="js/chat-page.js"></script>
   <script>
+    // Visual Viewport API 키보드 핸들러 적용
+    if (window.setupKeyboardHandler) {
+      window.setupKeyboardHandler('#chatInput', '.chat-input-wrap');
+    }
+    
     /* 오버레이/토스트가 클릭을 가로채는지 확인용 — 확인 후 이 블록 삭제 */
     setTimeout(function () {
       var ids = ['chatRewardPartyOverlay', 'chatRisePrayerOverlay', 'chatBroomOverlay', 'chatItemUsedToast'];

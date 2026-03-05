@@ -5892,6 +5892,13 @@ main.chat-page-main {
   }
 }
 
+/* 공통 Visual Viewport 핸들러 스타일 */
+.viewport-keyboard-open {
+  z-index: 100;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+}
+
 /* PWA standalone: body 높이 보정 (모바일에서만 의미 있음) */
 .pwa-standalone body {
   min-height: 100vh;

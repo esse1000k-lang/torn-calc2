@@ -191,6 +191,12 @@
         var nac = document.getElementById('navAdminCenter');
         if (nac) nac.style.display = (u && u.isAdmin) ? 'inline-flex' : 'none';
       });
+
+      // 공통 Visual Viewport 핸들러 적용
+      if (window.setupViewportHandler) {
+        window.setupViewportHandler('#loginId');
+        window.setupViewportHandler('#loginPassword');
+      }
     })();
   </script>
 </body>

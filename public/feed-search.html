@@ -65,6 +65,7 @@
   </div>
 
   <script src="js/auth.js"></script>
+  <script src="js/viewport-handler.js"></script>
   <script src="js/nav-logo.js"></script>
   <script>
     (function () {
@@ -311,6 +312,12 @@
         var u = window.TornFiAuth.getUser();
         var nac = document.getElementById('navAdminCenter');
         if (nac) nac.style.display = (u && u.isAdmin) ? 'inline-flex' : 'none';
+      }
+    })();
+      
+      // 공통 Visual Viewport 핸들러 적용
+      if (window.setupViewportHandler) {
+        window.setupViewportHandler('#feedSearchInput', '.feed-search-bar');
       }
     })();
   </script>
