@@ -4904,8 +4904,8 @@ button.mobile-home-menu__btn {
 /* 말풍선 */
 .chat-msg__bubble {
   position: relative;
-  padding: 0.4rem 0.6rem 0.32rem;
-  border-radius: 10px;
+  padding: 0.6rem 0.9rem 0.48rem;  /* 1.5배 확대: 0.4→0.6, 0.6→0.9, 0.32→0.48 */
+  border-radius: 15px;  /* 1.5배 확대: 10→15 */
   max-width: 100%;
   min-width: 0;
   word-break: break-word;
@@ -4918,10 +4918,10 @@ button.mobile-home-menu__btn {
   color: var(--text);
 }
 .chat-msg--other .chat-msg__bubble {
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 6px;  /* 1.5배 확대: 4→6 */
 }
 .chat-msg--mine .chat-msg__bubble {
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 6px;  /* 1.5배 확대: 4→6 */
 }
 
 /* 관리자: 말풍선 황금 테두리 + 빛남 */
@@ -4975,8 +4975,8 @@ button.mobile-home-menu__btn {
 }
 
 .chat-msg__text {
-  margin: 0 0 0.16rem 0;
-  font-size: 0.72rem;
+  margin: 0 0 0.24rem 0;  /* 1.5배 확대: 0.16→0.24 */
+  font-size: 1.08rem;  /* 1.5배 확대: 0.72→1.08 */
 }
 
 .chat-msg__time {
@@ -5432,7 +5432,7 @@ button.mobile-home-menu__btn {
   border-radius: 6px;
 }
 .chat-msg__bubble:has(.chat-msg__img-wrap) {
-  padding-bottom: 1.2rem;
+  padding-bottom: 1.8rem;  /* 1.5배 확대: 1.2→1.8 */
 }
 
 .chat-file-input {
@@ -5448,14 +5448,14 @@ button.mobile-home-menu__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 48px;  /* 첨부 버튼 너비도 균형 있게 확대 */
+  height: 48px;  /* 첨부 버튼 높이도 균형 있게 확대 */
   padding: 0;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 1rem;  /* 아이콘 크기도 균형 있게 확대 */
   line-height: 1;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
@@ -5464,14 +5464,14 @@ button.mobile-home-menu__btn {
   margin: 0;
 }
 
-/* 카메라 CSS 그림 - 24px 버튼에 맞게 조정 */
+/* 카메라 CSS 그림 - 48px 버튼에 맞게 조정 */
 .chat-attach-btn::before {
   content: '';
   position: absolute;
-  width: 10px;
-  height: 6px;
-  border: 1.5px solid currentColor;
-  border-radius: 1.5px;
+  width: 16px;  /* 아이콘 크기도 균형 있게 확대 */
+  height: 10px;  /* 아이콘 크기도 균형 있게 확대 */
+  border: 2px solid currentColor;  /* 선 굵기도 확대 */
+  border-radius: 2px;  /* 둥글기도 확대 */
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -5480,8 +5480,8 @@ button.mobile-home-menu__btn {
 .chat-attach-btn::after {
   content: '';
   position: absolute;
-  width: 3px;
-  height: 3px;
+  width: 5px;  /* 렌즈 크기도 균형 있게 확대 */
+  height: 5px;  /* 렌즈 크기도 균형 있게 확대 */
   background: currentColor;
   border-radius: 50%;
   top: 50%;
@@ -5534,9 +5534,9 @@ button.mobile-home-menu__btn {
 .chat-input-wrap {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  min-height: 32px;
+  gap: 0.4rem;  /* 간격도 약간 확대 */
+  padding: 0.75rem;  /* 패딩을 균형 있게 확대 */
+  min-height: 60px;  /* 전체 높이를 균형 있게 확대 */
   border-top: 1px solid var(--border);
   background: var(--bg-card);
   flex-shrink: 0;
@@ -5552,13 +5552,13 @@ button.mobile-home-menu__btn {
 .chat-input {
   flex: 1;
   min-width: 0;
-  height: 24px;
-  padding: 0 0.5rem;
+  height: 48px;  /* 입력창 높이도 균형 있게 확대 */
+  padding: 0 1rem;  /* 패딩도 균형 있게 확대 */
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-dark);
   color: var(--text);
-  font-size: 0.8rem;
+  font-size: 1rem;  /* 폰트 크기도 균형 있게 확대 */
   font-family: inherit;
   -webkit-appearance: none;
   appearance: none;
@@ -5604,23 +5604,34 @@ button.mobile-home-menu__btn {
 .chat-item-menu-cooldown {
   padding: 0.35rem 0.75rem;
   font-size: 0.8rem;
-  color: var(--text-muted);
-  text-align: center;
-  white-space: nowrap;
-}
-
-.chat-item-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 44px;  /* 모바일과 동일한 너비 */
+  height: 44px;  /* 모바일과 동일한 높이 */
   padding: 0;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text);
   font-size: 0.75rem;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+  position: relative;
+  margin: 0;
+}
+
+.chat-item-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;  /* 아이템 트리거 너비도 균형 있게 확대 */
+  height: 48px;  /* 아이템 트리거 높이도 균형 있게 확대 */
+  padding: 0;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 1rem;  /* 아이콘 크기도 균형 있게 확대 */
   line-height: 1;
   font-family: inherit;
   cursor: pointer;
@@ -5736,16 +5747,17 @@ button.mobile-home-menu__btn {
 }
 
 .chat-send {
-  height: 24px;
-  padding: 0 0.5rem;
+  height: 48px;  /* 전송 버튼 높이도 균형 있게 확대 */
+  padding: 0 1.5rem;  /* 패딩도 균형 있게 확대 */
   border: 1px solid var(--neon);
-  background: transparent;
-  color: var(--neon);
   border-radius: 4px;
-  font-size: 0.75rem;
+  background: transparent;  /* 배경 색상 제거 */
+  color: var(--neon);  /* 텍스트 색상을 네온으로 변경 */
+  font-size: 1rem;  /* 폰트 크기도 균형 있게 확대 */
   font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5754,6 +5766,7 @@ button.mobile-home-menu__btn {
 .chat-send:hover:not(:disabled) {
   border-color: var(--neon);
   color: var(--neon);
+  background: transparent;  /* 호버 시도 배경 없음 */
 }
 .chat-send:disabled {
   opacity: 0.6;

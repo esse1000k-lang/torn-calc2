@@ -1041,14 +1041,26 @@
           if (pendingLinkHref && !e.target.closest('.chat-msg__link')) closeLinkConfirmDropdown();
         });
 
-        if (chatSend) chatSend.addEventListener('click', function () {
-          var user = window.TornFiAuth && window.TornFiAuth.getUser();
-          if (!user || !user.id) {
-            window.location.href = '/login.html';
-            return;
-          }
-          sendMessage();
-        });
+        if (chatSend) {
+          chatSend.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            var user = window.TornFiAuth && window.TornFiAuth.getUser();
+            if (!user || !user.id) {
+              window.location.href = '/login.html';
+              return;
+            }
+            sendMessage();
+          });
+          chatSend.addEventListener('touchstart', function (e) {
+            e.preventDefault();
+            var user = window.TornFiAuth && window.TornFiAuth.getUser();
+            if (!user || !user.id) {
+              window.location.href = '/login.html';
+              return;
+            }
+            sendMessage();
+          });
+        }
         if (chatInput) {
           chatInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
