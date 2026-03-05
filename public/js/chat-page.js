@@ -1051,52 +1051,6 @@
           });
         }
 
-        (function setupChatKeyboardFollow() {
-          var wrap = document.querySelector('.chat-page .chat-input-wrap');
-          if (!chatInput || !wrap) return;
-          var vv = window.visualViewport;
-          function updateWrapPosition() {
-            if (!vv) return;
-            var innerH = window.innerHeight;
-            var vh = vv.height;
-            if (vh < innerH * 0.85) {
-              wrap.classList.add('chat-input-wrap--keyboard');
-              wrap.style.position = 'fixed';
-              wrap.style.left = '0';
-              wrap.style.right = '0';
-              wrap.style.bottom = (innerH - vh) + 'px';
-              wrap.style.width = '100%';
-              wrap.style.boxSizing = 'border-box';
-            } else {
-              wrap.classList.remove('chat-input-wrap--keyboard');
-              wrap.style.position = '';
-              wrap.style.left = '';
-              wrap.style.right = '';
-              wrap.style.bottom = '';
-              wrap.style.width = '';
-              wrap.style.boxSizing = '';
-            }
-          }
-          if (vv) {
-            vv.addEventListener('resize', updateWrapPosition);
-            vv.addEventListener('scroll', updateWrapPosition);
-          }
-          if (chatInput) {
-            chatInput.addEventListener('focus', function () {
-              setTimeout(function () {
-                chatInput.scrollIntoView({ block: 'end', behavior: 'smooth' });
-                updateWrapPosition();
-              }, 280);
-              setTimeout(updateWrapPosition, 600);
-            });
-            chatInput.addEventListener('blur', function () {
-              setTimeout(function () {
-                if (document.activeElement !== chatInput) updateWrapPosition();
-              }, 150);
-            });
-          }
-        })();
-
         function updateChatSendButton(user) {
           if (chatSend) {
             chatSend.textContent = (user && user.id) ? '전송' : '로그인';
