@@ -19,14 +19,20 @@
   <link rel="stylesheet" href="css/site.css">
 </head>
 <body class="chat-page">
-  <nav class="site-nav">
-    <div class="nav-brand">
-      <a href="/" class="nav-logo">TornFi</a>
-    </div>
-    <a href="/admin.html" class="nav-admin-center" id="navAdminCenter" aria-label="관리자" style="display:none;">🛠️</a>
-  </nav>
-
+  <!-- 채팅 페이지 홈 버튼 -->
+  <div class="chat-home-btn">
+    <a href="/" class="chat-home-link">
+      <span class="chat-home-arrow">←</span>
+      <span class="chat-home-text">홈</span>
+    </a>
+  </div>
+  
   <main class="site-main chat-page-main">
+    <!-- 채팅 화면 중앙 로고 워터마크 -->
+    <div class="chat-watermark">
+      <div class="chat-watermark__logo">TornFi</div>
+    </div>
+    
     <section id="chat" class="section chat-section">
       <div id="chatWrap" class="chat-wrap">
         <div id="chatPanel" class="chat-panel">
