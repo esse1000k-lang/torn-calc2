@@ -528,7 +528,7 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
               if (chatSend) chatSend.disabled = false;
-              if (chatInput) chatInput.value = '';
+              if (chatInput) chatInput.value = ''; 
               clearPreview();
               replyingTo = null;
               var replyBar = document.getElementById('chatReplyBar');
@@ -541,6 +541,12 @@
                   chatItemSelectWrap.dataset.selected = '';
                 }
                 fetchChat();
+                
+                if (chatInput) {
+                  setTimeout(function() {
+                    chatInput.focus();
+                  }, 100);
+                }
               } else if (data.message) alert(data.message);
             })
             .catch(function () { if (chatSend) chatSend.disabled = false; });
