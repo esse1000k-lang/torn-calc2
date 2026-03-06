@@ -6217,6 +6217,24 @@ main.chat-page-main {
   color: var(--text-muted);
   opacity: 0.7;
 }
+.calculator-page .investment-input-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.calculator-page .investment-input-wrapper input {
+  flex: 1;
+  min-width: 0;
+}
+.calculator-page .investment-input-wrapper .value-hangul {
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+.calculator-page .investment-input-wrapper .value-krw {
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
 .calculator-page .data-value {
   padding: 0.8rem 1rem;
   min-height: 2.9rem;
@@ -6337,6 +6355,139 @@ main.chat-page-main {
 .calculator-page .data-value--total-pool input::placeholder {
   color: var(--text-muted);
   opacity: 0.7;
+}
+.calculator-page .card-analytics {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(255, 215, 0, 0.04) 100%), var(--bg-card);
+}
+.calculator-page .analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+.calculator-page .analytics-panel {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.calculator-page .analytics-panel--highlight {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 0, 0, 0.2) 100%);
+  border-color: rgba(0, 255, 136, 0.22);
+}
+.calculator-page .analytics-panel__title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.calculator-page .analytics-panel__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--neon);
+  text-shadow: 0 0 14px var(--neon-glow);
+}
+.calculator-page .analytics-panel__sub {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.calculator-page .analytics-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.calculator-page .analytics-stat-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.calculator-page .analytics-stat-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.calculator-page .analytics-stat-value {
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: 600;
+  text-align: right;
+}
+.calculator-page .input-group--investment {
+  margin-bottom: 1rem;
+}
+.calculator-page .analytics-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+.calculator-page .analytics-input-grid .input-group--investment {
+  margin-bottom: 0;
+}
+.calculator-page .analytics-average-box {
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+}
+.calculator-page .analytics-average-box__value {
+  color: var(--neon);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.calculator-page .analytics-average-box__sub {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.calculator-page .analytics-results {
+  border-top: 1px solid var(--border);
+  padding-top: 0.2rem;
+}
+.calculator-page .analytics-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.calculator-page .analytics-result-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.calculator-page .analytics-result-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.calculator-page .analytics-result-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+.calculator-page .analytics-result-value {
+  color: #fff;
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-align: right;
+}
+.calculator-page .analytics-result-sub {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+.calculator-page .analytics-result-value--positive,
+.calculator-page .analytics-result-sub--positive {
+  color: var(--neon);
+}
+.calculator-page .analytics-result-value--negative,
+.calculator-page .analytics-result-sub--negative {
+  color: var(--danger);
 }
 .calculator-page .card-dividend .share-block {
   margin-bottom: 1.25rem;
@@ -6478,6 +6629,12 @@ main.chat-page-main {
   text-shadow: 0 0 10px var(--neon-glow);
   font-size: 0.9rem;
 }
+.calculator-page .value-hangul {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
 .calculator-page .result-krw {
   font-size: 0.7rem;
   font-weight: 500;
@@ -6526,6 +6683,26 @@ main.chat-page-main {
     margin-right: -0.5rem;
     padding: 0.85rem;
     border-radius: 8px;
+  }
+  .calculator-page .analytics-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .calculator-page .analytics-input-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .calculator-page .analytics-panel {
+    padding: 0.85rem;
+  }
+  .calculator-page .analytics-result-row {
+    gap: 0.75rem;
+  }
+  .calculator-page .analytics-result-value {
+    font-size: 0.88rem;
+  }
+  .calculator-page .analytics-result-sub {
+    font-size: 0.68rem;
   }
   .calculator-page .price-cols {
     flex-direction: row;

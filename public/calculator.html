@@ -30,7 +30,7 @@
   <div class="container">
     <header class="calc-page-hero" aria-label="배당 조회">
       <h1 class="calc-page-hero__title">배당 조회</h1>
-      <p class="calc-page-hero__desc">지갑 주소를 입력해서 스테이킹, 미출금 리워드, 출금 배당을 바로 확인하세요.</p>
+      <p class="calc-page-hero__desc">TORN 토큰 스테이킹 현황, 쉽고 빠른 리포트</p>
     </header>
 
     <div class="card">
@@ -68,7 +68,7 @@
           <span class="value-krw" id="totalPoolKrw"></span>
         </div>
       </div>
-      <p class="hint">TORN 시세, BTC 기반 김치프리미엄, 거버넌스 총 스테이킹 수량을 자동으로 반영합니다.</p>
+      <p class="hint">TORN 시세, DEX / CEX 활용, 김치프리미엄 BTC 기반 반영(국내 미상장), 스테이킹 정보 이더스캔(etherscan)</p>
     </div>
 
     <div class="card">
@@ -107,6 +107,70 @@
         <div class="data-value data-value--row">
           <span id="totalHoldingsSumDisplay"></span>
           <span class="value-krw" id="totalHoldingsSumKrw"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-analytics">
+      <div class="card-title">🌪️ 현황</div>
+      <div class="analytics-grid">
+        <div class="analytics-panel analytics-panel--highlight">
+          <div class="analytics-panel__title">현재 이더리움 가스비</div>
+          <div class="analytics-panel__value" id="gasPriceDisplay">로딩 중</div>
+          <div class="analytics-panel__sub" id="gasPriceKrwDisplay"></div>
+        </div>
+        <div class="analytics-panel">
+          <div class="analytics-panel__title">내 자산 환산</div>
+          <div class="analytics-stat-row">
+            <span class="analytics-stat-label">ETH 기준</span>
+            <span class="analytics-stat-value" id="holdingsEthDisplay"></span>
+          </div>
+          <div class="analytics-stat-row">
+            <span class="analytics-stat-label">BTC 기준</span>
+            <span class="analytics-stat-value" id="holdingsBtcDisplay"></span>
+          </div>
+        </div>
+      </div>
+      <div class="analytics-input-grid">
+        <div class="input-group input-group--investment">
+          <label for="investmentKrw">내 투자금 (원화)</label>
+          <div class="data-value data-value--row data-value--input">
+            <div class="investment-input-wrapper">
+              <input type="text" id="investmentKrw" inputmode="numeric" pattern="[0-9,]*" min="0" step="any" value="" placeholder="예: 10,000,000">
+              <span class="value-hangul" id="investmentKrwHangul"></span>
+              <span class="value-krw">원</span>
+            </div>
+          </div>
+        </div>
+        <div class="input-group input-group--investment">
+          <label>자동 계산 평균 단가</label>
+          <div class="data-value data-value--row analytics-average-box">
+            <span class="analytics-average-box__value" id="avgBuyPriceInlineDisplay"></span>
+            <span class="analytics-average-box__sub" id="avgBuyPriceInlineUsdDisplay"></span>
+          </div>
+        </div>
+      </div>
+      <div class="analytics-results">
+        <div class="analytics-result-row">
+          <span class="analytics-result-label">개당 평균 단가</span>
+          <div class="analytics-result-wrap">
+            <span class="analytics-result-value" id="avgBuyPriceDisplay"></span>
+            <span class="analytics-result-sub" id="avgBuyPriceUsdDisplay"></span>
+          </div>
+        </div>
+        <div class="analytics-result-row">
+          <span class="analytics-result-label">현재 평가금액</span>
+          <div class="analytics-result-wrap">
+            <span class="analytics-result-value" id="currentValueDisplay"></span>
+            <span class="analytics-result-sub" id="currentValueTornDisplay"></span>
+          </div>
+        </div>
+        <div class="analytics-result-row">
+          <span class="analytics-result-label">현재 손익</span>
+          <div class="analytics-result-wrap">
+            <span class="analytics-result-value" id="profitDisplay"></span>
+            <span class="analytics-result-sub" id="profitRateDisplay"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -159,6 +223,7 @@
   <script>
     (function () {
       const FEE_RATE = 0.003;
+      const NFT_SALE_AVG_GAS_UNITS = 420000;
       const REFRESH_INTERVAL_MS = 18000;
       const PREMIUM_REFRESH_INTERVAL_MS = 4000;
       const NETWORK_ERR_MSG = '네트워크 오류';
@@ -200,6 +265,20 @@
       const unclaimedRewardKrwEl = document.getElementById('unclaimedRewardKrw');
       const walletTornBalanceKrwEl = document.getElementById('walletTornBalanceKrw');
       const totalHoldingsSumKrwEl = document.getElementById('totalHoldingsSumKrw');
+      const gasPriceDisplay = document.getElementById('gasPriceDisplay');
+      const gasPriceKrwDisplay = document.getElementById('gasPriceKrwDisplay');
+      const holdingsEthDisplay = document.getElementById('holdingsEthDisplay');
+      const holdingsBtcDisplay = document.getElementById('holdingsBtcDisplay');
+      const investmentKrwInput = document.getElementById('investmentKrw');
+      const investmentKrwHangul = document.getElementById('investmentKrwHangul');
+      const avgBuyPriceInlineDisplay = document.getElementById('avgBuyPriceInlineDisplay');
+      const avgBuyPriceInlineUsdDisplay = document.getElementById('avgBuyPriceInlineUsdDisplay');
+      const avgBuyPriceDisplay = document.getElementById('avgBuyPriceDisplay');
+      const avgBuyPriceUsdDisplay = document.getElementById('avgBuyPriceUsdDisplay');
+      const currentValueDisplay = document.getElementById('currentValueDisplay');
+      const currentValueTornDisplay = document.getElementById('currentValueTornDisplay');
+      const profitDisplay = document.getElementById('profitDisplay');
+      const profitRateDisplay = document.getElementById('profitRateDisplay');
 
       let tornPriceUsd = 0;
       let tornPriceUsdDex = 0;
@@ -210,6 +289,7 @@
       let tornPriceKrw = 0;
       let btcKrwAuto = 0;
       let krwPerUsdAuto = 0;
+      let gasPriceGweiAuto = 0;
       let kimchiPremiumAuto = null;
       let walletQueryTimer = null;
 
@@ -255,6 +335,97 @@
         return Math.floor(n).toLocaleString('ko-KR') + ' 원';
       }
 
+      function formatSignedKrw(n) {
+        if (n == null || !isFinite(n) || n === 0) return '0 원';
+        const abs = Math.floor(Math.abs(n)).toLocaleString('ko-KR') + ' 원';
+        return n > 0 ? '+' + abs : '-' + abs;
+      }
+
+      function formatPercent(n) {
+        if (n == null || !isFinite(n)) return '';
+        const sign = n > 0 ? '+' : '';
+        return sign + n.toFixed(2) + '%';
+      }
+
+      function formatAssetAmount(n, suffix, digits) {
+        if (n == null || !isFinite(n) || n <= 0) return '';
+        return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: digits }) + ' ' + suffix;
+      }
+
+      function formatKrwHangulOnly(n) {
+        if (n == null || !isFinite(n) || n <= 0) return '';
+        const units = ['', '만', '억', '조', '경'];
+        const digits = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+        const tens = ['', '십', '이십', '삼십', '사십', '오십', '육십', '칠십', '팔십', '구십'];
+        
+        let result = '';
+        let unitIndex = 0;
+        let remaining = Math.floor(n);
+        
+        while (remaining > 0 && unitIndex < units.length) {
+          const chunk = remaining % 10000;
+          if (chunk > 0) {
+            let chunkStr = '';
+            const thousand = Math.floor(chunk / 1000);
+            const hundred = Math.floor((chunk % 1000) / 100);
+            const ten = Math.floor((chunk % 100) / 10);
+            const one = chunk % 10;
+            
+            if (thousand > 0) {
+              chunkStr += digits[thousand] + '천';
+            }
+            if (hundred > 0) {
+              chunkStr += digits[hundred] + '백';
+            }
+            if (ten > 0) {
+              if (ten === 1 && chunk < 10000) {
+                chunkStr += '십';
+              } else {
+                chunkStr += tens[ten];
+              }
+            }
+            if (one > 0) {
+              chunkStr += digits[one];
+            }
+            
+            result = chunkStr + units[unitIndex] + ' ' + result;
+          }
+          remaining = Math.floor(remaining / 10000);
+          unitIndex++;
+        }
+        
+        return result.trim();
+      }
+
+      function updateInvestmentKrwHangul() {
+        const value = parseNum(investmentKrwInput.value);
+        investmentKrwHangul.textContent = value > 0 ? ' ' + formatKrwHangulOnly(value) : '';
+      }
+
+      function formatNumberWithCommas(value) {
+        const cleanValue = value.replace(/,/g, '');
+        if (!cleanValue || isNaN(cleanValue)) return '';
+        return Number(cleanValue).toLocaleString('ko-KR');
+      }
+
+      function updateInvestmentKrwDisplay() {
+        const rawValue = investmentKrwInput.value;
+        const formattedValue = formatNumberWithCommas(rawValue);
+        
+        if (formattedValue !== investmentKrwInput.value) {
+          const cursorStart = investmentKrwInput.selectionStart;
+          const cursorEnd = investmentKrwInput.selectionEnd;
+          investmentKrwInput.value = formattedValue;
+          
+          const lengthDiff = formattedValue.length - rawValue.length;
+          const newCursorStart = cursorStart + lengthDiff;
+          const newCursorEnd = cursorEnd + lengthDiff;
+          investmentKrwInput.setSelectionRange(newCursorStart, newCursorEnd);
+        }
+        
+        updateInvestmentKrwHangul();
+      }
+
       function setTextIfAvailable(el, value, fallback) {
         if (!el) return;
         if (value) {
@@ -279,6 +450,37 @@
         unclaimedRewardKrwEl.textContent = reward > 0 ? formatKrw(krwFromTorn(reward)) : '';
         walletTornBalanceKrwEl.textContent = walletBal > 0 ? formatKrw(krwFromTorn(walletBal)) : '';
         totalHoldingsSumKrwEl.textContent = sum > 0 ? formatKrw(krwFromTorn(sum)) : '';
+      }
+
+      function updateAnalyticsCard() {
+        const totalTorn = parseDisplayNum(totalHoldingsSumDisplay.textContent);
+        const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 ? totalTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+        const gasFeeKrw = gasPriceGweiAuto > 0 && ethPriceUsd > 0 && krwPerUsdAuto > 0 ? (gasPriceGweiAuto * 1e-9) * ethPriceUsd * krwPerUsdAuto * NFT_SALE_AVG_GAS_UNITS : 0;
+        gasPriceDisplay.textContent = gasPriceGweiAuto > 0 ? gasPriceGweiAuto.toFixed(2) + ' Gwei' : '로딩 중';
+        gasPriceKrwDisplay.textContent = gasFeeKrw > 0 ? '평균 약 ' + formatKrw(gasFeeKrw) : '';
+        const ethHolding = totalTorn > 0 && tornPriceUsd > 0 && ethPriceUsd > 0 ? (totalTorn * tornPriceUsd) / ethPriceUsd : 0;
+        const btcHolding = totalTorn > 0 && tornPriceUsd > 0 && btcPriceUsd > 0 ? (totalTorn * tornPriceUsd) / btcPriceUsd : 0;
+        holdingsEthDisplay.textContent = formatAssetAmount(ethHolding, 'ETH', 2);
+        holdingsBtcDisplay.textContent = formatAssetAmount(btcHolding, 'BTC', 2);
+
+        const investmentKrw = parseNum(investmentKrwInput.value);
+        const avgBuyPriceKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw / totalTorn : 0;
+        const avgBuyPriceUsd = avgBuyPriceKrw > 0 && krwPerUsdAuto > 0 ? avgBuyPriceKrw / krwPerUsdAuto : 0;
+        const costBasisKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw : 0;
+        const profitKrw = costBasisKrw > 0 && totalValueKrw > 0 ? totalValueKrw - costBasisKrw : 0;
+        const profitRate = costBasisKrw > 0 && totalValueKrw > 0 ? ((totalValueKrw - costBasisKrw) / costBasisKrw) * 100 : null;
+        avgBuyPriceDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
+        avgBuyPriceUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
+        avgBuyPriceInlineDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
+        avgBuyPriceInlineUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
+        currentValueDisplay.textContent = totalValueKrw > 0 ? formatKrw(totalValueKrw) : '';
+        currentValueTornDisplay.textContent = totalTorn > 0 ? formatTorn2Decimals(totalTorn) + ' TORN' + (costBasisKrw > 0 ? ' · 원가 ' + formatKrw(costBasisKrw) : '') : '';
+        profitDisplay.textContent = costBasisKrw > 0 && totalValueKrw > 0 ? formatSignedKrw(profitKrw) : '';
+        profitDisplay.classList.toggle('analytics-result-value--positive', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw > 0);
+        profitDisplay.classList.toggle('analytics-result-value--negative', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw < 0);
+        profitRateDisplay.textContent = costBasisKrw > 0 && totalValueKrw > 0 && profitRate != null ? formatPercent(profitRate) : '';
+        profitRateDisplay.classList.toggle('analytics-result-sub--positive', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw > 0);
+        profitRateDisplay.classList.toggle('analytics-result-sub--negative', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw < 0);
       }
 
       function updateTotalHoldingsSum() {
@@ -310,6 +512,7 @@
           userTornInput.value = '';
           userTornKrwEl.textContent = '';
           calculate();
+          updateAnalyticsCard();
           return;
         }
         if (!/^0x[a-fA-F0-9]{40}$/.test(raw)) {
@@ -317,6 +520,7 @@
           userTornInput.value = '';
           userTornKrwEl.textContent = '';
           calculate();
+          updateAnalyticsCard();
           return;
         }
         setWalletSection('조회 중', '조회 중', '조회 중', '조회 중');
@@ -339,6 +543,8 @@
               unclaimedRewardDisplay.textContent = '';
               walletTornBalanceDisplay.textContent = '';
               totalHoldingsSumDisplay.textContent = '';
+              updateWalletKrwDisplays();
+              updateAnalyticsCard();
             });
         }, 300);
       }
@@ -354,12 +560,22 @@
         if (d.premium != null) kimchiPremiumAuto = d.premium;
         if (d.tornPriceKrw > 0) tornPriceKrw = d.tornPriceKrw;
         if (d.btcKrw > 0) btcKrwAuto = d.btcKrw;
+        if (d.gasPriceGwei > 0) gasPriceGweiAuto = d.gasPriceGwei;
         priceDisplayWrap.classList.remove('loading', 'error');
         priceDisplayLeft.textContent = formatUsd(tornPriceUsdDex);
         const dexCexAvg = (tornPriceUsdDex > 0 && tornPriceUsdCex > 0) ? (tornPriceUsdDex + tornPriceUsdCex) / 2 : (tornPriceUsdDex || tornPriceUsdCex || 0);
         priceDisplayCenter.textContent = formatUsd(dexCexAvg);
         priceDisplayRight.textContent = formatUsd(tornPriceUsdCex);
         kimchiPremiumDisplay.textContent = kimchiPremiumAuto != null ? kimchiPremiumAuto + '%' : ' 로딩 중';
+        if (kimchiPremiumAuto != null) {
+          if (kimchiPremiumAuto < 0) {
+            kimchiPremiumDisplay.style.color = 'rgba(255, 100, 100, 0.8)'; // 약한 빨강
+          } else if (kimchiPremiumAuto > 0) {
+            kimchiPremiumDisplay.style.color = 'rgba(100, 150, 255, 0.8)'; // 약한 파랑
+          } else {
+            kimchiPremiumDisplay.style.color = ''; // 0일 때 기본색
+          }
+        }
         if (d.totalStaked != null) totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
         const btcKrw = btcKrwAuto > 0 ? btcKrwAuto : 0;
         if (btcPriceUsd > 0 && btcKrw > 0) krwPerUsdAuto = btcKrw / btcPriceUsd;
@@ -378,6 +594,7 @@
           sessionStorage.setItem(PRICE_CACHE_KEY, JSON.stringify({ t: Date.now(), ...d }));
         } catch (e) {}
         calculate();
+        updateAnalyticsCard();
       }
 
       function applyPremiumData(d) {
@@ -385,7 +602,15 @@
         if (d.premium != null) {
           kimchiPremiumAuto = d.premium;
           kimchiPremiumDisplay.textContent = kimchiPremiumAuto + '%';
+          if (kimchiPremiumAuto < 0) {
+            kimchiPremiumDisplay.style.color = 'rgba(255, 100, 100, 0.8)'; // 약한 빨강
+          } else if (kimchiPremiumAuto > 0) {
+            kimchiPremiumDisplay.style.color = 'rgba(100, 150, 255, 0.8)'; // 약한 파랑
+          } else {
+            kimchiPremiumDisplay.style.color = ''; // 0일 때 기본색
+          }
           calculate();
+          updateAnalyticsCard();
         }
       }
 
@@ -468,6 +693,7 @@
           const equivalentEth = ethPriceUsd > 0 ? amount / ethPriceUsd : 0;
           updateRow(equivalentEth, divElsUsd[amount], krwElsUsd[amount]);
         });
+        updateAnalyticsCard();
       }
 
       (function initDividendTabs() {
@@ -549,6 +775,9 @@
 
       userTornInput.addEventListener('input', calculate);
       userTornInput.addEventListener('change', calculate);
+      investmentKrwInput.addEventListener('input', updateInvestmentKrwDisplay);
+      investmentKrwInput.addEventListener('input', updateAnalyticsCard);
+      investmentKrwInput.addEventListener('change', updateAnalyticsCard);
       walletAddressInput.addEventListener('input', onWalletAddressChange);
       walletAddressInput.addEventListener('blur', onWalletAddressChange);
       try {
