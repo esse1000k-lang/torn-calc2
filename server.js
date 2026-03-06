@@ -3717,13 +3717,12 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
 });
 
-function tryListen(port, maxTries) {
-  if (maxTries == null) maxTries = 6;
+function tryListen(port) {
   const server = app.listen(port, () => onServerListen(port));
   server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE' && maxTries > 1) {
-      console.warn('Port ' + port + ' in use, trying ' + (port + 1) + '...');
-      tryListen(port + 1, maxTries - 1);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`에러: ${port}번 포트가 이미 사용 중입니다. 기존 프로세스를 죽이세요!`);
+      process.exit(1);
     } else {
       throw err;
     }
