@@ -133,11 +133,13 @@
       </div>
       <div class="analytics-input-grid">
         <div class="input-group input-group--investment">
-          <label for="investmentKrw">내 투자금 (원화)</label>
+          <div class="label-row" style="display: flex; align-items: center; margin-bottom: 0.45rem;">
+            <label for="investmentKrw" style="display: inline !important; margin-bottom: 0 !important; flex-shrink: 0;">내 투자금 (원화)</label>
+            <span class="value-hangul" id="investmentKrwHangul" style="font-size: 0.55rem; font-weight: 500; color: #fff; flex-shrink: 0; margin-left: 0.25rem;"></span>
+          </div>
           <div class="data-value data-value--row data-value--input">
             <div class="investment-input-wrapper">
               <input type="text" id="investmentKrw" inputmode="numeric" pattern="[0-9,]*" min="0" step="any" value="" placeholder="예: 10,000,000">
-              <span class="value-hangul" id="investmentKrwHangul"></span>
               <span class="value-krw">원</span>
             </div>
           </div>
@@ -217,7 +219,7 @@
   </div>
 
   <div class="page-bottom">
-    <p class="page-bottom__copy"> 2026 TornFi Portfolio</p>
+    <p class="page-bottom__copy"> 2026 Torn<span style="color: var(--neon);">Fi</span> Portfolio</p>
   </div>
 
   <script>

@@ -6112,6 +6112,23 @@ main.chat-page-main {
   margin-bottom: 0.45rem;
   letter-spacing: 0.05em;
 }
+.calculator-page .input-group--investment .label-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+.calculator-page .input-group--investment .label-row label {
+  display: inline !important;
+  margin-bottom: 0 !important;
+  flex-shrink: 0;
+}
+.calculator-page .input-group--investment .label-row .value-hangul {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
 .calculator-page input {
   width: 100%;
   padding: 0.8rem 1rem;
@@ -6226,10 +6243,6 @@ main.chat-page-main {
 .calculator-page .investment-input-wrapper input {
   flex: 1;
   min-width: 0;
-}
-.calculator-page .investment-input-wrapper .value-hangul {
-  flex-shrink: 0;
-  margin-left: 0.25rem;
 }
 .calculator-page .investment-input-wrapper .value-krw {
   flex-shrink: 0;
