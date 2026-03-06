@@ -163,7 +163,7 @@ app.get('/api/calculator/premium', async (_req, res) => {
 
   const coingecko = coingeckoRes.status === 'fulfilled' ? coingeckoRes.value : null;
   const upbit = upbitRes.status === 'fulfilled' ? upbitRes.value : null;
-  const btcKrw = coingecko?.bitcoin?.krw || null;
+  const btcKrw = coingecko?.bitcoin?.krw || calcPremiumCache?.data?.btcKrw || null;
   let premium = null;
   if (btcKrw && upbit && Array.isArray(upbit) && upbit[0]?.trade_price) {
     premium = Math.round(((upbit[0].trade_price - btcKrw) / btcKrw) * 10000) / 100;
@@ -247,8 +247,8 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const tornPriceUsdCex = mexcObj?.price ? Number(mexcObj.price) || 0 : 0;
   const tornPriceUsdCenter = defiLlamaTorn > 0 ? defiLlamaTorn : 0;
   const tornPriceUsd = tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
-  const btcKrw = coingecko?.bitcoin?.krw || null;
-  const premium = calcPremiumCache?.data?.premium != null ? calcPremiumCache.data.premium : null;
+  const btcKrw = coingecko?.bitcoin?.krw || calcPriceCache?.data?.btcKrw || calcPremiumCache?.data?.btcKrw || null;
+  const premium = calcPremiumCache?.data?.premium != null ? calcPremiumCache.data.premium : (calcPriceCache?.data?.premium != null ? calcPriceCache.data.premium : null);
 
   let totalStaked = 0;
   if (etherscan?.status === '1' && etherscan?.message === 'OK' && etherscan?.result) {
@@ -278,7 +278,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
     btcKrw,
     premium,
     totalStaked,
-    tornPriceKrw: coingecko?.['tornado-cash']?.krw || 0,
+    tornPriceKrw: coingecko?.['tornado-cash']?.krw || calcPriceCache?.data?.tornPriceKrw || 0,
   };
 
   calcPriceCache = { at: now, data: payload };

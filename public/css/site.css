@@ -6247,6 +6247,12 @@ main.chat-page-main {
   user-select: none;
   padding: 0 0.15rem;
 }
+.calculator-page .price-col-arrow::before {
+  content: '◀';
+}
+.calculator-page .price-col-arrow:nth-child(2)::before {
+  content: '▶';
+}
 .calculator-page .price-col-arrow--red {
   color: var(--danger);
 }
