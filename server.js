@@ -14,8 +14,10 @@ const PORT = Number(process.env.PORT || 3000);
 const CHAT_MIN_INTERVAL_MS = 1500;
 const CALC_PRICE_CACHE_TTL_MS = 18 * 1000;
 const CALC_PREMIUM_CACHE_TTL_MS = 4 * 1000;
+const CALC_TOTAL_STAKED_CACHE_TTL_MS = 60 * 1000;
 let calcPriceCache = null;
 let calcPremiumCache = null;
+let calcTotalStakedCache = null;
 
 const chatLastSentAt = new Map();
 
@@ -194,13 +196,15 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const RPC_URL = process.env.CALC_RPC_URL || process.env.INFURA_URL || 'https://mainnet.infura.io/v3/fa141c0488f14212b912c04114f23f84';
   const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || 'DSPENWH1HPF4H8P3WZNM6HCFT3G4238JM6';
   const timeoutFetch = (url, ms = 8000) => fetch(url, { signal: AbortSignal.timeout(ms) });
+  const totalStakedPromise = (calcTotalStakedCache && now - calcTotalStakedCache.at < CALC_TOTAL_STAKED_CACHE_TTL_MS)
+    ? Promise.resolve(calcTotalStakedCache.data)
+    : timeoutFetch(`https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokenbalance&contractaddress=${TORN_TOKEN}&address=${GOVERNANCE}&tag=latest&apikey=${ETHERSCAN_KEY}`).then((r) => r.json());
 
-  const [llamaRes, coingeckoRes, upbitRes, mexcRes, etherscanRes, uniswapResult] = await Promise.allSettled([
+  const [llamaRes, coingeckoRes, mexcRes, etherscanRes, uniswapResult] = await Promise.allSettled([
     timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then((r) => r.json()),
     timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin&vs_currencies=krw').then((r) => r.json()),
-    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-BTC').then((r) => r.json()),
     timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then((r) => r.json()),
-    timeoutFetch(`https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokenbalance&contractaddress=${TORN_TOKEN}&address=${GOVERNANCE}&tag=latest&apikey=${ETHERSCAN_KEY}`).then((r) => r.json()),
+    totalStakedPromise,
     (async () => {
       try {
         const provider = new JsonRpcProvider(RPC_URL);
@@ -230,7 +234,6 @@ app.get('/api/calculator/prices', async (_req, res) => {
 
   const llama = llamaRes.status === 'fulfilled' ? llamaRes.value : null;
   const coingecko = coingeckoRes.status === 'fulfilled' ? coingeckoRes.value : null;
-  const upbit = upbitRes.status === 'fulfilled' ? upbitRes.value : null;
   const mexc = mexcRes.status === 'fulfilled' ? mexcRes.value : null;
   const etherscan = etherscanRes.status === 'fulfilled' ? etherscanRes.value : null;
   const tornPriceInEth = uniswapResult.status === 'fulfilled' ? uniswapResult.value : null;
@@ -245,10 +248,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const tornPriceUsdCenter = defiLlamaTorn > 0 ? defiLlamaTorn : 0;
   const tornPriceUsd = tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
   const btcKrw = coingecko?.bitcoin?.krw || null;
-  let premium = null;
-  if (btcKrw && upbit && Array.isArray(upbit) && upbit[0]?.trade_price) {
-    premium = Math.round(((upbit[0].trade_price - btcKrw) / btcKrw) * 10000) / 100;
-  }
+  const premium = calcPremiumCache?.data?.premium != null ? calcPremiumCache.data.premium : null;
 
   let totalStaked = 0;
   if (etherscan?.status === '1' && etherscan?.message === 'OK' && etherscan?.result) {
@@ -258,6 +258,13 @@ app.get('/api/calculator/prices', async (_req, res) => {
       const len = raw.length;
       totalStaked = len <= decimals ? parseFloat('0.' + raw.padStart(decimals, '0')) : parseFloat(raw.slice(0, len - decimals) + '.' + raw.slice(-decimals));
     }
+  }
+  if (totalStaked > 0) calcTotalStakedCache = { at: now, data: { status: '1', message: 'OK', result: etherscan.result } };
+  else if (calcTotalStakedCache?.data?.status === '1' && calcTotalStakedCache?.data?.message === 'OK' && calcTotalStakedCache?.data?.result) {
+    const raw = String(calcTotalStakedCache.data.result);
+    const decimals = 18;
+    const len = raw.length;
+    totalStaked = len <= decimals ? parseFloat('0.' + raw.padStart(decimals, '0')) : parseFloat(raw.slice(0, len - decimals) + '.' + raw.slice(-decimals));
   }
 
   const payload = {

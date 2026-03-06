@@ -6021,6 +6021,12 @@ main.chat-page-main {
   0%, 100% { transform: translateX(0); opacity: 0; }
   50% { transform: translateX(200%); opacity: 1; }
 }
+@keyframes tornado-sway {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-3deg); }
+  25% { transform: translate(-50%, -50%) rotate(3deg); }
+  50% { transform: translate(-50%, -50%) rotate(-2deg); }
+  75% { transform: translate(-50%, -50%) rotate(2deg); }
+}
 .calculator-page .calc-page-hero {
   text-align: center;
   margin-bottom: 1.25rem;
@@ -6032,15 +6038,26 @@ main.chat-page-main {
   overflow: hidden;
 }
 .calculator-page .calc-page-hero::before {
+  content: '🌪️';
+  position: absolute;
+  top: 50%;
+  left: 83.33%;
+  transform: translate(-50%, -50%);
+  font-size: 12rem;
+  opacity: 0.06;
+  z-index: 0;
+  pointer-events: none;
+  animation: tornado-sway 6s ease-in-out infinite;
+}
+.calculator-page .calc-page-hero::after {
   content: '';
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.08), transparent);
-  animation: calc-hero-shine 4s ease-in-out infinite;
-  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: calc-hero-shine 6s infinite;
 }
 .calculator-page .calc-page-hero__title {
   position: relative;
