@@ -468,21 +468,22 @@
         const investmentKrw = parseNum(investmentKrwInput.value);
         const avgBuyPriceKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw / totalTorn : 0;
         const avgBuyPriceUsd = avgBuyPriceKrw > 0 && krwPerUsdAuto > 0 ? avgBuyPriceKrw / krwPerUsdAuto : 0;
-        const costBasisKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw : 0;
-        const profitKrw = costBasisKrw > 0 && totalValueKrw > 0 ? totalValueKrw - costBasisKrw : 0;
-        const profitRate = costBasisKrw > 0 && totalValueKrw > 0 ? ((totalValueKrw - costBasisKrw) / costBasisKrw) * 100 : null;
+        const costBasisKrw = investmentKrw > 0 ? investmentKrw : 0;
+        const hasValuation = totalTorn > 0 && totalValueKrw >= 0;
+        const profitKrw = costBasisKrw > 0 && hasValuation ? totalValueKrw - costBasisKrw : 0;
+        const profitRate = costBasisKrw > 0 && hasValuation ? ((totalValueKrw - costBasisKrw) / costBasisKrw) * 100 : null;
         avgBuyPriceDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
         avgBuyPriceUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
         avgBuyPriceInlineDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
         avgBuyPriceInlineUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
-        currentValueDisplay.textContent = totalValueKrw > 0 ? formatKrw(totalValueKrw) : '';
+        currentValueDisplay.textContent = hasValuation ? formatKrw(totalValueKrw) : '';
         currentValueTornDisplay.textContent = totalTorn > 0 ? formatTorn2Decimals(totalTorn) + ' TORN' + (costBasisKrw > 0 ? ' · 원가 ' + formatKrw(costBasisKrw) : '') : '';
-        profitDisplay.textContent = costBasisKrw > 0 && totalValueKrw > 0 ? formatSignedKrw(profitKrw) : '';
-        profitDisplay.classList.toggle('analytics-result-value--positive', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw > 0);
-        profitDisplay.classList.toggle('analytics-result-value--negative', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw < 0);
-        profitRateDisplay.textContent = costBasisKrw > 0 && totalValueKrw > 0 && profitRate != null ? formatPercent(profitRate) : '';
-        profitRateDisplay.classList.toggle('analytics-result-sub--positive', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw > 0);
-        profitRateDisplay.classList.toggle('analytics-result-sub--negative', costBasisKrw > 0 && totalValueKrw > 0 && profitKrw < 0);
+        profitDisplay.textContent = costBasisKrw > 0 && hasValuation ? formatSignedKrw(profitKrw) : '';
+        profitDisplay.classList.toggle('analytics-result-value--positive', costBasisKrw > 0 && hasValuation && profitKrw > 0);
+        profitDisplay.classList.toggle('analytics-result-value--negative', costBasisKrw > 0 && hasValuation && profitKrw < 0);
+        profitRateDisplay.textContent = costBasisKrw > 0 && hasValuation && profitRate != null ? formatPercent(profitRate) : '';
+        profitRateDisplay.classList.toggle('analytics-result-sub--positive', costBasisKrw > 0 && hasValuation && profitKrw > 0);
+        profitRateDisplay.classList.toggle('analytics-result-sub--negative', costBasisKrw > 0 && hasValuation && profitKrw < 0);
       }
 
       function updateTotalHoldingsSum() {
