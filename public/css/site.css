@@ -6023,7 +6023,7 @@ main.chat-page-main {
 }
 .calculator-page .calc-page-hero {
   text-align: center;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(0, 255, 136, 0.06) 50%, transparent 100%);
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: 16px;
@@ -6067,7 +6067,7 @@ main.chat-page-main {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1.5rem 1.75rem;
+  padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
@@ -6320,6 +6320,10 @@ main.chat-page-main {
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
 }
+
+.calculator-page .card-dividend {
+  min-height: 380px;
+}
 .calculator-page .share-header {
   display: flex;
   justify-content: space-between;
@@ -6354,6 +6358,7 @@ main.chat-page-main {
 }
 .calculator-page .results {
   margin-top: 0;
+  min-height: 280px;
 }
 .calculator-page .dividend-tabs {
   display: flex;
@@ -6468,14 +6473,23 @@ main.chat-page-main {
   .calculator-page .calc-page-hero__desc {
     font-size: 0.75rem;
   }
+  .calculator-page .calc-page-hero {
+    margin-bottom: 1.25rem;
+  }
   .calculator-page .container {
     padding: 0.5rem 1rem;
     max-width: 100%;
   }
   .calculator-page .card {
     padding: 1.15rem 1rem;
-    margin-bottom: 1.15rem;
+    margin-bottom: 1.25rem;
     border-radius: 10px;
+  }
+  .calculator-page .card-dividend {
+    min-height: 360px;
+  }
+  .calculator-page .results {
+    min-height: 260px;
   }
   .calculator-page .card-title {
     font-size: 0.98rem;
@@ -6532,7 +6546,17 @@ main.chat-page-main {
   .calculator-page .container {
     padding: 0.5rem 0.75rem;
   }
+  .calculator-page .calc-page-hero {
+    margin-bottom: 1.25rem;
+  }
   .calculator-page .card {
     padding: 1rem 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .calculator-page .card-dividend {
+    min-height: 340px;
+  }
+  .calculator-page .results {
+    min-height: 240px;
   }
 }

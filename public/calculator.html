@@ -130,23 +130,23 @@
       <div class="results">
         <div class="result-panel result-panel--active" data-panel="eth" role="tabpanel">
           <div class="result-section-title">ETH <span class="result-section-price" id="dividendEthPriceDisplay"></span></div>
-          <div class="result-row"><span class="result-label">0.1 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div01">0 TORN</span><span class="result-krw" id="krw01"> 원</span></div></div>
-          <div class="result-row"><span class="result-label">1 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div1">0 TORN</span><span class="result-krw" id="krw1"> 원</span></div></div>
-          <div class="result-row"><span class="result-label">10 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div10">0 TORN</span><span class="result-krw" id="krw10"> 원</span></div></div>
           <div class="result-row"><span class="result-label">100 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div100">0 TORN</span><span class="result-krw" id="krw100"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">10 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div10">0 TORN</span><span class="result-krw" id="krw10"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">1 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div1">0 TORN</span><span class="result-krw" id="krw1"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">0.1 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div01">0 TORN</span><span class="result-krw" id="krw01"> 원</span></div></div>
         </div>
         <div class="result-panel" data-panel="wbtc" role="tabpanel">
           <div class="result-section-title">WBTC <span class="result-section-price" id="dividendWbtcPriceDisplay"></span></div>
-          <div class="result-row"><span class="result-label">0.1 WBTC 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divWbtc01">0 TORN</span><span class="result-krw" id="krwWbtc01"> 원</span></div></div>
-          <div class="result-row"><span class="result-label">1 WBTC 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divWbtc1">0 TORN</span><span class="result-krw" id="krwWbtc1"> 원</span></div></div>
           <div class="result-row"><span class="result-label">10 WBTC 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divWbtc10">0 TORN</span><span class="result-krw" id="krwWbtc10"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">1 WBTC 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divWbtc1">0 TORN</span><span class="result-krw" id="krwWbtc1"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">0.1 WBTC 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divWbtc01">0 TORN</span><span class="result-krw" id="krwWbtc01"> 원</span></div></div>
         </div>
         <div class="result-panel" data-panel="usd" role="tabpanel">
           <div class="result-section-title">USD <span class="result-section-price" id="dividendUsdPriceDisplay"></span></div>
-          <div class="result-row"><span class="result-label">100 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd100">0 TORN</span><span class="result-krw" id="krwUsd100"> 원</span></div></div>
-          <div class="result-row"><span class="result-label">1,000 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd1000">0 TORN</span><span class="result-krw" id="krwUsd1000"> 원</span></div></div>
-          <div class="result-row"><span class="result-label">10,000 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd10000">0 TORN</span><span class="result-krw" id="krwUsd10000"> 원</span></div></div>
           <div class="result-row"><span class="result-label">100,000 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd100000">0 TORN</span><span class="result-krw" id="krwUsd100000"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">10,000 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd10000">0 TORN</span><span class="result-krw" id="krwUsd10000"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">1,000 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd1000">0 TORN</span><span class="result-krw" id="krwUsd1000"> 원</span></div></div>
+          <div class="result-row"><span class="result-label">100 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd100">0 TORN</span><span class="result-krw" id="krwUsd100"> 원</span></div></div>
         </div>
       </div>
     </div>
@@ -159,11 +159,12 @@
   <script>
     (function () {
       const FEE_RATE = 0.003;
-      const REFRESH_INTERVAL_MS = 60 * 1000;
+      const REFRESH_INTERVAL_MS = 18000;
+      const PREMIUM_REFRESH_INTERVAL_MS = 4000;
       const NETWORK_ERR_MSG = '네트워크 오류';
       const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
-      const PRICE_CACHE_KEY = 'torn-calc-price-cache';
-      const PRICE_CACHE_TTL_MS = 2 * 60 * 1000;
+      const PRICE_CACHE_KEY = 'calculator-price-cache-v3';
+      const PRICE_CACHE_TTL_MS = 18000;
       const WITHDRAW_AMOUNTS = [0.1, 1, 10, 100];
       const WITHDRAW_WBTC_AMOUNTS = [0.1, 1, 10];
       const WITHDRAW_USD_AMOUNTS = [100, 1000, 10000, 100000];
@@ -212,6 +213,10 @@
 
       function fetchCalculatorPrices() {
         return fetch('/api/calculator/prices').then(function (r) { return r.json(); });
+      }
+
+      function fetchCalculatorPremium() {
+        return fetch('/api/calculator/premium').then(function (r) { return r.json(); });
       }
 
       function parseNum(value) {
@@ -335,14 +340,14 @@
         tornPriceUsd = d.tornPriceUsd || tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
         ethPriceUsd = d.ethPriceUsd || 0;
         btcPriceUsd = d.btcPriceUsd || 0;
-        kimchiPremiumAuto = d.premium != null ? d.premium : null;
+        if (d.premium != null) kimchiPremiumAuto = d.premium;
         tornPriceKrw = d.tornPriceKrw || 0;
         priceDisplayWrap.classList.remove('loading', 'error');
         priceDisplayLeft.textContent = formatUsd(tornPriceUsdDex);
         const dexCexAvg = (tornPriceUsdDex > 0 && tornPriceUsdCex > 0) ? (tornPriceUsdDex + tornPriceUsdCex) / 2 : (tornPriceUsdDex || tornPriceUsdCex || 0);
         priceDisplayCenter.textContent = formatUsd(dexCexAvg);
         priceDisplayRight.textContent = formatUsd(tornPriceUsdCex);
-        kimchiPremiumDisplay.textContent = kimchiPremiumAuto != null ? kimchiPremiumAuto + '%' : '';
+        kimchiPremiumDisplay.textContent = kimchiPremiumAuto != null ? kimchiPremiumAuto + '%' : ' 로딩 중';
         if (d.totalStaked != null) totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
         const krwPerUsd = btcPriceUsd > 0 && d.btcKrw > 0 ? d.btcKrw / btcPriceUsd : 0;
         function formatKrwFromUsd(usd) {
@@ -361,13 +366,22 @@
         calculate();
       }
 
+      function applyPremiumData(d) {
+        if (!d || d.ok !== true) return;
+        if (d.premium != null) {
+          kimchiPremiumAuto = d.premium;
+          kimchiPremiumDisplay.textContent = kimchiPremiumAuto + '%';
+          calculate();
+        }
+      }
+
       function setPriceError(msg) {
         priceDisplayWrap.classList.remove('loading');
         priceDisplayWrap.classList.add('error');
         priceDisplayLeft.textContent = ' ' + msg;
         priceDisplayCenter.textContent = ' ' + msg;
         priceDisplayRight.textContent = ' ' + msg;
-        kimchiPremiumDisplay.textContent = '';
+        if (kimchiPremiumAuto == null) kimchiPremiumDisplay.textContent = '';
       }
 
       function applyPriceCache(cache) {
@@ -390,6 +404,10 @@
           const msg = String(err && err.message || '').includes('fetch') ? NETWORK_ERR_MSG : (err.message || '조회 실패');
           setPriceError(msg);
         });
+      }
+
+      function updatePremiumData() {
+        fetchCalculatorPremium().then(applyPremiumData).catch(function () {});
       }
 
       function ethToTorn(ethAmount) {
@@ -439,9 +457,10 @@
       }
 
       (function initDividendTabs() {
-        const TAB_ORDER = ['eth', 'wbtc', 'usd'];
         const tabs = document.querySelectorAll('.dividend-tab');
         const panels = document.querySelectorAll('.result-panel');
+        const tabOrder = ['eth', 'wbtc', 'usd'];
+        
         function switchToTab(tabName) {
           tabs.forEach(function (tab) {
             const active = tab.getAttribute('data-tab') === tabName;
@@ -453,6 +472,65 @@
           });
         }
         tabs.forEach(function (tab) { tab.addEventListener('click', function () { switchToTab(tab.getAttribute('data-tab')); }); });
+        
+        // Add swipe functionality
+        const swipeArea = document.querySelector('.dividend-swipe-area');
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        swipeArea.addEventListener('touchstart', function(e) {
+          touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        swipeArea.addEventListener('touchend', function(e) {
+          touchEndX = e.changedTouches[0].screenX;
+          handleSwipe();
+        }, { passive: true });
+        
+        function handleSwipe() {
+          const swipeThreshold = 50;
+          const diff = touchStartX - touchEndX;
+          
+          if (Math.abs(diff) > swipeThreshold) {
+            const currentActive = document.querySelector('.dividend-tab--active');
+            const currentTabName = currentActive ? currentActive.getAttribute('data-tab') : 'eth';
+            const currentIndex = tabOrder.indexOf(currentTabName);
+            
+            if (diff > 0) {
+              // Swipe left - next tab
+              const nextIndex = (currentIndex + 1) % tabOrder.length;
+              switchToTab(tabOrder[nextIndex]);
+            } else {
+              // Swipe right - previous tab
+              const prevIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+              switchToTab(tabOrder[prevIndex]);
+            }
+          }
+        }
+        
+        // Add keyboard arrow key support
+        document.addEventListener('keydown', function(e) {
+          // Only handle arrow keys when not in input fields
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+          }
+          
+          const currentActive = document.querySelector('.dividend-tab--active');
+          const currentTabName = currentActive ? currentActive.getAttribute('data-tab') : 'eth';
+          const currentIndex = tabOrder.indexOf(currentTabName);
+          
+          if (e.key === 'ArrowLeft') {
+            // Left arrow - previous tab
+            e.preventDefault();
+            const prevIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+            switchToTab(tabOrder[prevIndex]);
+          } else if (e.key === 'ArrowRight') {
+            // Right arrow - next tab
+            e.preventDefault();
+            const nextIndex = (currentIndex + 1) % tabOrder.length;
+            switchToTab(tabOrder[nextIndex]);
+          }
+        });
       })();
 
       userTornInput.addEventListener('input', calculate);
@@ -467,8 +545,10 @@
         }
       } catch (e) {}
       updateMarketData();
+      updatePremiumData();
       calculate();
       setInterval(updateMarketData, REFRESH_INTERVAL_MS);
+      setInterval(updatePremiumData, PREMIUM_REFRESH_INTERVAL_MS);
     })();
   </script>
 </body>

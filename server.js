@@ -13,7 +13,9 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const CHAT_MIN_INTERVAL_MS = 1500;
 const CALC_PRICE_CACHE_TTL_MS = 18 * 1000;
+const CALC_PREMIUM_CACHE_TTL_MS = 4 * 1000;
 let calcPriceCache = null;
+let calcPremiumCache = null;
 
 const chatLastSentAt = new Map();
 
@@ -143,6 +145,38 @@ app.post('/api/chat/:messageId/send-heart', requireAnon, async (req, res) => {
 app.delete('/api/chat', requireAnon, async (req, res) => {
   await db.clearChatMessages();
   res.json({ ok: true, message: '채팅이 비워졌습니다.' });
+});
+
+app.get('/api/calculator/premium', async (_req, res) => {
+  const now = Date.now();
+  if (calcPremiumCache && now - calcPremiumCache.at < CALC_PREMIUM_CACHE_TTL_MS) {
+    return res.json(calcPremiumCache.data);
+  }
+
+  const timeoutFetch = (url, ms = 2500) => fetch(url, { signal: AbortSignal.timeout(ms) });
+  const [coingeckoRes, upbitRes] = await Promise.allSettled([
+    timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=krw').then((r) => r.json()),
+    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-BTC').then((r) => r.json()),
+  ]);
+
+  const coingecko = coingeckoRes.status === 'fulfilled' ? coingeckoRes.value : null;
+  const upbit = upbitRes.status === 'fulfilled' ? upbitRes.value : null;
+  const btcKrw = coingecko?.bitcoin?.krw || null;
+  let premium = null;
+  if (btcKrw && upbit && Array.isArray(upbit) && upbit[0]?.trade_price) {
+    premium = Math.round(((upbit[0].trade_price - btcKrw) / btcKrw) * 10000) / 100;
+  } else if (calcPremiumCache?.data?.premium != null) {
+    premium = calcPremiumCache.data.premium;
+  }
+
+  const payload = {
+    ok: true,
+    premium,
+    btcKrw,
+  };
+
+  calcPremiumCache = { at: now, data: payload };
+  res.json(payload);
 });
 
 app.get('/api/calculator/prices', async (_req, res) => {
