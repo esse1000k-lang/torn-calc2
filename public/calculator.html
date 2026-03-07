@@ -112,7 +112,7 @@
     </div>
 
     <div class="card card-analytics">
-      <div class="card-title">🌪️ 현황</div>
+      <div class="card-title card-title--analytics">🌪️ 현황</div>
       <div class="analytics-grid">
         <div class="analytics-panel analytics-panel--highlight">
           <div class="analytics-panel__title">현재 이더리움 가스비</div>
@@ -337,6 +337,11 @@
         return Math.floor(n).toLocaleString('ko-KR') + ' 원';
       }
 
+      function formatKrwPrecise(n) {
+        if (n == null || n <= 0) return ' 원';
+        return n.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' 원';
+      }
+
       function formatSignedKrw(n) {
         if (n == null || !isFinite(n) || n === 0) return '0 원';
         const abs = Math.floor(Math.abs(n)).toLocaleString('ko-KR') + ' 원';
@@ -457,7 +462,7 @@
       function updateAnalyticsCard() {
         const totalTorn = parseDisplayNum(totalHoldingsSumDisplay.textContent);
         const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 ? totalTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
-        gasPriceDisplay.textContent = gasPriceGweiAuto > 0 ? gasPriceGweiAuto.toFixed(2) + ' Gwei' : '로딩 중';
+        gasPriceDisplay.textContent = gasPriceGweiAuto > 0 ? gasPriceGweiAuto.toFixed(3) + ' Gwei' : '로딩 중';
         gasPriceKrwDisplay.textContent = gasCostKrwAuto > 0
           ? '현재 약 ' + formatKrw(gasCostKrwAuto)
           : '';

@@ -6377,6 +6377,19 @@ main.chat-page-main {
 .calculator-page .card-analytics {
   background: linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(255, 215, 0, 0.04) 100%), var(--bg-card);
 }
+.calculator-page .card-title--analytics {
+  position: relative;
+  border-bottom: none;
+}
+.calculator-page .card-title--analytics::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
 .calculator-page .analytics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
