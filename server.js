@@ -201,9 +201,9 @@ app.get('/api/calculator/prices', async (_req, res) => {
     : timeoutFetch(`https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokenbalance&contractaddress=${TORN_TOKEN}&address=${GOVERNANCE}&tag=latest&apikey=${ETHERSCAN_KEY}`).then((r) => r.json());
   const provider = new JsonRpcProvider(RPC_URL);
 
-  const [llamaRes, coingeckoRes, mexcRes, etherscanRes, uniswapResult, gasFeeDataResult, blocknativeGasResult, etherscanGasOracleResult] = await Promise.allSettled([
+  const [llamaRes, coingeckoRes, mexcRes, etherscanRes, uniswapResult, gasFeeDataResult, latestBlockResult, upbitRes] = await Promise.allSettled([
     timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then((r) => r.json()),
-    timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin&vs_currencies=krw').then((r) => r.json()),
+    timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin,ethereum&vs_currencies=krw').then((r) => r.json()),
     timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then((r) => r.json()),
     totalStakedPromise,
     (async () => {
@@ -231,8 +231,8 @@ app.get('/api/calculator/prices', async (_req, res) => {
       }
     })(),
     provider.getFeeData().catch(() => null),
-    timeoutFetch('https://api.blocknative.com/gasprices/blockprices?chainid=1&confidenceLevels=90').then((r) => r.json()),
-    timeoutFetch(`https://api.etherscan.io/v2/api?chainid=1&module=gastracker&action=gasoracle&apikey=${ETHERSCAN_KEY}`).then((r) => r.json()),
+    provider.getBlock('latest').catch(() => null),
+    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-BTC').then((r) => r.json()),
   ]);
 
   const llama = llamaRes.status === 'fulfilled' ? llamaRes.value : null;
@@ -241,8 +241,8 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const etherscan = etherscanRes.status === 'fulfilled' ? etherscanRes.value : null;
   const tornPriceInEth = uniswapResult.status === 'fulfilled' ? uniswapResult.value : null;
   const gasFeeData = gasFeeDataResult.status === 'fulfilled' ? gasFeeDataResult.value : null;
-  const blocknativeGas = blocknativeGasResult.status === 'fulfilled' ? blocknativeGasResult.value : null;
-  const etherscanGasOracle = etherscanGasOracleResult.status === 'fulfilled' ? etherscanGasOracleResult.value : null;
+  const latestBlock = latestBlockResult.status === 'fulfilled' ? latestBlockResult.value : null;
+  const upbit = upbitRes.status === 'fulfilled' ? upbitRes.value : null;
 
   const coins = (llama && llama.coins) || {};
   const ethPriceUsd = coins['ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']?.price || 0;
@@ -253,24 +253,27 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const tornPriceUsdCex = mexcObj?.price ? Number(mexcObj.price) || 0 : 0;
   const tornPriceUsdCenter = defiLlamaTorn > 0 ? defiLlamaTorn : 0;
   const tornPriceUsd = tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
-  const btcKrw = coingecko?.bitcoin?.krw || calcPriceCache?.data?.btcKrw || calcPremiumCache?.data?.btcKrw || null;
+  const upbitBtcKrw = Array.isArray(upbit) && upbit[0]?.trade_price ? Number(upbit[0].trade_price) : 0;
+  const btcKrw = coingecko?.bitcoin?.krw || upbitBtcKrw || calcPriceCache?.data?.btcKrw || calcPremiumCache?.data?.btcKrw || null;
+  const ethKrw = coingecko?.ethereum?.krw || ((btcKrw && btcPriceUsd > 0 && ethPriceUsd > 0) ? (btcKrw / btcPriceUsd) * ethPriceUsd : 0) || calcPriceCache?.data?.ethKrw || 0;
   const premium = calcPremiumCache?.data?.premium != null ? calcPremiumCache.data.premium : (calcPriceCache?.data?.premium != null ? calcPriceCache.data.premium : null);
-  const blocknativeEstimate = Array.isArray(blocknativeGas?.blockPrices) && blocknativeGas.blockPrices[0]?.estimatedPrices
-    ? blocknativeGas.blockPrices[0].estimatedPrices.find((item) => item && Number(item.confidence) === 90) || blocknativeGas.blockPrices[0].estimatedPrices[0]
-    : null;
-  const etherscanProposedGasGwei = etherscanGasOracle?.status === '1' && etherscanGasOracle?.result?.ProposeGasPrice
-    ? Number(etherscanGasOracle.result.ProposeGasPrice)
+  const CALCULATOR_GAS_LIMIT = 120000n;
+  const MIN_FAST_TIP_WEI = 1170000000n;
+  const feeDataBaseWei = typeof gasFeeData?.lastBaseFeePerGas === 'bigint'
+    ? gasFeeData.lastBaseFeePerGas
+    : (typeof latestBlock?.baseFeePerGas === 'bigint' ? latestBlock.baseFeePerGas : 0n);
+  const feeDataPriorityWei = typeof gasFeeData?.maxPriorityFeePerGas === 'bigint' ? gasFeeData.maxPriorityFeePerGas : 0n;
+  const effectivePriorityWei = feeDataPriorityWei > MIN_FAST_TIP_WEI ? feeDataPriorityWei : MIN_FAST_TIP_WEI;
+  const maxFeePerGasWei = feeDataBaseWei > 0n
+    ? ((feeDataBaseWei * 120n) / 100n) + effectivePriorityWei
+    : 0n;
+  const gasPriceGwei = maxFeePerGasWei > 0n
+    ? Number(maxFeePerGasWei) / 1e9
+    : (calcPriceCache?.data?.gasPriceGwei || 0);
+  const gasCostEth = maxFeePerGasWei > 0n ? Number(maxFeePerGasWei * CALCULATOR_GAS_LIMIT) / 1e18 : 0;
+  const gasCostKrw = gasCostEth > 0 && ethKrw > 0
+    ? gasCostEth * ethKrw
     : 0;
-  const gasPriceCandidates = [
-    etherscanProposedGasGwei > 0 ? etherscanProposedGasGwei * 1e9 : 0,
-    blocknativeEstimate?.maxFeePerGas ? Number(blocknativeEstimate.maxFeePerGas) * 1e9 : 0,
-    blocknativeEstimate?.price ? Number(blocknativeEstimate.price) * 1e9 : 0,
-    gasFeeData?.gasPrice ? Number(gasFeeData.gasPrice) : 0,
-    gasFeeData?.maxFeePerGas ? Number(gasFeeData.maxFeePerGas) : 0,
-    gasFeeData?.lastBaseFeePerGas && gasFeeData?.maxPriorityFeePerGas ? Number(gasFeeData.lastBaseFeePerGas + gasFeeData.maxPriorityFeePerGas) : 0,
-  ].filter((value) => Number.isFinite(value) && value > 0);
-  const gasPriceWei = etherscanProposedGasGwei > 0 ? etherscanProposedGasGwei * 1e9 : (gasPriceCandidates.length ? gasPriceCandidates[0] : 0);
-  const gasPriceGwei = gasPriceWei > 0 ? gasPriceWei / 1e9 : (calcPriceCache?.data?.gasPriceGwei || 0);
 
   let totalStaked = 0;
   if (etherscan?.status === '1' && etherscan?.message === 'OK' && etherscan?.result) {
@@ -298,7 +301,9 @@ app.get('/api/calculator/prices', async (_req, res) => {
     ethPriceUsd,
     btcPriceUsd,
     btcKrw,
+    ethKrw,
     gasPriceGwei,
+    gasCostKrw,
     premium,
     totalStaked,
     tornPriceKrw: coingecko?.['tornado-cash']?.krw || calcPriceCache?.data?.tornPriceKrw || 0,

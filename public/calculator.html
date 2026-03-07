@@ -225,12 +225,11 @@
   <script>
     (function () {
       const FEE_RATE = 0.003;
-      const NFT_SALE_AVG_GAS_UNITS = 420000;
       const REFRESH_INTERVAL_MS = 18000;
       const PREMIUM_REFRESH_INTERVAL_MS = 4000;
       const NETWORK_ERR_MSG = '네트워크 오류';
       const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
-      const PRICE_CACHE_KEY = 'calculator-price-cache-v3';
+      const PRICE_CACHE_KEY = 'calculator-price-cache-v5';
       const PRICE_CACHE_TTL_MS = 18000;
       const WITHDRAW_AMOUNTS = [0.1, 1, 10, 100];
       const WITHDRAW_WBTC_AMOUNTS = [0.1, 1, 10];
@@ -292,6 +291,7 @@
       let btcKrwAuto = 0;
       let krwPerUsdAuto = 0;
       let gasPriceGweiAuto = 0;
+      let gasCostKrwAuto = 0;
       let kimchiPremiumAuto = null;
       let walletQueryTimer = null;
 
@@ -457,9 +457,10 @@
       function updateAnalyticsCard() {
         const totalTorn = parseDisplayNum(totalHoldingsSumDisplay.textContent);
         const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 ? totalTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
-        const gasFeeKrw = gasPriceGweiAuto > 0 && ethPriceUsd > 0 && krwPerUsdAuto > 0 ? (gasPriceGweiAuto * 1e-9) * ethPriceUsd * krwPerUsdAuto * NFT_SALE_AVG_GAS_UNITS : 0;
         gasPriceDisplay.textContent = gasPriceGweiAuto > 0 ? gasPriceGweiAuto.toFixed(2) + ' Gwei' : '로딩 중';
-        gasPriceKrwDisplay.textContent = gasFeeKrw > 0 ? '평균 약 ' + formatKrw(gasFeeKrw) : '';
+        gasPriceKrwDisplay.textContent = gasCostKrwAuto > 0
+          ? '현재 약 ' + formatKrw(gasCostKrwAuto)
+          : '';
         const ethHolding = totalTorn > 0 && tornPriceUsd > 0 && ethPriceUsd > 0 ? (totalTorn * tornPriceUsd) / ethPriceUsd : 0;
         const btcHolding = totalTorn > 0 && tornPriceUsd > 0 && btcPriceUsd > 0 ? (totalTorn * tornPriceUsd) / btcPriceUsd : 0;
         holdingsEthDisplay.textContent = formatAssetAmount(ethHolding, 'ETH', 2);
@@ -563,7 +564,8 @@
         if (d.premium != null) kimchiPremiumAuto = d.premium;
         if (d.tornPriceKrw > 0) tornPriceKrw = d.tornPriceKrw;
         if (d.btcKrw > 0) btcKrwAuto = d.btcKrw;
-        if (d.gasPriceGwei > 0) gasPriceGweiAuto = d.gasPriceGwei;
+        gasPriceGweiAuto = d.gasPriceGwei > 0 ? d.gasPriceGwei : 0;
+        gasCostKrwAuto = d.gasCostKrw > 0 ? d.gasCostKrw : 0;
         priceDisplayWrap.classList.remove('loading', 'error');
         priceDisplayLeft.textContent = formatUsd(tornPriceUsdDex);
         const dexCexAvg = (tornPriceUsdDex > 0 && tornPriceUsdCex > 0) ? (tornPriceUsdDex + tornPriceUsdCex) / 2 : (tornPriceUsdDex || tornPriceUsdCex || 0);
