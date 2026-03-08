@@ -9,9 +9,39 @@ const { Server } = require('socket.io');
 const multer = require('multer');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
 const db = require('./lib/db');
+const chatDB = require('./db-sqlite');
 
 const app = express();
 const server = http.createServer(app);
+
+// SQLite 데이터베이스 초기화 및 정리 스케줄러
+(async () => {
+    try {
+        await chatDB.connect();
+        console.log('채팅 데이터베이스 초기화 완료');
+        
+        // 6시간마다 오래된 메시지 정리
+        setInterval(async () => {
+            try {
+                const deletedCount = await chatDB.cleanupOldMessages(180);
+                if (deletedCount > 0) {
+                    console.log(`자동 정리: ${deletedCount}개의 오래된 메시지 삭제`);
+                }
+            } catch (cleanupError) {
+                console.error('자동 정리 오류:', cleanupError);
+            }
+        }, 6 * 60 * 60 * 1000); // 6시간 간격
+        
+        // 서버 시작 시 한번 정리 실행
+        const initialCleanup = await chatDB.cleanupOldMessages(180);
+        if (initialCleanup > 0) {
+            console.log(`초기 정리: ${initialCleanup}개의 오래된 메시지 삭제`);
+        }
+        
+    } catch (dbError) {
+        console.error('데이터베이스 초기화 오류:', dbError);
+    }
+})();
 
 /** * Socket.IO 초고속 엔진 설정 */
 const io = new Server(server, {
@@ -540,18 +570,49 @@ app.get('/doge-chat', (req, res) => {
 io.on('connection', (socket) => {
     const shortId = socket.id.substring(0, 4).toUpperCase();
     
-    socket.on('join', (room) => {
+    socket.on('join', async (room) => {
         socket.join(room);
-        console.log(`[DOGE-CHAT JOIN] ${shortId} -> ${room}`);
+        console.log(`[TORN-CHAT JOIN] ${shortId} -> ${room}`);
+        
+        // 접속 시 최근 메시지 100개 로드
+        try {
+            const messages = await chatDB.getMessages(room, 100);
+            messages.forEach(msg => {
+                socket.emit('chat', {
+                    user: msg.nickname,
+                    text: msg.message,
+                    time: new Date(msg.created_at).toLocaleTimeString('ko-KR', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit' 
+                    })
+                });
+            });
+            console.log(`[TORN-CHAT HISTORY] ${shortId}에게 ${messages.length}개 메시지 전송`);
+        } catch (error) {
+            console.error('메시지 히스토리 로드 오류:', error);
+        }
     });
 
-    socket.on('message', (data) => {
-        // 불필요한 연산을 줄여 M4의 속도를 보존함
-        io.to(data.room).emit('chat', {
+    socket.on('message', async (data) => {
+        const messageData = {
             user: "ㅇㅇ(" + shortId + ")",
             text: data.text,
             time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-        });
+        };
+        
+        // 1. 먼저 실시간으로 모든 유저에게 메시지 전송 (속도 우선)
+        io.to(data.room).emit('chat', messageData);
+        
+        // 2. 비동기로 데이터베이스에 저장 (속도 영향 없음)
+        setTimeout(async () => {
+            try {
+                await chatDB.saveMessage(messageData.user, data.text, data.room);
+                console.log(`[TORN-CHAT SAVED] ${shortId} -> ${data.room}`);
+            } catch (saveError) {
+                console.error('메시지 저장 오류:', saveError);
+            }
+        }, 0);
     });
 });
 

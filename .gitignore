@@ -1,4 +1,6 @@
 node_modules/
+cochat.db
+cochat.db-journal
 .env
 .env.local
 .env.*.local
