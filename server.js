@@ -485,7 +485,7 @@ app.get('/doge-chat', (req, res) => {
         const input = document.getElementById('input');
 
         // 접속 즉시 방 참여
-        socket.emit('join', 'doge-room');
+        socket.emit('join', 'torn-room');
 
         // 메시지 수신 처리
         socket.on('chat', (data) => {
@@ -517,7 +517,7 @@ app.get('/doge-chat', (req, res) => {
             e.preventDefault();
             const text = input.value.trim();
             if (text) {
-                socket.emit('message', { room: 'doge-room', text: text });
+                socket.emit('message', { room: 'torn-room', text: text });
                 input.value = '';
                 input.style.height = 'auto';
             }
