@@ -1,9 +1,8 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const https = require('https');
 const express = require('express');
 const multer = require('multer');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
@@ -345,6 +344,72 @@ app.get('/api/calculator/wallet', async (req, res) => {
   }
 });
 
+app.get('/api/calculator/yesterday-pool-inflow', async (_req, res) => {
+  const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
+  const TORN_TOKEN_ADDRESS = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
+  const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || 'DSPENWH1HPF4H8P3WZNM6HCFT3G4238JM6';
+  const timeoutFetch = (url, ms = 12000) => fetch(url, { signal: AbortSignal.timeout(ms) });
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const nowUtcMs = Date.now();
+  const nowKst = new Date(nowUtcMs + KST_OFFSET_MS);
+  const yStartKst = new Date(nowKst);
+  yStartKst.setDate(yStartKst.getDate() - 1);
+  yStartKst.setHours(0, 0, 0, 0);
+  const yEndKst = new Date(nowKst);
+  yEndKst.setDate(yEndKst.getDate() - 1);
+  yEndKst.setHours(23, 59, 59, 999);
+  const startTs = Math.floor((yStartKst.getTime() - KST_OFFSET_MS) / 1000);
+  const endTs = Math.floor((yEndKst.getTime() - KST_OFFSET_MS) / 1000);
+  try {
+    const startBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${startTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
+    const endBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${endTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
+    const [startInfo, endInfo] = await Promise.all([
+      timeoutFetch(startBlockUrl).then((r) => r.json()),
+      timeoutFetch(endBlockUrl).then((r) => r.json()),
+    ]);
+    const startBlock = (startInfo && startInfo.status === '1') ? parseInt(startInfo.result, 10) : 0;
+    const endBlock = (endInfo && endInfo.status === '1') ? parseInt(endInfo.result, 10) : startBlock;
+    if (!startBlock || !endBlock) throw new Error('블록 경계 조회 실패');
+    const OFFSET = 100;
+    let page = 1;
+    let totalTorn = 0;
+    while (true) {
+      const url =
+        `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx` +
+        `&contractaddress=${TORN_TOKEN_ADDRESS}` +
+        `&address=${REWARD_CONTRACT_ADDRESS}` +
+        `&startblock=${startBlock}` +
+        `&endblock=${endBlock}` +
+        `&page=${page}&offset=${OFFSET}&sort=asc` +
+        `&apikey=${ETHERSCAN_KEY}`;
+      const data = await timeoutFetch(url).then((r) => r.json()).catch(() => null);
+      const list = (data && data.status === '1' && Array.isArray(data.result)) ? data.result : [];
+      if (list.length === 0) break;
+      for (const tx of list) {
+        if (!tx || !tx.to) continue;
+        const toAddr = String(tx.to).toLowerCase();
+        if (toAddr !== REWARD_CONTRACT_ADDRESS.toLowerCase()) continue;
+        const ts = parseInt(tx.timeStamp || '0', 10);
+        if (ts < startTs || ts > endTs) continue;
+        const val = Number(tx.value || '0') / 1e18;
+        if (isFinite(val) && val > 0) totalTorn += val;
+      }
+      if (list.length < OFFSET) break;
+      page += 1;
+    }
+    res.json({
+      ok: true,
+      dateKst: yStartKst.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }),
+      startTs,
+      endTs,
+      startBlock,
+      endBlock,
+      yesterdayPoolInflowTorn: totalTorn,
+    });
+  } catch (error) {
+    res.status(502).json({ ok: false, message: error?.message || '어제 유입 조회에 실패했습니다.' });
+  }
+});
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ ok: false, message: err?.message || '서버 오류가 발생했습니다.' });
