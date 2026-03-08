@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -89,7 +89,7 @@
         </div>
       </div>
       <div class="input-group">
-        <label>어제 들어온 리워드</label>
+        <label>어제 하루 리워드</label>
         <div class="data-value data-value--row">
           <span id="dailyWalletRewardDisplay"></span>
           <span class="value-krw" id="dailyWalletRewardKrw"></span>
@@ -201,6 +201,7 @@
         <button type="button" class="dividend-tab" role="tab" aria-selected="false" data-tab="usd">USD</button>
       </div>
       <div class="results">
+        <div class="result-panels-track">
         <div class="result-panel result-panel--active" data-panel="eth" role="tabpanel">
           <div class="result-section-title">ETH <span class="result-section-price" id="dividendEthPriceDisplay"></span></div>
           <div class="result-row"><span class="result-label">100 ETH 출금 시</span><div class="result-value-wrap"><span class="result-value" id="div100">0 TORN</span><span class="result-krw" id="krw100"> 원</span></div></div>
@@ -221,6 +222,8 @@
           <div class="result-row"><span class="result-label">1,000 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd1000">0 TORN</span><span class="result-krw" id="krwUsd1000"> 원</span></div></div>
           <div class="result-row"><span class="result-label">100 USD 출금 시</span><div class="result-value-wrap"><span class="result-value" id="divUsd100">0 TORN</span><span class="result-krw" id="krwUsd100"> 원</span></div></div>
         </div>
+        </div>
+        </div>
       </div>
     </div>
   </div>
@@ -232,7 +235,7 @@
   <script>
     (function () {
       const FEE_RATE = 0.003;
-      const REFRESH_INTERVAL_MS = 18000;
+      const REFRESH_INTERVAL_MS = 12000;
       const PREMIUM_REFRESH_INTERVAL_MS = 4000;
       const NETWORK_ERR_MSG = '네트워크 오류';
       const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
@@ -480,8 +483,12 @@
           const k70 = krwForLimit(70000);
           const k120 = krwForLimit(120000);
           const k220 = krwForLimit(220000);
-          gasPriceDisplay.textContent = '가스비 실시간 측정';
-          gasPriceDisplay.style.color = '#00ff88';
+          var theme = document.body.getAttribute('data-theme') || 'dark';
+          var labelColor = theme === 'light' ? 'var(--text)' : '#00ff88';
+          gasPriceDisplay.innerHTML =
+            '<span aria-hidden=\"true\" style=\"display:inline-block;width:0.6em;height:0.6em;border-radius:50%;background:#00ff88;margin-right:0.35em;vertical-align:middle;\"></span>' +
+            '<span style=\"color:' + labelColor + '\">가스비 실시간 측정</span>';
+          gasPriceDisplay.style.color = labelColor;
           gasPriceDisplay.style.fontSize = '0.9rem';
           gasPriceDisplay.style.lineHeight = '1.15';
           gasPriceDisplay.style.fontWeight = '600';
@@ -632,8 +639,12 @@
         setTextIfAvailable(priceDisplayLeftKrw, formatKrwFromUsd(tornPriceUsdDex), priceDisplayLeftKrw.textContent);
         setTextIfAvailable(priceDisplayCenterKrw, formatKrwFromUsd(dexCexAvg), priceDisplayCenterKrw.textContent);
         setTextIfAvailable(priceDisplayRightKrw, formatKrwFromUsd(tornPriceUsdCex), priceDisplayRightKrw.textContent);
-        dividendEthPriceDisplay.textContent = ethPriceUsd > 0 ? '$' + Math.floor(ethPriceUsd).toLocaleString('en') : '';
-        dividendWbtcPriceDisplay.textContent = btcPriceUsd > 0 ? '$' + Math.floor(btcPriceUsd).toLocaleString('en') : '';
+        const ethUsdText = ethPriceUsd > 0 ? '$' + Math.floor(ethPriceUsd).toLocaleString('en') : '';
+        const ethKrwText = ethPriceUsd > 0 && krwPerUsd > 0 ? ' (' + Math.floor(ethPriceUsd * krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '';
+        setTextIfAvailable(dividendEthPriceDisplay, ethUsdText ? (ethUsdText + (ethKrwText || '')) : '', dividendEthPriceDisplay.textContent);
+        const btcUsdText = btcPriceUsd > 0 ? '$' + Math.floor(btcPriceUsd).toLocaleString('en') : '';
+        const btcKrwText = btcPriceUsd > 0 && krwPerUsd > 0 ? ' (' + Math.floor(btcPriceUsd * krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '';
+        setTextIfAvailable(dividendWbtcPriceDisplay, btcUsdText ? (btcUsdText + (btcKrwText || '')) : '', dividendWbtcPriceDisplay.textContent);
         setTextIfAvailable(dividendUsdPriceDisplay, krwPerUsd > 0 ? '$1 (' + Math.floor(krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '', dividendUsdPriceDisplay.textContent);
         try {
           sessionStorage.setItem(PRICE_CACHE_KEY, JSON.stringify({ t: Date.now(), ...d }));
@@ -684,24 +695,24 @@
           priceDisplayWrap.classList.add('loading');
           kimchiPremiumDisplay.textContent = ' 로딩 중';
         }
-        fetchCalculatorPrices().then(applyApiPrices).catch(function (err) {
+        var pricesPromise = fetchCalculatorPrices().then(applyApiPrices).catch(function (err) {
           const msg = String(err && err.message || '').includes('fetch') ? NETWORK_ERR_MSG : (err.message || '조회 실패');
           setPriceError(msg);
-        }).then(function () {
-          return fetch('/api/calculator/yesterday-pool-inflow').then(function (r) { return r.json(); }).then(function (d) {
-            if (d && d.ok === true) {
-              var t = Number(d.yesterdayPoolInflowTorn || 0);
-              yesterdayPoolInflowTornAuto = isFinite(t) && t > 0 ? t : 0;
-              updateYesterdayPersonalReward();
-            } else {
-              yesterdayPoolInflowTornAuto = 0;
-              updateYesterdayPersonalReward();
-            }
-          }).catch(function () {
+        });
+        var inflowPromise = fetch('/api/calculator/yesterday-pool-inflow').then(function (r) { return r.json(); }).then(function (d) {
+          if (d && d.ok === true) {
+            var t = Number(d.yesterdayPoolInflowTorn || 0);
+            yesterdayPoolInflowTornAuto = isFinite(t) && t > 0 ? t : 0;
+            updateYesterdayPersonalReward();
+          } else {
             yesterdayPoolInflowTornAuto = 0;
             updateYesterdayPersonalReward();
-          });
+          }
+        }).catch(function () {
+          yesterdayPoolInflowTornAuto = 0;
+          updateYesterdayPersonalReward();
         });
+        Promise.allSettled([pricesPromise, inflowPromise]).then(function () {});
       }
 
       function updatePremiumData() {
@@ -770,7 +781,9 @@
       (function initDividendTabs() {
         const tabs = document.querySelectorAll('.dividend-tab');
         const panels = document.querySelectorAll('.result-panel');
+        const track = document.querySelector('.result-panels-track');
         const tabOrder = ['eth', 'wbtc', 'usd'];
+        let currentIndex = 0;
         
         function switchToTab(tabName) {
           tabs.forEach(function (tab) {
@@ -781,43 +794,50 @@
           panels.forEach(function (panel) {
             panel.classList.toggle('result-panel--active', panel.getAttribute('data-panel') === tabName);
           });
+          currentIndex = Math.max(0, tabOrder.indexOf(tabName));
+          if (track) track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
         }
         tabs.forEach(function (tab) { tab.addEventListener('click', function () { switchToTab(tab.getAttribute('data-tab')); }); });
         
         // Add swipe functionality
         const swipeArea = document.querySelector('.dividend-swipe-area');
         let touchStartX = 0;
-        let touchEndX = 0;
+        let dragging = false;
+        let lastDelta = 0;
         
         swipeArea.addEventListener('touchstart', function(e) {
-          touchStartX = e.changedTouches[0].screenX;
+          touchStartX = e.changedTouches[0].clientX;
+          dragging = true;
+          lastDelta = 0;
+        }, { passive: true });
+        
+        swipeArea.addEventListener('touchmove', function(e) {
+          if (!dragging || !track) return;
+          const x = e.changedTouches[0].clientX;
+          const dx = x - touchStartX;
+          const width = swipeArea.clientWidth || 1;
+          lastDelta = dx / width;
+          track.style.transform = 'translate3d(' + ((-100 * currentIndex) + (lastDelta * -100)) + '%,0,0)';
         }, { passive: true });
         
         swipeArea.addEventListener('touchend', function(e) {
-          touchEndX = e.changedTouches[0].screenX;
-          handleSwipe();
-        }, { passive: true });
-        
-        function handleSwipe() {
-          const swipeThreshold = 50;
-          const diff = touchStartX - touchEndX;
-          
-          if (Math.abs(diff) > swipeThreshold) {
-            const currentActive = document.querySelector('.dividend-tab--active');
-            const currentTabName = currentActive ? currentActive.getAttribute('data-tab') : 'eth';
-            const currentIndex = tabOrder.indexOf(currentTabName);
-            
-            if (diff > 0) {
-              // Swipe left - next tab
+          if (!dragging) return;
+          dragging = false;
+          const width = swipeArea.clientWidth || 1;
+          const diff = e.changedTouches[0].clientX - touchStartX;
+          const threshold = Math.min(60, width * 0.18);
+          if (Math.abs(diff) > threshold) {
+            if (diff < 0) {
               const nextIndex = (currentIndex + 1) % tabOrder.length;
               switchToTab(tabOrder[nextIndex]);
             } else {
-              // Swipe right - previous tab
               const prevIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
               switchToTab(tabOrder[prevIndex]);
             }
+          } else {
+            if (track) track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
           }
-        }
+        }, { passive: true });
         
         // Add keyboard arrow key support
         document.addEventListener('keydown', function(e) {
@@ -827,8 +847,7 @@
           }
           
           const currentActive = document.querySelector('.dividend-tab--active');
-          const currentTabName = currentActive ? currentActive.getAttribute('data-tab') : 'eth';
-          const currentIndex = tabOrder.indexOf(currentTabName);
+          const currentTabName = currentActive ? currentActive.getAttribute('data-tab') : tabOrder[currentIndex];
           
           if (e.key === 'ArrowLeft') {
             // Left arrow - previous tab
@@ -842,6 +861,7 @@
             switchToTab(tabOrder[nextIndex]);
           }
         });
+        switchToTab('eth');
       })();
 
       userTornInput.addEventListener('input', calculate);

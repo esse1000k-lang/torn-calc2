@@ -6388,7 +6388,7 @@ main.chat-page-main {
   right: 0;
   bottom: 0;
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
 }
 .calculator-page .analytics-grid {
   display: grid;
@@ -6564,6 +6564,13 @@ main.chat-page-main {
 .calculator-page .results {
   margin-top: 0;
   min-height: 280px;
+  overflow: hidden;
+}
+.calculator-page .result-panels-track {
+  display: flex;
+  width: 100%;
+  will-change: transform;
+  transition: transform 0.35s cubic-bezier(.22,.61,.36,1);
 }
 .calculator-page .dividend-tabs {
   display: flex;
@@ -6572,7 +6579,7 @@ main.chat-page-main {
   border-bottom: 1px solid var(--border);
 }
 .calculator-page .dividend-swipe-area {
-  touch-action: manipulation;
+  touch-action: pan-x;
   cursor: grab;
 }
 .calculator-page .dividend-swipe-area:active {
@@ -6600,7 +6607,8 @@ main.chat-page-main {
   border-bottom-color: var(--neon);
 }
 .calculator-page .result-panel {
-  display: none;
+  display: block;
+  flex: 0 0 100%;
 }
 .calculator-page .result-panel--active {
   display: block;

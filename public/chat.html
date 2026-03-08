@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -19,12 +19,19 @@
   <div class="chat-watermark" aria-hidden="true">
     <div class="chat-watermark__logo"><span class="watermark-torn">Torn</span><span class="watermark-fi">Fi</span></div>
   </div>
-  <a href="/" class="chat-back-float" aria-label="배당 조회로 돌아가기">←</a>
+  <a href="/" class="chat-back-float" aria-label="배당 조회로 돌아가기">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 10.5l9-7 9 7"></path>
+      <path d="M5 10.5v8.5h14v-8.5"></path>
+      <path d="M10 19v-5h4v5"></path>
+    </svg>
+  </a>
 
   <main class="site-main chat-page-main">
     <section id="chat" class="section chat-section">
       <div id="chatWrap" class="chat-wrap">
         <div id="chatPanel" class="chat-panel">
+          <div class="chat-info-banner">페이지 제작자에게 응원 메시지를 남기는 공간입니다.</div>
           <div id="chatMsgDropdown" class="chat-msg-dropdown" style="display:none;">
             <button type="button" class="chat-msg-dropdown__item" data-action="sendHeart"> 좋아요</button>
             <button type="button" class="chat-msg-dropdown__item" data-action="reply"> 답장</button>

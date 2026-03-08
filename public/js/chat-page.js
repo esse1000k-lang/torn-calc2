@@ -1,7 +1,7 @@
-﻿(function setupChat() {
+(function setupChat() {
   const ANON_ID_KEY = 'tornfi-anon-id';
   const ANON_NAME_KEY = 'tornfi-anon-name';
-  const POLL_MS = 2000;
+  const POLL_MS = 3000;
   const NAME_PREFIXES = ['고요한', '빠른', '반짝이는', '은밀한', '유쾌한', '날카로운', '느긋한', '대담한'];
   const NAME_SUFFIXES = ['고래', '토네이도', '지갑', '유령', '채굴러', '홀더', '고양이', '늑대'];
 
@@ -29,8 +29,11 @@
   const chatSendHeartOk = document.getElementById('chatSendHeartOk');
   const chatMsgDropdown = document.getElementById('chatMsgDropdown');
   const rootStyle = document.documentElement.style;
+  const CLEAR_ONCE_KEY = 'tornfi-chat-cleared-once';
 
   let messagesCache = [];
+  let lastSig = '';
+  let pollTimer = null;
   let replyingTo = null;
   let pendingChatFile = null;
   let pendingEditMessageId = null;
@@ -151,6 +154,16 @@
     if (chatPreviewImg) chatPreviewImg.src = '';
   }
 
+  function signature(messages) {
+    try {
+      return messages.map(function (m) {
+        return [m.id, m.editedAt || '', m.heartsReceived || 0, (m.text || '').length].join(':');
+      }).join('|');
+    } catch {
+      return String(messages?.length || 0);
+    }
+  }
+
   function renderMessages(messages, me) {
     if (!Array.isArray(messages) || messages.length === 0) {
       chatMessages.innerHTML = '<p class="chat-empty">메시지가 없습니다.</p>';
@@ -181,8 +194,13 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data.ok) return;
-        messagesCache = Array.isArray(data.messages) ? data.messages : [];
-        renderMessages(messagesCache, data.me);
+        const next = Array.isArray(data.messages) ? data.messages : [];
+        const sig = signature(next);
+        if (sig !== lastSig) {
+          messagesCache = next;
+          lastSig = sig;
+          renderMessages(messagesCache, data.me);
+        }
       })
       .catch(function () {});
   }
@@ -407,6 +425,29 @@
     if (!e.target.closest('.chat-msg__bubble') && !e.target.closest('#chatMsgDropdown')) closeDropdown();
   });
 
-  fetchChat();
-  setInterval(fetchChat, POLL_MS);
+  function startPolling() {
+    if (pollTimer) return;
+    fetchChat();
+    pollTimer = setInterval(fetchChat, POLL_MS);
+  }
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) stopPolling();
+    else startPolling();
+  });
+
+  try {
+    const cleared = localStorage.getItem(CLEAR_ONCE_KEY);
+    if (!cleared) {
+      fetch('/api/chat', { method: 'DELETE', headers: authHeaders() })
+        .then(function () { localStorage.setItem(CLEAR_ONCE_KEY, '1'); })
+        .catch(function () {});
+    }
+  } catch (e) {}
+  startPolling();
 })();
