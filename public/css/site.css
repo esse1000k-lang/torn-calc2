@@ -6564,7 +6564,8 @@ main.chat-page-main {
 .calculator-page .results {
   margin-top: 0;
   min-height: 280px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 .calculator-page .result-panels-track {
   display: flex;
@@ -6579,7 +6580,7 @@ main.chat-page-main {
   border-bottom: 1px solid var(--border);
 }
 .calculator-page .dividend-swipe-area {
-  touch-action: pan-x;
+  touch-action: pan-y pan-x;
   cursor: grab;
 }
 .calculator-page .dividend-swipe-area:active {

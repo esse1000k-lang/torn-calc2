@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -802,19 +802,37 @@
         // Add swipe functionality
         const swipeArea = document.querySelector('.dividend-swipe-area');
         let touchStartX = 0;
+        let touchStartY = 0;
         let dragging = false;
+        let axisLocked = false;
         let lastDelta = 0;
         
         swipeArea.addEventListener('touchstart', function(e) {
           touchStartX = e.changedTouches[0].clientX;
+          touchStartY = e.changedTouches[0].clientY;
           dragging = true;
+          axisLocked = false;
           lastDelta = 0;
         }, { passive: true });
         
         swipeArea.addEventListener('touchmove', function(e) {
           if (!dragging || !track) return;
           const x = e.changedTouches[0].clientX;
+          const y = e.changedTouches[0].clientY;
           const dx = x - touchStartX;
+          const dy = y - touchStartY;
+          if (!axisLocked) {
+            const adx = Math.abs(dx);
+            const ady = Math.abs(dy);
+            if (adx > 10 && adx >= ady) {
+              axisLocked = true;
+            } else if (ady > 10 && ady > adx) {
+              dragging = false;
+              return;
+            } else {
+              return;
+            }
+          }
           const width = swipeArea.clientWidth || 1;
           lastDelta = dx / width;
           track.style.transform = 'translate3d(' + ((-100 * currentIndex) + (lastDelta * -100)) + '%,0,0)';
