@@ -257,6 +257,56 @@ body::before {
   height: 32px;
 }
 
+/* DOGE 채팅방 링크 - 중앙 배치 */
+.nav-doge-link {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  max-width: 50px;
+  max-height: 50px;
+  animation: nav-doge-float-cloud 2.8s ease-in-out infinite;
+  z-index: 5;
+}
+
+/* insights 페이지에서 투자관 텍스트와 DOGE 아이콘 겹침 방지 */
+.insights-page .nav-doge-link {
+  left: 45%;
+}
+
+.insights-page .nav-admin-center {
+  left: 55%;
+}
+
+@keyframes nav-doge-float-cloud {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(4px);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-3px);
+  }
+}
+
+.nav-doge-link__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 8px rgba(242, 169, 0, 0.4));
+}
+
+.nav-doge-link__icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.nav-doge-link:hover .nav-doge-link__icon {
+  filter: drop-shadow(0 0 12px rgba(242, 169, 0, 0.6));
+}
+
 /* 로그인 페이지: 네비 우측 회원가입 (로고와 동일한 상하 정렬) */
 .nav-right {
   margin-left: auto;

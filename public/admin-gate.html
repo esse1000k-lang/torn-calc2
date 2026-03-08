@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>관리자 게이트</title>
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="insights-page">
+  <main class="insights-main">
+    <section class="insights-app-card">
+      <div class="insights-app-header">
+        <h2>관리자 마스터 게이트</h2>
+      </div>
+      <form id="adminLoginForm" class="insights-compose">
+        <input id="adminMasterKey" type="text" placeholder="64자리 마스터 키 입력" autocomplete="off">
+        <div class="insights-compose-row">
+          <span id="adminLoginMsg"></span>
+          <button type="submit">입장</button>
+        </div>
+      </form>
+      <div class="insights-admin-tools">
+        <button type="button" id="adminRegenerateKey">마스터 키 랜덤 갱신</button>
+        <button type="button" id="adminEmergencyOn">Emergency Lock ON</button>
+        <button type="button" id="adminEmergencyOff">Emergency Lock OFF</button>
+      </div>
+      <pre id="adminNewKey" class="insights-admin-key"></pre>
+    </section>
+  </main>
+  <script src="js/admin-gate.js"></script>
+</body>
+</html>

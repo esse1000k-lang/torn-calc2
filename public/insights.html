@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>투자관 | TornFi Portfolio</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script src="js/pwa-env.js"></script>
+  <script src="js/autocomplete-off.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body class="insights-page">
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
+    </div>
+    <a href="/doge-chat" class="nav-doge-link" aria-label="DOGE 채팅방">
+      <span class="nav-doge-link__icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 6h12v12H6V6z" fill="#F2A900" stroke="#F2A900" stroke-width="2"/>
+          <path d="M12 8l2 4 4-2-2 4 2 4-4-2-2 4-2-4-4 2 2-4-2-4 4 2 2-4z" fill="#fff"/>
+        </svg>
+      </span>
+    </a>
+    <a href="/insights.html" class="nav-admin-center" aria-current="page">투자관</a>
+    <a href="/chat.html" class="nav-chat-link" aria-label="채팅방">
+      <span class="nav-chat-link__icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 5.5C3 4.11929 4.11929 3 5.5 3H18.5C19.8807 3 21 4.11929 21 5.5V10.5C21 11.8807 19.8807 13 18.5 13H8.5L5 16.5V13H5.5C4.11929 13 3 11.8807 3 10.5V5.5Z" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+    </a>
+  </nav>
+
+  <main class="insights-main">
+    <section class="insights-app-card">
+      <div class="insights-app-header">
+        <h2>인사이트 피드</h2>
+        <div class="insights-app-actions">
+          <input id="insightsSearch" type="search" placeholder="제목/내용 검색">
+          <select id="insightsSort">
+            <option value="latest">최신순</option>
+            <option value="score">평가순</option>
+          </select>
+        </div>
+      </div>
+      <div class="insights-board-tabs" id="insightsBoardTabs"></div>
+      <form id="insightsCompose" class="insights-compose">
+        <input id="insightsTitle" type="text" maxlength="120" placeholder="제목 입력">
+        <textarea id="insightsContent" maxlength="8000" rows="7" placeholder="통찰을 작성하세요. 수정/삭제는 지원하지 않습니다."></textarea>
+        <div class="insights-compose-row">
+          <span id="insightsQuotaText">남은 작성 횟수 확인 중</span>
+          <button type="submit">등록</button>
+        </div>
+      </form>
+      <p id="insightsEmergencyText" class="insights-emergency" style="display:none;">시스템 안전 점검 중</p>
+      <div id="insightsList" class="insights-list"></div>
+    </section>
+
+    <section class="insights-hero">
+      <h1>투자관: The Raw Insights</h1>
+      <p>사람의 인지도가 아닌, 검증된 통찰 하나하나에만 인지도가 쌓이는 시스템</p>
+    </section>
+
+    <section class="insights-card">
+      <h2>1. 설계 배경</h2>
+      <p>현재 코인 시장은 말 잘하는 인플루언서가 계좌 수익보다 더 큰 영향력을 행사하는 구조로 변질되었습니다. 이 시스템은 사람이 아니라 통찰 그 자체에 신뢰와 인지도가 쌓이도록 설계되었습니다. 포모를 자극하는 비법과 결과론적 보조지표를 경계하고, 시장의 본질을 읽는 통찰과 자기 통제, 인내를 핵심 가치로 둡니다.</p>
+    </section>
+
+    <section class="insights-card">
+      <h2>2. 핵심 철학</h2>
+      <ul>
+        <li>네가 뱉은 말에 누군가 반응했다면, 그건 이미 시장에 나온 패다.</li>
+        <li>낙장불입: 평가 시작 후 글은 공공재로 전환.</li>
+        <li>증명: 유명세가 아니라 데이터와 논리만 인지도를 획득.</li>
+        <li>Zero-IP: 서버에 IP를 기록하지 않고 기기지문 해시만 사용.</li>
+      </ul>
+    </section>
+
+    <section class="insights-card">
+      <h2>3. 게시판 라인업</h2>
+      <div class="insights-boards">
+        <article><h3>투자 인사이트 (Main)</h3><p>모든 자산과 시장을 아우르는 핵심 분석</p></article>
+        <article><h3>뉴스 시선</h3><p>뉴스의 행간과 개인의 관점을 공유</p></article>
+        <article><h3>코인 발굴</h3><p>신규 프로젝트의 정보와 본질 가치 분석</p></article>
+        <article><h3>코인 활용</h3><p>스테이킹·디파이 등 수량 증대 전략</p></article>
+        <article><h3>폐기된 인사이트 (격리)</h3><p>자율 정화로 퇴출된 게시물 보관</p></article>
+      </div>
+    </section>
+
+    <section class="insights-card">
+      <h2>4. 운영 규칙 요약</h2>
+      <ul>
+        <li>최신순 기본, 평가순 필터 제공</li>
+        <li>제목/본문 키워드 검색 지원</li>
+        <li>이미지 최대 10장 업로드, 리사이징 압축, 2년 유통기한</li>
+        <li>영상은 유튜브 URL 임베드 방식 채택</li>
+        <li>격리 게시물과 미디어는 180일 후 Hard Delete</li>
+      </ul>
+    </section>
+
+    <section class="insights-card">
+      <h2>5. 시각적 소멸 로직</h2>
+      <div class="insights-stage-grid">
+        <article><strong>청정 (0~10%)</strong><span>투명도 100%, 선명도 100%</span></article>
+        <article><strong>주의 (10~20%)</strong><span>투명도 70%, 텍스트 #4B5563</span></article>
+        <article><strong>위험 (20~30%)</strong><span>투명도 40%, blur(0.5px)</span></article>
+        <article><strong>격리 (30% 초과)</strong><span>메인 피드 즉시 제거, status=isolated</span></article>
+      </div>
+      <p class="insights-note">격리 판정은 자동 부활되지 않으며, 관리자 예외 권한으로만 상태 변경됩니다.</p>
+    </section>
+
+    <section class="insights-card">
+      <h2>6. 보안·행동 인증</h2>
+      <ul>
+        <li>1일 3회 작성 제한(난독화 토큰 + 기기지문 해시)</li>
+        <li>평가·신고·작성 공통 가변형 슬라이더 캡차</li>
+        <li>3초 미만 체류 액션은 가중치 0.1로 삭감</li>
+        <li>서버 UTC 기준 이중 시간 검증</li>
+        <li>조회수는 Smart Stay-Time 통과 후 조건부 반영</li>
+      </ul>
+    </section>
+
+    <section class="insights-card">
+      <h2>7. 평가 모델과 checkToxicity 기준</h2>
+      <ul>
+        <li>Risk × 5.0, Data × 4.0, Novelty × 3.3 가중치</li>
+        <li>분모: 조회수 방패 + 평가 합 + 신고 합 + 기본 방어력 10</li>
+        <li>조회수 방패는 최대 500점(조회수 1,000회분) 캡</li>
+        <li>신규 글(조회수 &lt;100) 격리 기준 30%, 대중검증(조회수 &gt;1000) 20%</li>
+        <li>NaN/Infinity 방지 보정으로 0~100% 범위 고정</li>
+      </ul>
+    </section>
+
+    <section class="insights-card">
+      <h2>8. 관리자 시스템</h2>
+      <ul>
+        <li>히든 URL + 64자리 마스터 키 단일 로그인</li>
+        <li>3회 실패 시 기기지문 기준 24시간 차단</li>
+        <li>강제 격리·강제 복구·방패 초기화·활동 정지 권한</li>
+        <li>관리자 로그는 최소 저장 후 7일 자동 삭제</li>
+      </ul>
+    </section>
+
+    <section class="insights-card">
+      <h2>9. 유지보수·안전장치</h2>
+      <ul>
+        <li>비공개 이중 백업(복구/분쟁 대응용)</li>
+        <li>IP 없는 시스템 진단 로그(지문 해시 + 에러코드)</li>
+        <li>Emergency Lock 시 조회만 허용</li>
+      </ul>
+    </section>
+  </main>
+  <script src="js/insights-page.js"></script>
+</body>
+</html>

@@ -4,11 +4,20 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const multer = require('multer');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
 const db = require('./lib/db');
 
 const app = express();
+const server = http.createServer(app);
+
+/** * Socket.IO 초고속 엔진 설정 */
+const io = new Server(server, {
+    cors: { origin: "*" },
+    transports: ['websocket'] 
+});
 const PORT = Number(process.env.PORT || 3000);
 const CHAT_MIN_INTERVAL_MS = 1500;
 const CALC_PRICE_CACHE_TTL_MS = 12 * 1000;
@@ -410,6 +419,142 @@ app.get('/api/calculator/yesterday-pool-inflow', async (_req, res) => {
     res.status(502).json({ ok: false, message: error?.message || '어제 유입 조회에 실패했습니다.' });
   }
 });
+
+/**
+ * DOGE 채팅방 라우트
+ */
+app.get('/doge-chat', (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TornFi | DOGE-ROOM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 앱 같은 터치감과 부드러운 애니메이션 */
+        .message-fade { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+        #messages::-webkit-scrollbar { width: 4px; }
+        #messages::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-black text-white font-sans antialiased">
+    <div id="app" class="flex flex-col h-screen max-w-md mx-auto border-x border-gray-800 shadow-2xl overflow-hidden">
+        
+        <header class="p-4 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 flex justify-between items-center sticky top-0 z-10">
+            <div>
+                <h1 class="text-lg font-black tracking-tighter text-red-500">DOGE-ROOM</h1>
+                <p class="text-[10px] text-gray-500 font-mono">CONNECTED TO M4_SERVER</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span class="text-xs font-bold text-green-500">LIVE</span>
+            </div>
+        </header>
+
+        <main id="messages" class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth bg-gradient-to-b from-gray-900 to-black">
+            <div class="text-center py-10 text-gray-600 text-xs">
+                <p>9년 생존자의 통찰이 시작되는 곳</p>
+                <p class="mt-1 opacity-50">무가입 익명 채팅방에 오신 것을 환영합니다.</p>
+            </div>
+        </main>
+
+        <footer class="p-4 bg-gray-900 border-t border-gray-800">
+            <form id="chat-form" class="flex items-end gap-2">
+                <div class="flex-1 bg-gray-800 rounded-2xl px-4 py-2 border border-gray-700 focus-within:border-red-500 transition-colors">
+                    <textarea id="input" rows="1" class="w-full bg-transparent border-none focus:outline-none text-sm py-1 resize-none" placeholder="광기를 쏟아내세요..."></textarea>
+                </div>
+                <button type="submit" class="bg-red-600 hover:bg-red-500 active:scale-90 h-10 w-10 flex items-center justify-center rounded-full transition-all duration-100 shadow-lg shadow-red-900/20">
+                    <svg viewBox="0 0 24 24" class="w-5 h-5 fill-white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io({ transports: ['websocket'] });
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('input');
+
+        // 접속 즉시 방 참여
+        socket.emit('join', 'doge-room');
+
+        // 메시지 수신 처리
+        socket.on('chat', (data) => {
+            const div = document.createElement('div');
+            div.className = "message-fade flex flex-col items-start";
+            div.innerHTML = \`
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase">\${data.user}</span>
+                    <span class="text-[9px] text-gray-700 font-mono">\${data.time}</span>
+                </div>
+                <div class="bg-gray-800 rounded-2xl rounded-tl-none px-4 py-2 text-sm border border-gray-700/50 shadow-sm max-w-[90%] break-all">
+                    \${data.text}
+                </div>
+            \`;
+            messages.appendChild(div);
+            // 즉시 하단 스크롤 (앱 감성)
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        // 엔터키 전송 (모바일 고려)
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (text) {
+                socket.emit('message', { room: 'doge-room', text: text });
+                input.value = '';
+                input.style.height = 'auto';
+            }
+        });
+
+        // 자동 높이 조절
+        input.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    </script>
+</body>
+</html>
+    `);
+});
+
+/**
+ * Socket.IO DOGE 채팅방 로직
+ */
+io.on('connection', (socket) => {
+    const shortId = socket.id.substring(0, 4).toUpperCase();
+    
+    socket.on('join', (room) => {
+        socket.join(room);
+        console.log(`[DOGE-CHAT JOIN] ${shortId} -> ${room}`);
+    });
+
+    socket.on('message', (data) => {
+        // 불필요한 연산을 줄여 M4의 속도를 보존함
+        io.to(data.room).emit('chat', {
+            user: "ㅇㅇ(" + shortId + ")",
+            text: data.text,
+            time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+    });
+});
+
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ ok: false, message: err?.message || '서버 오류가 발생했습니다.' });
@@ -417,7 +562,8 @@ app.use((err, _req, res, _next) => {
 
 (async () => {
   await db.connect();
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`TornFi portfolio server listening on http://localhost:${PORT}`);
+    console.log('🚀 DOGE 채팅방: http://localhost:3000/doge-chat');
   });
 })();
