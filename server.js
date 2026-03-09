@@ -129,6 +129,264 @@ function validateAndNormalizeEthAddress(str) {
   return trimmed;
 }
 
+const INFLOW_REWARD_ADDR = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
+const TORN_TOKEN_ADDR = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
+const CALC_RPC_URL = (() => {
+  const raw = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
+  return /^https?:\/\//i.test(raw) ? raw : (raw ? ('https://mainnet.infura.io/v3/' + raw) : '');
+})();
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || '';
+let inflowDailySeries = { items: [], lastBuiltUtc: 0, building: false };
+
+const DATA_DIR = path.join(__dirname, 'data');
+const INFLOW_DAILY_FILE = path.join(DATA_DIR, 'inflow-daily.json');
+const INFLOW_SEED_URL = process.env.INFLOW_SEED_URL || '';
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+function readJsonSafe(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) return fallback;
+    const raw = fs.readFileSync(file, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch { return fallback; }
+}
+function writeJsonSafe(file, obj) {
+  try {
+    fs.writeFileSync(file, JSON.stringify(obj));
+  } catch {}
+}
+
+
+
+
+async function buildInflowRangeDaysTZ(days, tz) {
+  if (!ETHERSCAN_KEY) return { ok: false, items: [] };
+  const timeoutFetch = (url, ms = 15000) => fetch(url, { signal: AbortSignal.timeout(ms) });
+  const mode = String(tz || 'utc').toLowerCase();
+  const KST_MS = 9 * 60 * 60 * 1000;
+  const now = new Date();
+  let startTs = 0;
+  let endTs = 0;
+  if (mode === 'kst') {
+    const nowKst = new Date(now.getTime() + KST_MS);
+    const startKst = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate() - Math.max(1, days), 0, 0, 0, 0));
+    const endKst = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate() - 1, 23, 59, 59, 999));
+    startTs = Math.floor((startKst.getTime() - KST_MS) / 1000);
+    endTs = Math.floor((endKst.getTime() - KST_MS) / 1000);
+  } else {
+    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - Math.max(1, days), 0, 0, 0, 0));
+    const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 23, 59, 59, 999));
+    startTs = Math.floor(startDate.getTime() / 1000);
+    endTs = Math.floor(endDate.getTime() / 1000);
+  }
+  const startBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${startTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
+  const endBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${endTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
+  const [startInfo, endInfo] = await Promise.all([
+    timeoutFetch(startBlockUrl).then(r=>r.json()).catch(()=>null),
+    timeoutFetch(endBlockUrl).then(r=>r.json()).catch(()=>null),
+  ]);
+  const startBlock = (startInfo && startInfo.status === '1') ? parseInt(startInfo.result, 10) : 0;
+  const endBlock = (endInfo && endInfo.status === '1') ? parseInt(endInfo.result, 10) : startBlock;
+  if (!startBlock || !endBlock) return { ok: false, items: [] };
+  const OFFSET = 1000;
+  let page = 1;
+  const map = new Map();
+  while (true) {
+    const url =
+      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx` +
+      `&contractaddress=${TORN_TOKEN_ADDR}` +
+      `&address=${INFLOW_REWARD_ADDR}` +
+      `&startblock=${startBlock}` +
+      `&endblock=${endBlock}` +
+      `&page=${page}&offset=${OFFSET}&sort=asc` +
+      `&apikey=${ETHERSCAN_KEY}`;
+    const data = await timeoutFetch(url).then(r=>r.json()).catch(()=>null);
+    const list = (data && data.status === '1' && Array.isArray(data.result)) ? data.result : [];
+    if (!list.length) break;
+    for (const tx of list) {
+      const ts = parseInt(tx.timeStamp || '0', 10);
+      if (ts >= startTs && ts <= endTs) {
+        const d = mode === 'kst' ? new Date((ts * 1000) + KST_MS) : new Date(ts * 1000);
+        const key = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString().slice(0,10);
+        const prev = map.get(key) || 0;
+        const val = Number(tx.value || '0') / 1e18;
+        if (isFinite(val) && val > 0) map.set(key, prev + val);
+      }
+    }
+    if (list.length < OFFSET) break;
+    page += 1;
+  }
+  const items = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1).map(([k,v]) => ({ dateUtc: k, tornInflow: v }));
+  return { ok: true, items };
+}
+
+app.get('/api/inflow/daily-series', async (_req, res) => {
+  if (!inflowDailySeries.items.length) {
+    ensureDataDir();
+    const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
+    if (Array.isArray(cached.items) && cached.items.length) {
+      inflowDailySeries = cached;
+      return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
+    }
+    try {
+      const q = parseInt(String(_req.query.days || '30'), 10);
+      const days = isNaN(q) || q < 1 ? 30 : Math.min(5000, q);
+      const r = await buildInflowRangeDaysTZ(days, 'kst');
+      if (r.ok) {
+        const payload = { items: r.items, lastBuiltUtc: Date.now() };
+        ensureDataDir();
+        writeJsonSafe(INFLOW_DAILY_FILE, payload);
+        inflowDailySeries = { ...payload, building: false };
+        return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
+      }
+      return res.json({ ok: false, lastBuiltUtc: 0, items: [] });
+    } catch {
+      return res.json({ ok: true, lastBuiltUtc: 0, items: [] });
+    }
+  }
+  // on-demand quick refresh for recent N days
+  if (_req.query.days) {
+    try {
+      const q = parseInt(String(_req.query.days), 10);
+      const days = isNaN(q) || q < 1 ? 30 : Math.min(5000, q);
+      const r = await buildInflowRangeDaysTZ(days, 'kst');
+      if (r.ok) {
+        const payload = { items: r.items, lastBuiltUtc: Date.now() };
+        ensureDataDir();
+        writeJsonSafe(INFLOW_DAILY_FILE, payload);
+        inflowDailySeries = { ...payload, building: false };
+        return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
+      }
+    } catch {}
+  }
+  res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
+});
+
+// 최신(어제) 일자 한 항목을 빠르게 반환
+app.get('/api/inflow/latest', async (_req, res) => {
+  try {
+    ensureDataDir();
+    const r = await buildInflowRangeDaysTZ(1, 'kst');
+    const item = (r && r.ok && Array.isArray(r.items) && r.items.length) ? r.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0] : null;
+    return res.json({ ok: true, item });
+  } catch (e) {
+    return res.status(500).json({ ok: false, message: e?.message || 'latest failed' });
+  }
+});
+
+app.get('/api/inflow/personal-latest', async (req, res) => {
+  try {
+    const addr = String(req.query.walletAddress || '').trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ ok: false, message: '유효한 주소가 아닙니다' });
+    const tz = 'kst';
+    const KST_MS = 9 * 60 * 60 * 1000;
+    const now = new Date();
+    // pick yesterday end by tz
+    let endTs;
+    const nowKst = new Date(now.getTime() + KST_MS);
+    const endKst = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate() - 1, 23, 59, 59, 999));
+    endTs = Math.floor((endKst.getTime() - KST_MS) / 1000);
+    const timeoutFetch = (url, ms = 12000) => fetch(url, { signal: AbortSignal.timeout(ms) });
+    const endBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${endTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
+    const endInfo = await timeoutFetch(endBlockUrl).then(r=>r.json()).catch(()=>null);
+    const endBlock = (endInfo && endInfo.status === '1') ? parseInt(endInfo.result, 10) : 0;
+    const provider = new JsonRpcProvider(CALC_RPC_URL || 'https://rpc.ankr.com/eth', 1);
+    const STAKING_CONTRACT_ADDRESS = '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce';
+    const GOVERNANCE = '0x2F50508a8a3D323B91336FA3eA6ae50E55f32185';
+    const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], provider);
+    const tornToken = new Contract(TORN_TOKEN_ADDR, ['function balanceOf(address account) view returns (uint256)'], provider);
+    const overrides = endBlock ? { blockTag: endBlock } : {};
+    const [lockedWei, totalWei] = await Promise.all([
+      stakingContract.lockedBalance(addr, overrides).catch(()=>0n),
+      tornToken.balanceOf(GOVERNANCE, overrides).catch(()=>0n),
+    ]);
+    const locked = Number(lockedWei) / 1e18;
+    const total = Number(totalWei) / 1e18;
+    const share = (locked > 0 && total > 0) ? (locked / total) : 0;
+    const inflowR = await buildInflowRangeDaysTZ(1, 'kst');
+    const item = (inflowR && inflowR.ok && Array.isArray(inflowR.items) && inflowR.items.length) ? inflowR.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0] : null;
+    const tornInflow = item ? Number(item.tornInflow || 0) : 0;
+    const myTorn = (share > 0 && tornInflow > 0) ? (tornInflow * share) : 0;
+    return res.json({ ok: true, share, tornInflow, myTorn, item });
+  } catch (e) {
+    return res.status(500).json({ ok: false, message: e?.message || 'personal failed' });
+  }
+});
+
+// 강제 재빌드: 최근 N일을 이더스캔 로그로 재집계하여 캐시 반영
+app.post('/api/inflow/rebuild', async (req, res) => {
+  try {
+    const r = await buildInflowRangeDaysTZ(30, 'kst');
+    if (r && r.ok) {
+      const payload = { items: r.items, lastBuiltUtc: Date.now() };
+      ensureDataDir();
+      writeJsonSafe(INFLOW_DAILY_FILE, payload);
+      inflowDailySeries = { ...payload, building: false };
+      return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
+    }
+    res.status(400).json({ ok: false, message: 'rebuild failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e?.message || 'error' });
+  }
+});
+
+// 캐시 삭제: 파일 및 메모리 캐시 초기화
+app.post('/api/inflow/clear-cache', async (_req, res) => {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(INFLOW_DAILY_FILE)) fs.unlinkSync(INFLOW_DAILY_FILE);
+    inflowDailySeries = { items: [], lastBuiltUtc: 0, building: false };
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ ok: false });
+  }
+});
+
+setTimeout(async () => {
+  ensureDataDir();
+  const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
+  if (Array.isArray(cached.items) && cached.items.length) {
+    inflowDailySeries = cached;
+  } else if (INFLOW_SEED_URL) {
+    try {
+      const seed = await fetch(INFLOW_SEED_URL, { signal: AbortSignal.timeout(12000) }).then(r => r.json());
+      if (seed && Array.isArray(seed.items) && seed.items.length) {
+        const payload = { items: seed.items, lastBuiltUtc: Date.now() };
+        writeJsonSafe(INFLOW_DAILY_FILE, payload);
+        inflowDailySeries = { ...payload, building: false };
+        return;
+      }
+    } catch {}
+  } else {
+    const r = await buildInflowRangeDaysTZ(30, 'kst');
+    if (r && r.ok) {
+      const payload = { items: r.items, lastBuiltUtc: Date.now() };
+      writeJsonSafe(INFLOW_DAILY_FILE, payload);
+      inflowDailySeries = { ...payload, building: false };
+    }
+  }
+}, 1000);
+// 매일 어제값만 보강
+setInterval(async () => {
+  try {
+    const r = await buildInflowRangeDaysTZ(1, 'kst');
+    if (r && r.ok) {
+      ensureDataDir();
+      const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
+      const map = new Map();
+      for (const it of Array.isArray(cached.items) ? cached.items : []) map.set(it.dateUtc, Number(it.tornInflow || 0));
+      for (const it of r.items) map.set(it.dateUtc, Number(it.tornInflow || 0));
+      const merged = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1).map(([k,v]) => ({ dateUtc: k, tornInflow: v }));
+      const payload = { items: merged, lastBuiltUtc: Date.now() };
+      writeJsonSafe(INFLOW_DAILY_FILE, payload);
+      inflowDailySeries = { ...payload, building: false };
+    }
+  } catch {}
+}, 24 * 60 * 60 * 1000);
+
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'calculator.html'));
 });
@@ -231,15 +489,25 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
   const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
   const DEFILLAMA_COINS = 'ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C,ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599';
-  const RPC_URL = process.env.CALC_RPC_URL || process.env.INFURA_URL || 'https://mainnet.infura.io/v3/fa141c0488f14212b912c04114f23f84';
-  const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || 'DSPENWH1HPF4H8P3WZNM6HCFT3G4238JM6';
+  const RPC_URL = (() => {
+    const raw = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
+    return /^https?:\/\//i.test(raw) ? raw : (raw ? ('https://mainnet.infura.io/v3/' + raw) : '');
+  })();
   const timeoutFetch = (url, ms = 8000) => fetch(url, { signal: AbortSignal.timeout(ms) });
+  const provider = new JsonRpcProvider(RPC_URL || 'https://rpc.ankr.com/eth', 1);
   const totalStakedPromise = (calcTotalStakedCache && now - calcTotalStakedCache.at < CALC_TOTAL_STAKED_CACHE_TTL_MS)
     ? Promise.resolve(calcTotalStakedCache.data)
-    : timeoutFetch(`https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokenbalance&contractaddress=${TORN_TOKEN}&address=${GOVERNANCE}&tag=latest&apikey=${ETHERSCAN_KEY}`).then((r) => r.json());
-  const provider = new JsonRpcProvider(RPC_URL);
+    : (async () => {
+        try {
+          const tornToken = new Contract(TORN_TOKEN, ['function balanceOf(address account) view returns (uint256)'], provider);
+          const wei = await tornToken.balanceOf(GOVERNANCE);
+          return Number(wei) / 1e18;
+        } catch {
+          return null;
+        }
+      })();
 
-  const [llamaRes, coingeckoRes, mexcRes, etherscanRes, uniswapResult, gasFeeDataResult, latestBlockResult, upbitRes] = await Promise.allSettled([
+  const [llamaRes, coingeckoRes, mexcRes, totalStakedRes, uniswapResult, gasFeeDataResult, latestBlockResult, upbitRes] = await Promise.allSettled([
     timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then((r) => r.json()),
     timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin,ethereum&vs_currencies=krw').then((r) => r.json()),
     timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then((r) => r.json()),
@@ -276,7 +544,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const llama = llamaRes.status === 'fulfilled' ? llamaRes.value : null;
   const coingecko = coingeckoRes.status === 'fulfilled' ? coingeckoRes.value : null;
   const mexc = mexcRes.status === 'fulfilled' ? mexcRes.value : null;
-  const etherscan = etherscanRes.status === 'fulfilled' ? etherscanRes.value : null;
+  const totalStakedMaybe = totalStakedRes.status === 'fulfilled' ? totalStakedRes.value : null;
   const tornPriceInEth = uniswapResult.status === 'fulfilled' ? uniswapResult.value : null;
   const gasFeeData = gasFeeDataResult.status === 'fulfilled' ? gasFeeDataResult.value : null;
   const latestBlock = latestBlockResult.status === 'fulfilled' ? latestBlockResult.value : null;
@@ -313,21 +581,10 @@ app.get('/api/calculator/prices', async (_req, res) => {
     ? gasCostEth * ethKrw
     : 0;
 
-  let totalStaked = 0;
-  if (etherscan?.status === '1' && etherscan?.message === 'OK' && etherscan?.result) {
-    const raw = String(etherscan.result);
-    if (raw && raw !== '0') {
-      const decimals = 18;
-      const len = raw.length;
-      totalStaked = len <= decimals ? parseFloat('0.' + raw.padStart(decimals, '0')) : parseFloat(raw.slice(0, len - decimals) + '.' + raw.slice(-decimals));
-    }
-  }
-  if (totalStaked > 0) calcTotalStakedCache = { at: now, data: { status: '1', message: 'OK', result: etherscan.result } };
-  else if (calcTotalStakedCache?.data?.status === '1' && calcTotalStakedCache?.data?.message === 'OK' && calcTotalStakedCache?.data?.result) {
-    const raw = String(calcTotalStakedCache.data.result);
-    const decimals = 18;
-    const len = raw.length;
-    totalStaked = len <= decimals ? parseFloat('0.' + raw.padStart(decimals, '0')) : parseFloat(raw.slice(0, len - decimals) + '.' + raw.slice(-decimals));
+  let totalStaked = typeof totalStakedMaybe === 'number' ? totalStakedMaybe : 0;
+  if (totalStaked > 0) calcTotalStakedCache = { at: now, data: totalStaked };
+  else if (typeof calcTotalStakedCache?.data === 'number') {
+    totalStaked = calcTotalStakedCache.data;
   }
 
   const payload = {
@@ -358,10 +615,13 @@ app.get('/api/calculator/wallet', async (req, res) => {
   const TORN_TOKEN_ADDRESS = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
   const STAKING_CONTRACT_ADDRESS = '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce';
   const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
-  const STAKING_RPC_URL = process.env.CALC_RPC_URL || process.env.INFURA_URL || 'https://mainnet.infura.io/v3/fa141c0488f14212b912c04114f23f84';
+  const STAKING_RPC_URL = (() => {
+    const raw = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
+    return /^https?:\/\//i.test(raw) ? raw : (raw ? ('https://mainnet.infura.io/v3/' + raw) : '');
+  })();
 
   try {
-    const provider = new JsonRpcProvider(STAKING_RPC_URL);
+    const provider = new JsonRpcProvider(STAKING_RPC_URL || 'https://rpc.ankr.com/eth', 1);
     const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], provider);
     const rewardContract = new Contract(REWARD_CONTRACT_ADDRESS, ['function checkReward(address account) view returns (uint256 rewards)'], provider);
     const tornToken = new Contract(TORN_TOKEN_ADDRESS, ['function balanceOf(address account) view returns (uint256)'], provider);
@@ -383,72 +643,7 @@ app.get('/api/calculator/wallet', async (req, res) => {
   }
 });
 
-app.get('/api/calculator/yesterday-pool-inflow', async (_req, res) => {
-  const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
-  const TORN_TOKEN_ADDRESS = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
-  const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || 'DSPENWH1HPF4H8P3WZNM6HCFT3G4238JM6';
-  const timeoutFetch = (url, ms = 12000) => fetch(url, { signal: AbortSignal.timeout(ms) });
-  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-  const nowUtcMs = Date.now();
-  const nowKst = new Date(nowUtcMs + KST_OFFSET_MS);
-  const yStartKst = new Date(nowKst);
-  yStartKst.setDate(yStartKst.getDate() - 1);
-  yStartKst.setHours(0, 0, 0, 0);
-  const yEndKst = new Date(nowKst);
-  yEndKst.setDate(yEndKst.getDate() - 1);
-  yEndKst.setHours(23, 59, 59, 999);
-  const startTs = Math.floor((yStartKst.getTime() - KST_OFFSET_MS) / 1000);
-  const endTs = Math.floor((yEndKst.getTime() - KST_OFFSET_MS) / 1000);
-  try {
-    const startBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${startTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
-    const endBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${endTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
-    const [startInfo, endInfo] = await Promise.all([
-      timeoutFetch(startBlockUrl).then((r) => r.json()),
-      timeoutFetch(endBlockUrl).then((r) => r.json()),
-    ]);
-    const startBlock = (startInfo && startInfo.status === '1') ? parseInt(startInfo.result, 10) : 0;
-    const endBlock = (endInfo && endInfo.status === '1') ? parseInt(endInfo.result, 10) : startBlock;
-    if (!startBlock || !endBlock) throw new Error('블록 경계 조회 실패');
-    const OFFSET = 100;
-    let page = 1;
-    let totalTorn = 0;
-    while (true) {
-      const url =
-        `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx` +
-        `&contractaddress=${TORN_TOKEN_ADDRESS}` +
-        `&address=${REWARD_CONTRACT_ADDRESS}` +
-        `&startblock=${startBlock}` +
-        `&endblock=${endBlock}` +
-        `&page=${page}&offset=${OFFSET}&sort=asc` +
-        `&apikey=${ETHERSCAN_KEY}`;
-      const data = await timeoutFetch(url).then((r) => r.json()).catch(() => null);
-      const list = (data && data.status === '1' && Array.isArray(data.result)) ? data.result : [];
-      if (list.length === 0) break;
-      for (const tx of list) {
-        if (!tx || !tx.to) continue;
-        const toAddr = String(tx.to).toLowerCase();
-        if (toAddr !== REWARD_CONTRACT_ADDRESS.toLowerCase()) continue;
-        const ts = parseInt(tx.timeStamp || '0', 10);
-        if (ts < startTs || ts > endTs) continue;
-        const val = Number(tx.value || '0') / 1e18;
-        if (isFinite(val) && val > 0) totalTorn += val;
-      }
-      if (list.length < OFFSET) break;
-      page += 1;
-    }
-    res.json({
-      ok: true,
-      dateKst: yStartKst.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }),
-      startTs,
-      endTs,
-      startBlock,
-      endBlock,
-      yesterdayPoolInflowTorn: totalTorn,
-    });
-  } catch (error) {
-    res.status(502).json({ ok: false, message: error?.message || '어제 유입 조회에 실패했습니다.' });
-  }
-});
+
 
 /**
  * DOGE 채팅방 라우트

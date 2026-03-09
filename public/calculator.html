@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -13,6 +13,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
+  <style>
+    #dailyWalletRewardDisplay { color:#ffd86b; font-weight:600; }
+    #dailyRewardLabel { cursor:pointer; font-weight:600; }
+  </style>
 </head>
 <body class="calculator-page">
   <nav class="site-nav">
@@ -91,15 +95,15 @@
           <span class="value-krw" id="userTornKrw"></span>
         </div>
       </div>
-      <div class="input-group">
-        <label>어제 하루 리워드</label>
+      <div class="input-group" id="dailyRewardGroup">
+        <label id="dailyRewardLabel">어제 받은 리워드</label>
         <div class="data-value data-value--row">
-          <span id="dailyWalletRewardDisplay"></span>
+          <span id="dailyWalletRewardDisplay" style="cursor:pointer"></span>
           <span class="value-krw" id="dailyWalletRewardKrw"></span>
         </div>
       </div>
       <div class="input-group">
-        <label>미 출금 리워드</label>
+        <label>총 누적 리워드</label>
         <div class="data-value data-value--row">
           <span id="unclaimedRewardDisplay"></span>
           <span class="value-krw" id="unclaimedRewardKrw"></span>
@@ -308,7 +312,6 @@
       let gasPriceGweiAuto = 0;
       let gasCostKrwAuto = 0;
       let kimchiPremiumAuto = null;
-      let yesterdayPoolInflowTornAuto = 0;
       let walletQueryTimer = null;
 
       function fetchCalculatorPrices() {
@@ -495,6 +498,7 @@
           gasPriceDisplay.style.fontSize = '0.9rem';
           gasPriceDisplay.style.lineHeight = '1.15';
           gasPriceDisplay.style.fontWeight = '600';
+          gasPriceDisplay.style.marginBottom = '8px';
           if (k70 > 0 && k120 > 0 && k220 > 0) {
             gasPriceKrwDisplay.innerHTML =
               '일반 송금 : ' + '약 ' + formatKrw(k70) + '<br>' +
@@ -574,8 +578,6 @@
           return;
         }
         setWalletSection('조회 중', '조회 중', '조회 중', '조회 중');
-        dailyWalletRewardDisplay.textContent = '조회 중';
-        dailyWalletRewardKrwEl.textContent = '';
         if (walletQueryTimer) clearTimeout(walletQueryTimer);
         walletQueryTimer = setTimeout(function () {
           fetch('/api/calculator/wallet?walletAddress=' + encodeURIComponent(raw))
@@ -593,13 +595,14 @@
             .catch(function (err) {
               walletStakedDisplay.textContent = ' ' + (err.message || '조회 실패');
               unclaimedRewardDisplay.textContent = '';
-              dailyWalletRewardDisplay.textContent = '';
-              dailyWalletRewardKrwEl.textContent = '';
               walletTornBalanceDisplay.textContent = '';
               totalHoldingsSumDisplay.textContent = '';
               updateWalletKrwDisplays();
               updateAnalyticsCard();
             });
+          // 성공 시점에 바로 어제 리워드 반영
+          updateYesterdayPersonalReward();
+          fetchPersonalYesterdayReward();
         }, 300);
       }
 
@@ -654,6 +657,8 @@
         } catch (e) {}
         calculate();
         updateAnalyticsCard();
+        updateYesterdayPersonalReward();
+        fetchPersonalYesterdayReward();
       }
 
       function applyPremiumData(d) {
@@ -670,6 +675,8 @@
           }
           calculate();
           updateAnalyticsCard();
+          updateYesterdayPersonalReward();
+          fetchPersonalYesterdayReward();
         }
       }
 
@@ -702,25 +709,22 @@
           const msg = String(err && err.message || '').includes('fetch') ? NETWORK_ERR_MSG : (err.message || '조회 실패');
           setPriceError(msg);
         });
-        var inflowPromise = fetch('/api/calculator/yesterday-pool-inflow').then(function (r) { return r.json(); }).then(function (d) {
-          if (d && d.ok === true) {
-            var t = Number(d.yesterdayPoolInflowTorn || 0);
-            yesterdayPoolInflowTornAuto = isFinite(t) && t > 0 ? t : 0;
-            updateYesterdayPersonalReward();
-          } else {
-            yesterdayPoolInflowTornAuto = 0;
-            updateYesterdayPersonalReward();
-          }
-        }).catch(function () {
-          yesterdayPoolInflowTornAuto = 0;
-          updateYesterdayPersonalReward();
-        });
-        Promise.allSettled([pricesPromise, inflowPromise]).then(function () {});
+        Promise.allSettled([pricesPromise]).then(function () {});
       }
 
       function updatePremiumData() {
         fetchCalculatorPremium().then(applyPremiumData).catch(function () {});
       }
+
+      (function initDailyRewardLink() {
+        var el = document.getElementById('dailyWalletRewardDisplay');
+        if (el) el.addEventListener('click', function () { window.location.href = '/daily-rewards.html'; });
+        var grp = document.getElementById('dailyRewardGroup');
+        if (grp) grp.addEventListener('click', function () { window.location.href = '/daily-rewards.html'; });
+        var lab = document.getElementById('dailyRewardLabel');
+        if (lab) lab.addEventListener('click', function () { window.location.href = '/daily-rewards.html'; });
+      })();
+
 
       function ethToTorn(ethAmount) {
         if (!tornPriceUsd || !ethPriceUsd) return null;
@@ -733,14 +737,70 @@
       }
 
       function updateYesterdayPersonalReward() {
-        const userTorn = parseNum(userTornInput.value);
-        const totalPool = parseNum(totalPoolInput.value);
-        const share = totalPool > 0 && userTorn > 0 ? (userTorn / totalPool) : 0;
-        const myTorn = yesterdayPoolInflowTornAuto > 0 && share > 0 ? (yesterdayPoolInflowTornAuto * share) : 0;
-        dailyWalletRewardDisplay.textContent = myTorn > 0 ? formatTorn2Decimals(myTorn) : '';
-        dailyWalletRewardDisplay.style.color = 'rgba(255, 255, 255, 0.6)';
-        const krw = myTorn > 0 && tornPriceKrw > 0 ? myTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
-        dailyWalletRewardKrwEl.textContent = krw > 0 ? formatKrw(krw) : '';
+        const myTorn = parseDisplayNum(dailyWalletRewardDisplay.textContent);
+        dailyWalletRewardKrwEl.textContent = (myTorn > 0 && tornPriceKrw > 0)
+          ? formatKrw(myTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)))
+          : '';
+      }
+
+
+      function fetchPersonalYesterdayReward() {
+        const raw = (walletAddressInput.value || '').trim();
+        if (!raw || !/^0x[a-fA-F0-9]{40}$/.test(raw)) return;
+        var CK = 'PERSONAL_YDAY_' + raw.toLowerCase();
+        var TTL = 30 * 60 * 1000;
+        try {
+          var c = sessionStorage.getItem(CK);
+          if (c) {
+            var obj = JSON.parse(c);
+            if (obj && obj.t && (Date.now() - obj.t) < TTL && obj.myTorn != null) {
+              var myTornCached = Number(obj.myTorn || 0);
+              if (myTornCached > 0) {
+                dailyWalletRewardDisplay.textContent = formatTorn2Decimals(myTornCached);
+                updateYesterdayPersonalReward();
+                return;
+              }
+            }
+          }
+        } catch (e) {}
+        return fetch('/api/inflow/personal-latest?tz=kst&walletAddress=' + encodeURIComponent(raw))
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.ok === true) {
+              var myTorn = Number(d.myTorn || 0);
+              if (myTorn > 0) {
+                dailyWalletRewardDisplay.textContent = formatTorn2Decimals(myTorn);
+                updateYesterdayPersonalReward();
+                try { sessionStorage.setItem(CK, JSON.stringify({ t: Date.now(), myTorn: myTorn })); } catch (e) {}
+                return;
+              }
+              var userTorn = parseNum(userTornInput.value);
+              var totalPool = parseNum(totalPoolInput.value);
+              var share = totalPool > 0 && userTorn > 0 ? (userTorn / totalPool) : 0;
+              if (share > 0) {
+                return fetch('/api/inflow/latest?tz=kst').then(function (r) { return r.json(); }).then(function (x) {
+                  var inflow = (x && x.ok === true && x.item) ? Number(x.item.tornInflow || 0) : 0;
+                  var fallbackTorn = inflow > 0 ? inflow * share : 0;
+                  dailyWalletRewardDisplay.textContent = fallbackTorn > 0 ? formatTorn2Decimals(fallbackTorn) : '';
+                  updateYesterdayPersonalReward();
+                  try { sessionStorage.setItem(CK, JSON.stringify({ t: Date.now(), myTorn: fallbackTorn })); } catch (e) {}
+                });
+              }
+            }
+          }).catch(function () {
+            var userTorn = parseNum(userTornInput.value);
+            var totalPool = parseNum(totalPoolInput.value);
+            var share = totalPool > 0 && userTorn > 0 ? (userTorn / totalPool) : 0;
+            if (share > 0) {
+              fetch('/api/inflow/latest?tz=kst').then(function (r) { return r.json(); }).then(function (x) {
+                var inflow = (x && x.ok === true && x.item) ? Number(x.item.tornInflow || 0) : 0;
+                var fallbackTorn = inflow > 0 ? inflow * share : 0;
+                dailyWalletRewardDisplay.textContent = fallbackTorn > 0 ? formatTorn2Decimals(fallbackTorn) : '';
+                updateYesterdayPersonalReward();
+                try { sessionStorage.setItem(CK, JSON.stringify({ t: Date.now(), myTorn: fallbackTorn })); } catch (e) {}
+              }).catch(function(){});
+            }
+          });
       }
 
       function calculate() {
@@ -749,7 +809,6 @@
         const sharePercent = totalPool > 0 && userTorn > 0 ? Math.min(100, (userTorn / totalPool) * 100) : 0;
         shareBar.style.width = sharePercent + '%';
         shareText.textContent = sharePercent.toFixed(4) + '%';
-        updateYesterdayPersonalReward();
         updateTotalHoldingsSum();
         const poolKrw = totalPool > 0 && tornPriceKrw > 0 ? totalPool * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
         totalPoolKrwEl.textContent = poolKrw > 0 ? formatKrw(poolKrw) : '';
@@ -887,6 +946,8 @@
 
       userTornInput.addEventListener('input', calculate);
       userTornInput.addEventListener('change', calculate);
+      totalPoolInput.addEventListener('input', function(){ calculate(); updateYesterdayPersonalReward(); });
+      totalPoolInput.addEventListener('change', function(){ calculate(); updateYesterdayPersonalReward(); });
       investmentKrwInput.addEventListener('input', updateInvestmentKrwDisplay);
       investmentKrwInput.addEventListener('input', updateAnalyticsCard);
       investmentKrwInput.addEventListener('change', updateAnalyticsCard);
@@ -901,6 +962,7 @@
       } catch (e) {}
       updateMarketData();
       updatePremiumData();
+      fetchPersonalYesterdayReward();
       calculate();
       setInterval(updateMarketData, REFRESH_INTERVAL_MS);
       setInterval(updatePremiumData, PREMIUM_REFRESH_INTERVAL_MS);
