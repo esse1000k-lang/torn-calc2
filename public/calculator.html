@@ -914,57 +914,98 @@
         let touchStartY = 0;
         let dragging = false;
         let axisLocked = false;
+        let isHorizontalSwipe = false;
         let lastDelta = 0;
-        
-        swipeArea.addEventListener('touchstart', function(e) {
-          touchStartX = e.changedTouches[0].clientX;
-          touchStartY = e.changedTouches[0].clientY;
-          dragging = true;
-          axisLocked = false;
-          lastDelta = 0;
-        }, { passive: true });
-        
-        swipeArea.addEventListener('touchmove', function(e) {
-          if (!dragging || !track) return;
-          const x = e.changedTouches[0].clientX;
-          const y = e.changedTouches[0].clientY;
-          const dx = x - touchStartX;
-          const dy = y - touchStartY;
-          if (!axisLocked) {
-            const adx = Math.abs(dx);
-            const ady = Math.abs(dy);
-            if (adx > 10 && adx >= ady) {
-              axisLocked = true;
-            } else if (ady > 10 && ady > adx) {
-              dragging = false;
-              return;
-            } else {
+
+        if (swipeArea && track) {
+          swipeArea.addEventListener('touchstart', function(e) {
+            const touch = e.changedTouches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            dragging = true;
+            axisLocked = false;
+            isHorizontalSwipe = false;
+            lastDelta = 0;
+            // 드래그 중에는 transition을 끄고 손가락을 바로 따라오게
+            track.style.transition = 'none';
+          }, { passive: true });
+
+          swipeArea.addEventListener('touchmove', function(e) {
+            if (!dragging) return;
+            const touch = e.changedTouches[0];
+            const x = touch.clientX;
+            const y = touch.clientY;
+            const dx = x - touchStartX;
+            const dy = y - touchStartY;
+
+            if (!axisLocked) {
+              const adx = Math.abs(dx);
+              const ady = Math.abs(dy);
+              if (adx > 10 && adx >= ady) {
+                axisLocked = true;
+                isHorizontalSwipe = true;
+              } else if (ady > 10 && ady > adx) {
+                // 세로 스크롤 제스처로 판단: 원래 위치로 되돌리고 종료
+                dragging = false;
+                axisLocked = false;
+                track.style.transition = '';
+                track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+                return;
+              } else {
+                return;
+              }
+            }
+
+            if (!isHorizontalSwipe) return;
+
+            const width = swipeArea.clientWidth || 1;
+            lastDelta = dx / width;
+            // 과도한 이동 방지 (한 패널 정도까지만)
+            if (lastDelta > 1) lastDelta = 1;
+            if (lastDelta < -1) lastDelta = -1;
+            const offsetPercent = (-100 * currentIndex) + (lastDelta * -100);
+            track.style.transform = 'translate3d(' + offsetPercent + '%,0,0)';
+          }, { passive: true });
+
+          function finishSwipe(diffX) {
+            dragging = false;
+            axisLocked = false;
+            isHorizontalSwipe = false;
+            // 애니메이션 복원
+            track.style.transition = '';
+
+            const width = swipeArea.clientWidth || 1;
+            const threshold = Math.min(50, width * 0.15);
+
+            if (!diffX || Math.abs(diffX) <= threshold) {
+              // 스와이프가 충분하지 않으면 제자리로 스냅
+              track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
               return;
             }
-          }
-          const width = swipeArea.clientWidth || 1;
-          lastDelta = dx / width;
-          track.style.transform = 'translate3d(' + ((-100 * currentIndex) + (lastDelta * -100)) + '%,0,0)';
-        }, { passive: true });
-        
-        swipeArea.addEventListener('touchend', function(e) {
-          if (!dragging) return;
-          dragging = false;
-          const width = swipeArea.clientWidth || 1;
-          const diff = e.changedTouches[0].clientX - touchStartX;
-          const threshold = Math.min(60, width * 0.18);
-          if (Math.abs(diff) > threshold) {
-            if (diff < 0) {
-              const nextIndex = (currentIndex + 1) % tabOrder.length;
+
+            if (diffX < 0) {
+              // 왼쪽으로 스와이프: 다음 탭 (끝에서는 더 가지 않음)
+              const nextIndex = Math.min(tabOrder.length - 1, currentIndex + 1);
               switchToTab(tabOrder[nextIndex]);
             } else {
-              const prevIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+              // 오른쪽으로 스와이프: 이전 탭 (처음에서는 더 가지 않음)
+              const prevIndex = Math.max(0, currentIndex - 1);
               switchToTab(tabOrder[prevIndex]);
             }
-          } else {
-            if (track) track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
           }
-        }, { passive: true });
+
+          swipeArea.addEventListener('touchend', function(e) {
+            if (!dragging) return;
+            const touch = e.changedTouches[0];
+            const diff = touch.clientX - touchStartX;
+            finishSwipe(diff);
+          }, { passive: true });
+
+          swipeArea.addEventListener('touchcancel', function() {
+            if (!dragging) return;
+            finishSwipe(0);
+          }, { passive: true });
+        }
         
         // Add keyboard arrow key support
         document.addEventListener('keydown', function(e) {

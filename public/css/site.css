@@ -6654,7 +6654,8 @@ main.chat-page-main {
   border-bottom: 1px solid var(--border);
 }
 .calculator-page .dividend-swipe-area {
-  touch-action: pan-y pan-x;
+  /* 세로 스크롤은 그대로 두고, 가로 스와이프는 커스텀 처리 */
+  touch-action: pan-y;
   cursor: grab;
 }
 .calculator-page .dividend-swipe-area:active {
@@ -6687,6 +6688,10 @@ main.chat-page-main {
 }
 .calculator-page .result-panel--active {
   display: block;
+  visibility: visible;
+}
+.calculator-page .result-panel:not(.result-panel--active) {
+  visibility: hidden;
 }
 .calculator-page .result-section-title {
   font-size: 1rem;
