@@ -10,6 +10,50 @@
   --danger: #ff3366;
 }
 
+/* Light theme overrides applied when body.theme-light is set */
+body.theme-light {
+  --bg-dark: #ffffff;
+  --bg-card: #f7f7f8;
+  --border: #e6e6e8;
+  --neon: #0b7a3f;
+  --neon-dim: #0a6b36;
+  --neon-glow: rgba(11, 122, 63, 0.12);
+  --text: #0b1220;
+  --text-muted: #4b5563;
+  --danger: #c41d3a;
+}
+
+/* Ensure key numeric/data elements use --text in light theme (override any white) */
+body.theme-light .data-value,
+body.theme-light .data-value *,
+body.theme-light .analytics-result-value,
+body.theme-light .result-value,
+body.theme-light .value-krw,
+body.theme-light .analytics-stat-value,
+body.theme-light .price-col .data-value,
+body.theme-light #walletStakedDisplay,
+body.theme-light #unclaimedRewardDisplay,
+body.theme-light #walletTornBalanceDisplay,
+body.theme-light #dailyWalletRewardDisplay,
+body.theme-light #priceDisplayLeft,
+body.theme-light #priceDisplayCenter,
+body.theme-light #priceDisplayRight {
+  color: var(--text) !important;
+}
+
+/* Inputs and placeholders in light theme */
+body.theme-light input,
+body.theme-light textarea,
+body.theme-light select,
+body.theme-light .home-search-bar__input {
+  color: var(--text) !important;
+  background: transparent;
+}
+body.theme-light input::placeholder,
+body.theme-light textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -221,6 +265,28 @@ body::before {
 .nav-admin-center:hover {
   opacity: 0.85;
 }
+
+/* Theme toggle button placed at nav center (uses same positioning as .nav-admin-center) */
+.nav-theme-toggle { border: none; background: transparent; padding: 0.2rem; border-radius: 999px; cursor: pointer; }
+.nav-theme-toggle svg { width: 26px; height: 26px; display: block; }
+.nav-theme-toggle:hover { background: rgba(255,255,255,0.03); }
+body.theme-light .nav-theme-toggle:hover { background: rgba(0,0,0,0.04); }
+
+/* Ensure toggle is visible above other nav elements and uses theme-aware color */
+.nav-theme-toggle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 250;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon);
+  background: transparent;
+}
+.nav-theme-toggle svg { color: inherit; fill: currentColor; }
+body.theme-light .nav-theme-toggle { color: var(--neon); }
 
 .nav-chat-link {
   position: absolute;

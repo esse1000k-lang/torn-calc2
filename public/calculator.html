@@ -7,12 +7,12 @@
   <title>배당 조회 | TornFi Portfolio</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="/manifest.json">
-  <script src="js/pwa-env.js"></script>
-  <script src="js/autocomplete-off.js"></script>
+  <script src="js/pwa-env.js?v=20260310"></script>
+  <script src="js/autocomplete-off.js?v=20260310"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css">
+  <link rel="stylesheet" href="css/site.css?v=20260310">
   <style>
     #dailyWalletRewardDisplay { color:#ffd86b; font-weight:600; }
     #dailyRewardLabel { cursor:pointer; font-weight:600; }
@@ -23,6 +23,12 @@
     <div class="nav-brand">
       <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
     </div>
+    <button id="theme-toggle" class="nav-theme-toggle nav-admin-center" aria-label="테마 전환" title="라이트/다크 모드 전환">
+      <!-- default icon will be set by JS -->
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="5" fill="currentColor"></circle>
+      </svg>
+    </button>
     <a href="/chat.html" class="nav-chat-link" aria-label="초고속 채팅방">
       <span class="nav-chat-link__icon" aria-hidden="true">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -240,6 +246,46 @@
   </div>
 
   <script>
+    // Theme toggle button logic
+    (function(){
+      const btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      function isLight() { return document.body.classList.contains('theme-light'); }
+      function setMetaColor() { if (metaTheme) metaTheme.setAttribute('content', isLight() ? '#ffffff' : '#0a0a0b'); }
+      function renderIcon() {
+        if (isLight()) {
+          btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" fill="currentColor" />
+              <g stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" />
+                <line x1="18.4" y1="18.4" x2="19.8" y2="19.8" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.2" y1="19.8" x2="5.6" y2="18.4" />
+                <line x1="18.4" y1="5.6" x2="19.8" y2="4.2" />
+              </g>
+            </svg>`;
+        } else {
+          btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" />
+            </svg>`;
+        }
+      }
+      function toggleTheme() {
+        const light = !isLight();
+        if (light) document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light');
+        try { localStorage.setItem('torn_theme', light ? 'light' : 'dark'); } catch(e){}
+        setMetaColor(); renderIcon();
+      }
+      btn.addEventListener('click', toggleTheme);
+      // initial render
+      renderIcon(); setMetaColor();
+    })();
     (function () {
       const FEE_RATE = 0.003;
       const REFRESH_INTERVAL_MS = 12000;
@@ -489,11 +535,12 @@
           const k70 = krwForLimit(70000);
           const k120 = krwForLimit(120000);
           const k220 = krwForLimit(220000);
-          var theme = document.body.getAttribute('data-theme') || 'dark';
-          var labelColor = theme === 'light' ? 'var(--text)' : '#00ff88';
+          var isLightTheme = document.body.classList.contains('theme-light');
+          var labelColor = isLightTheme ? 'var(--text)' : '#00ff88';
+          var circleBg = isLightTheme ? 'var(--neon-dim)' : '#00ff88';
           gasPriceDisplay.innerHTML =
-            '<span aria-hidden=\"true\" style=\"display:inline-block;width:0.6em;height:0.6em;border-radius:50%;background:#00ff88;margin-right:0.35em;vertical-align:middle;\"></span>' +
-            '<span style=\"color:' + labelColor + '\">가스비 실시간 측정</span>';
+            '<span aria-hidden="true" style="display:inline-block;width:0.6em;height:0.6em;border-radius:50%;background:' + circleBg + ';margin-right:0.35em;vertical-align:middle;"></span>' +
+            '<span style="color:' + labelColor + '">가스비 실시간 측정</span>';
           gasPriceDisplay.style.color = labelColor;
           gasPriceDisplay.style.fontSize = '0.9rem';
           gasPriceDisplay.style.lineHeight = '1.15';
