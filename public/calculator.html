@@ -83,6 +83,25 @@
       </div>
       <p class="hint">TORN 시세, DEX / CEX 활용, 김치프리미엄 BTC 기반 반영(국내 미상장), 스테이킹 정보 이더스캔(etherscan)</p>
     </div>
+    
+    <!-- One-line news slot between 정보 and 조회 -->
+    <div class="card card-news" id="oneLineNews" aria-live="polite" aria-atomic="true">
+      <div class="news-label">NEWS</div>
+      <div class="news-inner" id="newsInner">
+        <a id="newsLink" class="news-line current" href="#" target="_blank" rel="noopener">
+          <div class="news-content">
+            <span class="news-text">로딩 중...</span>
+            <span class="news-meta" aria-hidden="true"></span>
+          </div>
+        </a>
+        <a id="newsLinkNext" class="news-line next" href="#" target="_blank" rel="noopener" aria-hidden="true">
+          <div class="news-content">
+            <span class="news-text"></span>
+            <span class="news-meta" aria-hidden="true"></span>
+          </div>
+        </a>
+      </div>
+    </div>
 
     <div class="card">
       <div class="card-title">🌪️ 조회</div>
@@ -1032,6 +1051,9 @@
         switchToTab('eth');
       })();
 
+        // NEWS widget moved to external script: public/js/news-widget.js
+        // The widget will fetch /api/news/latest and populate the one-line news UI.
+
       userTornInput.addEventListener('input', calculate);
       userTornInput.addEventListener('change', calculate);
       totalPoolInput.addEventListener('input', function(){ calculate(); updateYesterdayPersonalReward(); });
@@ -1056,5 +1078,6 @@
       setInterval(updatePremiumData, PREMIUM_REFRESH_INTERVAL_MS);
     })();
   </script>
+  <script src="js/news-widget.js?v=20260310"></script>
 </body>
 </html>

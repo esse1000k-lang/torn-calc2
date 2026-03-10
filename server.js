@@ -8,6 +8,9 @@ const http = require('http');
 const { Server } = require('socket.io');
 const multer = require('multer');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
+const axios = require('axios');
+const RSSParser = require('rss-parser');
+const rssParser = new RSSParser();
 const db = require('./lib/db');
 const chatDB = require('./db-sqlite');
 
@@ -56,6 +59,9 @@ const CALC_TOTAL_STAKED_CACHE_TTL_MS = 60 * 1000;
 let calcPriceCache = null;
 let calcPremiumCache = null;
 let calcTotalStakedCache = null;
+// News cache
+let newsCache = null; // { at: ms, data: [...] }
+const NEWS_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes (less frequent for low-activity topic)
 
 const chatLastSentAt = new Map();
 
@@ -642,6 +648,127 @@ app.get('/api/calculator/wallet', async (req, res) => {
     res.status(502).json({ ok: false, message: error?.message || '지갑 조회에 실패했습니다.' });
   }
 });
+
+// News endpoint: gather only Korean RSS feeds, dedupe and cache results
+let newsFetchInProgress = false;
+async function fetchAndCacheNews() {
+  if (newsFetchInProgress) return;
+  newsFetchInProgress = true;
+  try {
+    // Use only the three Korean RSS sources provided by user
+    const sources = [
+      { name: 'CoinDesk Korea', url: 'https://www.coindeskkorea.com/rss/allArticle.xml' },
+      { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
+      { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' }
+    ];
+    const results = [];
+
+    // keywords: focus on user-requested terms plus safe variants
+    const NEWS_KEYWORDS = ['토네이도 캐시', 'tornadocash', 'tornado cash', 'torn'];
+
+    // helper: try parsing RSS; if it fails, fetch the page and look for an RSS link or parse returned XML
+    async function parseFeedWithFallback(url) {
+      try {
+        return await rssParser.parseURL(url);
+      } catch (err) {
+        try {
+          const resp = await axios.get(url, { timeout: 10000 });
+          const html = String(resp.data || '');
+          // look for <link type="application/rss+xml" href="...">
+          let m = html.match(/<link[^>]+type=["']application\/rss\+xml["'][^>]*href=["']([^"']+)["']/i);
+          if (!m) m = html.match(/href=["']([^"']+\.(?:xml|rss|atom))["']/i);
+          if (m && m[1]) {
+            try {
+              const feedUrl = new URL(m[1], url).toString();
+              return await rssParser.parseURL(feedUrl);
+            } catch (e2) {
+              // fallthrough to parseString
+            }
+          }
+          // as a last resort, try to parse the fetched body as XML
+          return await rssParser.parseString(html);
+        } catch (e) {
+          throw err;
+        }
+      }
+    }
+
+    for (const s of sources) {
+      try {
+        const feed = await parseFeedWithFallback(s.url);
+        if (feed && Array.isArray(feed.items)) {
+          feed.items.forEach(item => results.push({
+            source: s.name,
+            title: item.title || '',
+            link: item.link || item.guid || '',
+            isoDate: item.isoDate || item.pubDate || null,
+            summary: item.contentSnippet || item.summary || item.content || ''
+          }));
+        }
+      } catch (e) {
+        console.error(`${s.name} RSS fetch failed:`, e && e.message);
+      }
+    }
+
+    // dedupe and filter recent
+    const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const map = new Map();
+    results.forEach(it => {
+      const title = String(it.title || '');
+      const key = (it.link || title).trim();
+      if (!key) return;
+      if (map.has(key)) return;
+      let ts = 0;
+      try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch(e) { ts = 0; }
+      const tLower = title.toLowerCase();
+      if (!NEWS_KEYWORDS.some(kw => tLower.includes(kw))) return;
+      if (ts && ts < weekAgo) return;
+      map.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
+    });
+
+    const items = Array.from(map.values()).sort((a,b)=> (b.timestamp||0)-(a.timestamp||0)).slice(0,50);
+
+    // Using Korean RSS sources; no translation step required here.
+
+    newsCache = { at: Date.now(), data: items };
+    try { ensureDataDir(); writeJsonSafe(path.join(DATA_DIR, 'news_raw.json'), items); } catch (e) { console.warn('failed to write news_raw.json', e && e.message); }
+    return items;
+  } finally {
+    newsFetchInProgress = false;
+  }
+}
+
+// API: return cache-only; trigger background fetch when appropriate
+app.get('/api/news/latest', async (req, res) => {
+  try {
+    const now = Date.now();
+    if (newsCache && (now - newsCache.at) < NEWS_CACHE_TTL_MS) return res.json({ ok: true, source: 'cache', items: newsCache.data });
+    if (newsCache) {
+      // return stale but trigger background refresh
+      fetchAndCacheNews().catch(() => {});
+      return res.json({ ok: true, source: 'stale', items: newsCache.data });
+    }
+    // no cache: start background fetch and return empty immediately
+    fetchAndCacheNews().catch(() => {});
+    return res.json({ ok: true, source: 'pending', items: [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, message: 'news unavailable' });
+  }
+});
+
+// Force refresh endpoint (admin/manual)
+app.post('/api/news/refresh', async (req, res) => {
+  try {
+    await fetchAndCacheNews();
+    return res.json({ ok: true, items: newsCache ? newsCache.data : [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, message: 'refresh failed' });
+  }
+});
+
+// Schedule periodic background fetch (startup + interval)
+setTimeout(() => { fetchAndCacheNews().catch(()=>{}); }, 1000);
+setInterval(() => { fetchAndCacheNews().catch(()=>{}); }, NEWS_CACHE_TTL_MS);
 
 
 

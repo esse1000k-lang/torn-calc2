@@ -6702,6 +6702,99 @@ main.chat-page-main {
   margin-bottom: 0.75rem;
   padding-top: 0.25rem;
 }
+
+/* One-line news card (simple vertical ticker that alternates top/bottom visual) */
+.calculator-page .card-news {
+  margin: 0 0 1.25rem 0;
+  padding: 0.7rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.08));
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.calculator-page .news-inner {
+  position: relative;
+  height: 2.25rem;
+  flex: 1 1 auto;
+}
+.calculator-page .news-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+  transform: translateY(0%);
+  transition: transform 0.38s cubic-bezier(.22,.61,.36,1), opacity 0.22s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calculator-page .news-line { height: 100%; }
+.calculator-page .news-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.calculator-page .news-line .news-text {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.98rem;
+  line-height: 1.15;
+  display: inline-block;
+  max-width: calc(100% - 7.5rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calculator-page .news-line .news-meta {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.calculator-page .news-line.next { transform: translateY(100%); opacity: 0; }
+.calculator-page .news-line.anim-out { transform: translateY(-100%); opacity: 0; }
+.calculator-page .news-line.anim-in { transform: translateY(0%); opacity: 1; }
+
+.calculator-page .news-label {
+  flex: 0 0 auto;
+  background: rgba(255,90,90,0.06);
+  color: #ff5c5c;
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.calculator-page .card-news:hover { box-shadow: 0 6px 22px rgba(0,0,0,0.55); }
+
+/* Dark-mode specific adjustments: increase contrast so card is visible */
+/* Ensure news card matches other cards (조회 박스) for consistent background */
+.calculator-page .card-news {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.calculator-page .card-news .news-label {
+  background: rgba(255,92,92,0.08);
+  color: #ff6b6b;
+}
 .calculator-page .result-section-title .result-section-price {
   text-transform: none;
   letter-spacing: 0;
