@@ -10,6 +10,9 @@
   --danger: #ff3366;
 }
 
+/* Load a readable, thin Korean webfont for news text */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500&display=swap');
+
 /* Light theme overrides applied when body.theme-light is set */
 body.theme-light {
   --bg-dark: #ffffff;
@@ -6752,12 +6755,14 @@ main.chat-page-main {
   gap: 0.5rem;
 }
 .calculator-page .news-line .news-text {
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 0.98rem;
+  color: var(--text);
+  font-family: 'Noto Sans KR', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-weight: 300; /* thin but readable */
+  font-size: calc(0.98rem - 0.125rem); /* reduce ~2px */
   line-height: 1.15;
-  display: inline-block;
-  max-width: calc(100% - 7.5rem);
+  display: block;
+  flex: 1 1 auto;
+  max-width: none; /* allow element to occupy full available space */
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -6768,9 +6773,17 @@ main.chat-page-main {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.calculator-page .news-line.next { transform: translateY(100%); opacity: 0; }
-.calculator-page .news-line.anim-out { transform: translateY(-100%); opacity: 0; }
-.calculator-page .news-line.anim-in { transform: translateY(0%); opacity: 1; }
+.calculator-page .news-line.next { transform: translateY(100%) translateZ(0); opacity: 0; }
+.calculator-page .news-line.anim-out {
+  transform: translateY(-120%) translateZ(0) rotateX(6deg) scale(0.995);
+  opacity: 0;
+  transition: transform 520ms cubic-bezier(.2,1,.22,1), opacity 420ms ease;
+}
+.calculator-page .news-line.anim-in {
+  transform: translateY(0%) translateZ(0) rotateX(0deg) scale(1);
+  opacity: 1;
+  transition: transform 520ms cubic-bezier(.2,1,.22,1), opacity 420ms ease;
+}
 
 .calculator-page .news-label {
   flex: 0 0 auto;
@@ -6783,6 +6796,7 @@ main.chat-page-main {
   letter-spacing: 0.12em;
 }
 
+/* Hover / click affordances for news to invite interaction */
 .calculator-page .card-news:hover { box-shadow: 0 6px 22px rgba(0,0,0,0.55); }
 
 /* Dark-mode specific adjustments: increase contrast so card is visible */

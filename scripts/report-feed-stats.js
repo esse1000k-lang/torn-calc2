@@ -3,12 +3,12 @@ const axios = require('axios');
 const parser = new RSSParser();
 
 const feeds = [
-  { name: 'CoinDesk Korea', url: 'https://www.coindeskkorea.com/rss/allArticle.xml' },
   { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
-  { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' }
+  { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' },
+  { name: 'Google News (KR)', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' }
 ];
 
-const KW = ['토네이도 캐시','tornadocash','tornado cash','torn'];
+const KW = ['토네이도 캐시','토네이도','토네이도캐시','tornadocash','tornado cash','tornado','torn'];
 
 async function parseFeedWithFallback(url) {
   try {

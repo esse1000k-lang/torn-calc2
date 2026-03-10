@@ -2,52 +2,330 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
   <title>뉴스 기록 | TornFi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css?v=20260310">
   <style>
-    body { background: #070707; color: #e6fef0; font-family: 'Noto Sans KR', sans-serif; }
-    .wrap { max-width: 760px; margin: 2rem auto; padding: 1rem; }
-    h1 { margin-bottom: 0.5rem; color: var(--neon); }
-    .history-list { margin-top: 1rem; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.04); }
-    .history-item { display:flex; gap:0.75rem; align-items:flex-start; padding:0.9rem; border-bottom:1px solid rgba(255,255,255,0.02); }
+    /* ── News page styles (matches calculator-page card design) ── */
+    body.news-page { padding-top: 50px; }
+
+    .news-container {
+      position: relative; z-index: 1;
+      max-width: 620px; margin: 0 auto;
+      padding: 0.5rem 1.5rem 2rem;
+    }
+
+    /* Hero banner */
+    @keyframes news-hero-shine {
+      0%,100% { transform: translateX(-100%); opacity: 0; }
+      50%     { transform: translateX(200%); opacity: 1; }
+    }
+    .news-hero {
+      text-align: center;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, rgba(0,255,136,0.07) 0%, rgba(255,215,0,0.05) 50%, transparent 100%);
+      border: 1px solid rgba(0,255,136,0.15);
+      border-radius: 16px;
+      padding: 1.5rem 1.25rem;
+      position: relative; overflow: hidden;
+    }
+    .news-hero::before {
+      content: '📰'; position: absolute;
+      top: 50%; left: 80%;
+      transform: translate(-50%,-50%);
+      font-size: 8rem; opacity: 0.045;
+      pointer-events: none;
+    }
+    .news-hero::after {
+      content: ''; position: absolute;
+      top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      animation: news-hero-shine 7s infinite;
+    }
+    .news-hero__title {
+      position: relative; z-index: 1;
+      font-size: 1.3rem; font-weight: 700;
+      color: var(--neon);
+      letter-spacing: 0.04em; margin: 0 0 0.3rem;
+      text-shadow: 0 0 18px rgba(0,255,136,0.2);
+    }
+    .news-hero__desc {
+      position: relative; z-index: 1;
+      font-size: 0.78rem; font-weight: 500;
+      color: var(--text-muted);
+      margin: 0; line-height: 1.4;
+    }
+
+    /* Back link */
+    .news-back {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      color: var(--text-muted); text-decoration: none;
+      font-size: 0.8rem; font-weight: 500;
+      margin-bottom: 1rem;
+      transition: color 0.15s;
+    }
+    .news-back:hover { color: var(--neon); }
+    .news-back svg { width: 16px; height: 16px; }
+
+    /* Card wrapper */
+    .news-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .news-card__header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .news-card__title {
+      font-size: 0.95rem; font-weight: 700;
+      color: var(--neon); letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .news-card__count {
+      font-size: 0.72rem; color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Empty state */
+    .news-empty {
+      text-align: center; padding: 2.5rem 1rem;
+      color: var(--text-muted); font-size: 0.85rem;
+    }
+    .news-empty__icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
+    /* Item list */
+    .history-list { list-style: none; padding: 0; margin: 0; }
+
+    @keyframes news-item-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .history-item {
+      display: flex; align-items: flex-start; gap: 0.85rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      animation: news-item-in 0.35s ease both;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 6px;
+      margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem;
+    }
     .history-item:last-child { border-bottom: none; }
-    .hi-title { color: var(--neon); font-weight:700; font-size:1rem; }
-    .hi-meta { color: var(--text-muted); font-size:0.85rem; margin-top:0.25rem; }
-    .controls { display:flex; gap:0.5rem; margin-bottom:0.75rem; }
-    a.back { color: var(--text); text-decoration:none; margin-right: auto; }
-    button{ background: rgba(255,255,255,0.03); color:var(--text); border:1px solid rgba(255,255,255,0.04); padding:0.45rem 0.7rem; border-radius:6px; cursor:pointer }
+    .history-item:hover { background: rgba(0,255,136,0.03); }
+
+    /* Source badge */
+    .hi-badge {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2.2rem; height: 2.2rem;
+      border-radius: 8px;
+      font-size: 0.65rem; font-weight: 700;
+      color: #000; line-height: 1;
+      text-transform: uppercase;
+      margin-top: 0.1rem;
+    }
+    .hi-badge--tp  { background: linear-gradient(135deg, #00ff88, #00cc6a); }
+    .hi-badge--bm  { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    .hi-badge--gn  { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+    .hi-badge--etc { background: linear-gradient(135deg, #a78bfa, #7c3aed); }
+
+    .hi-body { flex: 1; min-width: 0; }
+
+    .hi-title {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.88rem; font-weight: 500;
+      color: var(--text); line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+      transition: color 0.15s;
+    }
+    .history-item:hover .hi-title { color: var(--neon); }
+
+    .hi-meta {
+      display: flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.3rem;
+      font-size: 0.72rem; color: var(--text-muted);
+    }
+    .hi-meta__source { font-weight: 600; }
+    .hi-meta__dot { opacity: 0.35; }
+    .hi-meta__time { font-variant-numeric: tabular-nums; }
+
+    /* ── Detail Modal ── */
+    .detail-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center; justify-content: center;
+      animation: modal-bg-in 0.2s ease;
+    }
+    @keyframes modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modal-card-in {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .detail-card {
+      max-width: 620px; width: calc(100% - 2rem);
+      margin: auto; padding: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      animation: modal-card-in 0.25s ease;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .detail-card__head {
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .detail-card__title {
+      font-size: 1.05rem; font-weight: 700;
+      color: var(--neon); line-height: 1.4; margin: 0;
+    }
+    .detail-card__close {
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.04); color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px; padding: 0.35rem 0.65rem;
+      font-size: 0.78rem; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .detail-card__close:hover { background: rgba(0,255,136,0.08); color: var(--neon); }
+    .detail-card__meta {
+      font-size: 0.78rem; color: var(--text-muted);
+      margin-bottom: 1rem; padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-card__summary {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.88rem; line-height: 1.7;
+      color: var(--text); white-space: pre-line;
+    }
+    .detail-card__link {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      margin-top: 1.25rem; padding: 0.5rem 1rem;
+      background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.04));
+      border: 1px solid rgba(0,255,136,0.2);
+      border-radius: 8px;
+      color: var(--neon); text-decoration: none;
+      font-size: 0.82rem; font-weight: 600;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .detail-card__link:hover {
+      background: linear-gradient(135deg, rgba(0,255,136,0.18), rgba(0,255,136,0.08));
+      box-shadow: 0 0 12px rgba(0,255,136,0.15);
+    }
+
+    /* Bottom area */
+    .news-page-bottom {
+      text-align: center; padding: 1.5rem 0 1rem;
+      font-size: 0.72rem; color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .news-container { padding: 0.5rem 1rem 1.5rem; }
+      .news-hero { padding: 1.2rem 1rem; }
+      .news-hero__title { font-size: 1.15rem; }
+      .news-card { padding: 1rem; }
+      .hi-badge { width: 1.9rem; height: 1.9rem; font-size: 0.58rem; }
+      .detail-card { padding: 1.25rem; }
+    }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="controls">
-      <a class="back" href="/calculator.html">← 배당 조회로 돌아가기</a>
+<body class="news-page">
+  <!-- Navigation (same as home) -->
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
     </div>
-    <h1>뉴스 기록</h1>
-    <div id="empty" style="color:var(--text-muted)">최근 180일 이내에 본 뉴스가 없습니다.</div>
-    <div class="history-list" id="historyList" style="display:none"></div>
-    <div id="detailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
-      <div style="max-width:760px; width:calc(100% - 2rem); margin:auto; background:#0b0b0b; padding:1rem; border-radius:8px; border:1px solid rgba(255,255,255,0.04);">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
-          <h2 id="detailTitle" style="margin:0; font-size:1.1rem; color:var(--neon)"></h2>
-          <button id="detailClose">닫기</button>
-        </div>
-        <div id="detailMeta" style="color:var(--text-muted); font-size:0.9rem; margin-top:0.25rem"></div>
-        <div id="detailSummary" style="margin-top:0.75rem; line-height:1.5; color:var(--text);"></div>
-        <div style="margin-top:0.75rem"><a id="detailLink" href="#" target="_blank" rel="noopener" style="color:var(--neon);">원문 보기</a></div>
+    <a href="/chat.html" class="nav-chat-link" aria-label="초고속 채팅방">
+      <span class="nav-chat-link__icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21 6.5C21 4.01472 18.9853 2 16.5 2H7.5C5.01472 2 3 4.01472 3 6.5V13.5C3 15.9853 5.01472 18 7.5 18H8.625L9.75 21L14.625 18H16.5C18.9853 18 21 15.9853 21 13.5V6.5Z" fill="#00ff88"/>
+          <path d="M8 10.5C8 11.0523 7.55228 11.5 7 11.5C6.44772 11.5 6 11.0523 6 10.5C6 9.94772 6.44772 9.5 7 9.5C7.55228 9.5 8 9.94772 8 10.5Z" fill="black"/>
+          <path d="M13 10.5C13 11.0523 12.5523 11.5 12 11.5C11.4477 11.5 11 11.0523 11 10.5C11 9.94772 11.4477 9.5 12 9.5C12.5523 9.5 13 9.94772 13 10.5Z" fill="black"/>
+          <path d="M18 10.5C18 11.0523 17.5523 11.5 17 11.5C16.4477 11.5 16 11.0523 16 10.5C16 9.94772 16.4477 9.5 17 9.5C17.5523 9.5 18 9.94772 18 10.5Z" fill="black"/>
+        </svg>
+      </span>
+    </a>
+  </nav>
+
+  <div class="news-container">
+    <!-- Back link -->
+    <a href="/calculator.html" class="news-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      배당 조회로 돌아가기
+    </a>
+
+    <!-- Hero -->
+    <header class="news-hero">
+      <h1 class="news-hero__title">🌪️ 뉴스 기록</h1>
+      <p class="news-hero__desc">Tornado Cash &amp; TORN 관련 최신 뉴스 모아보기</p>
+    </header>
+
+    <!-- Card -->
+    <div class="news-card">
+      <div class="news-card__header">
+        <span class="news-card__title">📋 전체 기사</span>
+        <span class="news-card__count" id="newsCount"></span>
       </div>
+      <div id="empty" class="news-empty" style="display:none">
+        <div class="news-empty__icon">🔍</div>
+        최근 180일 이내 뉴스가 없습니다.
+      </div>
+      <div class="history-list" id="historyList" style="display:none"></div>
+    </div>
+
+    <div class="news-page-bottom">© 2026 Torn<span style="color:var(--neon)">Fi</span> Portfolio</div>
+  </div>
+
+  <!-- Detail modal -->
+  <div class="detail-overlay" id="detailModal">
+    <div class="detail-card">
+      <div class="detail-card__head">
+        <h2 class="detail-card__title" id="detailTitle"></h2>
+        <button class="detail-card__close" id="detailClose">✕ 닫기</button>
+      </div>
+      <div class="detail-card__meta" id="detailMeta"></div>
+      <div class="detail-card__summary" id="detailSummary"></div>
+      <a class="detail-card__link" id="detailLink" href="#" target="_blank" rel="noopener">원문 보기 →</a>
     </div>
   </div>
+
+  <script>
+    // Sync theme preference saved by calculator page so news page shows correct colors
+    (function(){
+      try {
+        const t = localStorage.getItem('torn_theme');
+        if (t === 'light') document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light');
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', document.body.classList.contains('theme-light') ? '#ffffff' : '#0a0a0b');
+      } catch(e){}
+    })();
+  </script>
 
   <script>
     const KEY = 'one_line_news_history_v1';
     const listEl = document.getElementById('historyList');
     const emptyEl = document.getElementById('empty');
+    const countEl = document.getElementById('newsCount');
 
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c];}); }
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
 
-    // 180일(밀리초)
     const KEEP_MS = 180 * 24 * 60 * 60 * 1000;
 
     function pruneOldEntries() {
@@ -55,93 +333,130 @@
         const raw = localStorage.getItem(KEY);
         const arr = raw ? JSON.parse(raw) : [];
         const cutoff = Date.now() - KEEP_MS;
-        const kept = arr.filter(function(it){
+        const kept = arr.filter(function (it) {
           const t = it.shownAt || it.time || it.published;
           if (!t) return false;
           const ts = Date.parse(t);
           return !isNaN(ts) && ts >= cutoff;
         });
-        if (kept.length !== arr.length) {
-          localStorage.setItem(KEY, JSON.stringify(kept));
-        }
+        if (kept.length !== arr.length) localStorage.setItem(KEY, JSON.stringify(kept));
         return kept;
-      } catch (e) { console.error(e); return []; }
+      } catch (e) { return []; }
+    }
+
+    /* Source → badge class & label */
+    function badgeFor(src) {
+      const s = String(src || '').toLowerCase();
+      if (s.includes('tokenpost') || s.includes('토큰포스트')) return { cls: 'hi-badge--tp', label: 'TP' };
+      if (s.includes('block media') || s.includes('블록미디어') || s.includes('blockmedia')) return { cls: 'hi-badge--bm', label: 'BM' };
+      if (s.includes('google')) return { cls: 'hi-badge--gn', label: 'GN' };
+      return { cls: 'hi-badge--etc', label: 'NS' };
+    }
+
+    /* Relative time */
+    function relTime(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d)) return '';
+      const diff = Date.now() - d.getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return '방금 전';
+      if (mins < 60) return mins + '분 전';
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + '시간 전';
+      const days = Math.floor(hrs / 24);
+      if (days < 30) return days + '일 전';
+      const months = Math.floor(days / 30);
+      if (months < 12) return months + '개월 전';
+      return Math.floor(months / 12) + '년 전';
     }
 
     let itemsGlobal = [];
+
     function renderItems(items) {
       if (!items || items.length === 0) {
         emptyEl.style.display = '';
         listEl.style.display = 'none';
+        countEl.textContent = '';
         return;
       }
       itemsGlobal = items.slice();
       emptyEl.style.display = 'none';
       listEl.style.display = '';
       listEl.innerHTML = '';
+      countEl.textContent = items.length + '건';
+
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
+        const text = it.title_ko || it.title || it.text || it.headline || '';
+        const src = it.source || '';
+        const badge = badgeFor(src);
+        const timeStr = it.isoDate || it.pubDate || it.time || it.shownAt || it.published || '';
+        const rel = relTime(timeStr);
+
         const div = document.createElement('div');
         div.className = 'history-item';
-        const left = document.createElement('div');
-        left.style.flex = '1';
-        const url = it.url || it.link || '#';
-        const text = it.title_ko || it.title || it.text || it.headline || '';
-        const shownAt = it.shownAt ? new Date(it.shownAt) : (it.published ? new Date(it.published) : null);
-        const shownLabel = shownAt ? shownAt.toLocaleString() : '';
-        left.innerHTML = `<div class="hi-title"><a href="#" data-idx="${i}" class="open-detail" style="color:inherit;text-decoration:none">${escapeHtml(text)}</a></div>`;
-        const meta = document.createElement('div');
-        meta.className = 'hi-meta';
-        meta.innerHTML = `${escapeHtml(it.source||'')} ${it.time?('· '+escapeHtml(it.time)) : ''} ${shownLabel?('· '+escapeHtml(shownLabel)) : ''}`;
-        left.appendChild(meta);
-        div.appendChild(left);
+        div.style.animationDelay = Math.min(i * 0.04, 0.6) + 's';
+        div.setAttribute('data-idx', i);
+        div.innerHTML =
+          '<div class="hi-badge ' + esc(badge.cls) + '">' + esc(badge.label) + '</div>' +
+          '<div class="hi-body">' +
+            '<div class="hi-title">' + esc(text) + '</div>' +
+            '<div class="hi-meta">' +
+              '<span class="hi-meta__source">' + esc(src) + '</span>' +
+              (rel ? '<span class="hi-meta__dot">·</span><span class="hi-meta__time">' + esc(rel) + '</span>' : '') +
+            '</div>' +
+          '</div>';
+        div.addEventListener('click', function () { openDetail(Number(this.getAttribute('data-idx'))); });
         listEl.appendChild(div);
       }
-
-      // attach detail handlers
-      const links = listEl.querySelectorAll('.open-detail');
-      links.forEach(function(a){
-        a.addEventListener('click', function(e){ e.preventDefault(); const idx = Number(this.getAttribute('data-idx')); openDetail(idx); });
-      });
     }
 
     function openDetail(idx) {
       const it = itemsGlobal[idx];
       if (!it) return;
       const modal = document.getElementById('detailModal');
-      const t = document.getElementById('detailTitle');
-      const m = document.getElementById('detailMeta');
-      const s = document.getElementById('detailSummary');
-      const l = document.getElementById('detailLink');
-      t.textContent = it.title_ko || it.title || '';
-      const shownAt = it.shownAt ? new Date(it.shownAt) : (it.published ? new Date(it.published) : null);
-      m.textContent = `${it.source || ''} ${shownAt ? '· '+shownAt.toLocaleString() : ''}`;
-      s.innerHTML = escapeHtml(it.summary_ko || it.summary || '');
-      l.href = it.link || it.url || '#';
+      document.getElementById('detailTitle').textContent = it.title_ko || it.title || '';
+      const timeStr = it.isoDate || it.pubDate || it.time || it.shownAt || it.published || '';
+      const rel = relTime(timeStr);
+      document.getElementById('detailMeta').textContent =
+        (it.source || '') + (rel ? ' · ' + rel : '') +
+        (timeStr ? ' · ' + new Date(timeStr).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
+      const summary = it.summary_ko || it.summary || '';
+      document.getElementById('detailSummary').textContent = summary;
+      document.getElementById('detailLink').href = it.link || it.url || '#';
       modal.style.display = 'flex';
-      document.getElementById('detailClose').onclick = function(){ modal.style.display='none'; };
-      modal.onclick = function(e){ if (e.target === modal) modal.style.display='none'; };
+      document.getElementById('detailClose').onclick = function () { modal.style.display = 'none'; };
+      modal.onclick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
     }
+
+    /* ESC to close modal */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') document.getElementById('detailModal').style.display = 'none';
+    });
 
     async function loadRemoteThenLocal() {
       try {
-        const resp = await fetch('/api/news/latest', {cache: 'no-store'});
+        const resp = await fetch('/api/news/latest', { cache: 'no-store' });
         if (resp.ok) {
           const data = await resp.json();
-          if (data && data.ok && Array.isArray(data.items) && data.items.length>0) {
-            // show server items but still prune local storage
+          if (data && data.ok && Array.isArray(data.items) && data.items.length > 0) {
             pruneOldEntries();
-            // render server items (most recent first)
-            renderItems(data.items.slice().reverse());
+            renderItems(data.items);
             return;
           }
         }
       } catch (e) { console.warn('remote failed', e); }
-      // fallback: render local pruned items (most recent first)
+      try {
+        const raw = await fetch('/data/news_raw.json', { cache: 'no-store' });
+        if (raw.ok) {
+          const arr = await raw.json();
+          if (Array.isArray(arr) && arr.length) { pruneOldEntries(); renderItems(arr); return; }
+        }
+      } catch (e) { console.warn('static fallback failed', e); }
       const keptLocal = pruneOldEntries();
       renderItems(keptLocal.slice().reverse());
     }
 
-    // 초기 로드
     loadRemoteThenLocal();
   </script>

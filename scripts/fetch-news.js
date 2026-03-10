@@ -10,14 +10,18 @@ const OUT_FILE = path.join(__dirname, '..', 'data', 'news_raw.json');
 async function getTornadoNews() {
   console.log("🌪️ Tornado Cash & TORN 데이터 수집 시작...");
   let allNews = [];
-  // focus on user-requested keywords (plus safe variants)
-  const NEWS_KEYWORDS = ['토네이도 캐시', 'tornadocash', 'tornado cash', 'torn'];
+  // expanded keywords to catch common variants
+  const NEWS_KEYWORDS = [
+    '토네이도 캐시', '토네이도', '토네이도캐시',
+    'tornadocash', 'tornado cash', 'tornado',
+    'torn', 'torn.'
+  ];
 
-  // Use the three user-provided Korean RSS feeds
+  // Use three Korean RSS sources: TokenPost, Block Media, Google News (KR)
   const sources = [
-    { name: 'CoinDesk Korea', url: 'https://www.coindeskkorea.com/rss/allArticle.xml' },
     { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
-    { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' }
+    { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' },
+    { name: 'Google News (KR)', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' }
   ];
 
   try {
@@ -62,14 +66,27 @@ async function getTornadoNews() {
       }
     }
 
-    // 중복 제거 + 키워드 필터
+    // 중복 제거 + 키워드 필터 + 최근 180일로 제한
+    const retentionDays = 180;
+    const cutoff = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
     const unique = Array.from(new Map(allNews.map(i => [ (i.title||'').trim(), i ])).values())
       .filter(item => {
         const t = ((item.title||'') + ' ' + (item.summary||'')).toLowerCase();
+        // parse pubDate if present and skip older items
+        let ts = 0;
+        try { ts = item.pubDate ? Date.parse(item.pubDate) : 0; } catch (e) { ts = 0; }
+        if (ts && ts < cutoff) return false;
         return NEWS_KEYWORDS.some(kw => t.includes(kw));
       });
 
-    const processed = unique;
+    // sort newest-first and cap to 50 items for storage
+    const processed = Array.from(unique).sort((a,b) => {
+      const ta = a.pubDate || a.isoDate || a.timestamp || '';
+      const tb = b.pubDate || b.isoDate || b.timestamp || '';
+      const sa = isNaN(Date.parse(ta)) ? 0 : Date.parse(ta);
+      const sb = isNaN(Date.parse(tb)) ? 0 : Date.parse(tb);
+      return sb - sa;
+    }).slice(0, 50);
 
     // ensure data dir
     const outDir = path.dirname(OUT_FILE);

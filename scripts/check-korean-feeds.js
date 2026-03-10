@@ -4,9 +4,9 @@ const parser = new RSSParser();
 // use a fallback-aware parse helper to handle feeds that expose RSS via HTML
 (async ()=>{
   const feeds = [
-    { name: 'CoinDesk Korea', url: 'https://www.coindeskkorea.com/rss/allArticle.xml' },
     { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
-    { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' }
+    { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' },
+    { name: 'Google News (KR)', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' }
   ];
 
   async function parseFeedWithFallback(url) {

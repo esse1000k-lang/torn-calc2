@@ -655,16 +655,20 @@ async function fetchAndCacheNews() {
   if (newsFetchInProgress) return;
   newsFetchInProgress = true;
   try {
-    // Use only the three Korean RSS sources provided by user
+    // Use only the three Korean RSS sources: TokenPost, Block Media, Google News (KR)
     const sources = [
-      { name: 'CoinDesk Korea', url: 'https://www.coindeskkorea.com/rss/allArticle.xml' },
       { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
-      { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' }
+      { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' },
+      { name: 'Google News (KR)', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' }
     ];
     const results = [];
 
-    // keywords: focus on user-requested terms plus safe variants
-    const NEWS_KEYWORDS = ['토네이도 캐시', 'tornadocash', 'tornado cash', 'torn'];
+    // keywords: expanded set to catch variants
+    const NEWS_KEYWORDS = [
+      '토네이도 캐시', '토네이도', '토네이도캐시',
+      'tornadocash', 'tornado cash', 'tornado',
+      'torn', 'torn.'
+    ];
 
     // helper: try parsing RSS; if it fails, fetch the page and look for an RSS link or parse returned XML
     async function parseFeedWithFallback(url) {
@@ -710,8 +714,9 @@ async function fetchAndCacheNews() {
       }
     }
 
-    // dedupe and filter recent
-    const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    // dedupe and filter recent (last 30 days)
+      const retentionDays = 180;
+      const cutoff = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
     const map = new Map();
     results.forEach(it => {
       const title = String(it.title || '');
@@ -722,7 +727,7 @@ async function fetchAndCacheNews() {
       try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch(e) { ts = 0; }
       const tLower = title.toLowerCase();
       if (!NEWS_KEYWORDS.some(kw => tLower.includes(kw))) return;
-      if (ts && ts < weekAgo) return;
+        if (ts && ts < cutoff) return;
       map.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
     });
 

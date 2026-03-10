@@ -38,29 +38,63 @@
     if (lbl) { lbl.style.cursor = 'pointer'; lbl.addEventListener('click', () => window.location.href = '/news.html'); }
     if (!cur || !nxt) return;
 
-    const items = await fetchNews();
+    let items = await fetchNews();
+    // sort newest-first and keep only the 7 most recent for the home ticker
+    items = (Array.isArray(items) ? items.slice() : []).sort((a,b) => {
+      const ta = a.isoDate || a.pubDate || a.timestamp || '';
+      const tb = b.isoDate || b.pubDate || b.timestamp || '';
+      const sa = isNaN(Date.parse(ta)) ? 0 : Date.parse(ta);
+      const sb = isNaN(Date.parse(tb)) ? 0 : Date.parse(tb);
+      return sb - sa;
+    }).slice(0, 7);
     if (!items || items.length === 0) {
       cur.querySelector('.news-text').textContent = '새로운 뉴스가 없습니다.';
       return;
     }
 
     let idx = 0;
-    function show(i) {
-      const it = items[i];
-      cur.querySelector('.news-text').textContent = textFor(it).slice(0, 220);
-      cur.href = '#';
-      saveHistory({ title: textFor(it), url: it.link || it.url || '' , source: it.source||'', time: it.isoDate||it.pubDate||it.published });
-      // prepare next
-      const next = items[(i+1) % items.length];
-      nxt.querySelector('.news-text').textContent = textFor(next).slice(0,220);
-      nxt.href = '#';
+    const ANIM_MS = 520;
+    // initialize current item
+    cur.querySelector('.news-text').textContent = textFor(items[0]);
+    saveHistory({ title: textFor(items[0]), url: items[0].link || items[0].url || '' , source: items[0].source||'', time: items[0].isoDate||items[0].pubDate||items[0].published });
+
+    function animateTo(nextIndex) {
+      const curItem = items[idx];
+      const nextItem = items[nextIndex];
+      const curTextEl = cur.querySelector('.news-text');
+      const nxtTextEl = nxt.querySelector('.news-text');
+
+      // set next content into next slot
+      nxtTextEl.textContent = textFor(nextItem);
+      // ensure next is visible for animation
+      nxt.classList.remove('anim-in');
+      cur.classList.remove('anim-out');
+      void nxt.offsetWidth; // force reflow
+
+      // animate: bring next in, push current out
+      nxt.classList.add('anim-in');
+      cur.classList.add('anim-out');
+
+      // after animation, commit next into current slot and clear next
+      setTimeout(() => {
+        curTextEl.textContent = textFor(nextItem);
+        saveHistory({ title: textFor(nextItem), url: nextItem.link || nextItem.url || '' , source: nextItem.source||'', time: nextItem.isoDate||nextItem.pubDate||nextItem.published });
+        // clear classes and next slot
+        nxt.classList.remove('anim-in');
+        cur.classList.remove('anim-out');
+        nxtTextEl.textContent = '';
+      }, ANIM_MS + 20);
     }
 
     cur.addEventListener('click', (e) => { e.preventDefault(); window.location.href = '/news.html'; });
     nxt.addEventListener('click', (e) => { e.preventDefault(); window.location.href = '/news.html'; });
 
-    show(idx);
-    setInterval(() => { idx = (idx + 1) % items.length; show(idx); }, 6000);
+    // rotation timer uses animateTo for lively transitions
+    setInterval(() => {
+      const nextIndex = (idx + 1) % items.length;
+      animateTo(nextIndex);
+      idx = nextIndex;
+    }, 6000);
   }
 
   // auto-init when DOM ready

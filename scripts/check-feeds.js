@@ -3,9 +3,9 @@ const parser = new RSSParser();
 // Simple checker for the three Korean RSS feeds the app uses
 (async ()=>{
   const urls = [
-    { name: 'CoinDesk Korea', url: 'https://www.coindeskkorea.com/rss/allArticle.xml' },
     { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
-    { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' }
+    { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' },
+    { name: 'Google News (KR)', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' }
   ];
   for (const u of urls) {
     try {
