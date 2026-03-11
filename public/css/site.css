@@ -291,40 +291,7 @@ body.theme-light .nav-theme-toggle:hover { background: rgba(0,0,0,0.04); }
 .nav-theme-toggle svg { color: inherit; fill: currentColor; }
 body.theme-light .nav-theme-toggle { color: var(--neon); }
 
-.nav-chat-link {
-  position: absolute;
-  top: 50%;
-  right: 1.25rem;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  max-width: 50px;
-  max-height: 50px;
-  animation: nav-chat-float-cloud 3.4s ease-in-out infinite;
-}
 
-@keyframes nav-chat-float-cloud {
-  0%, 100% {
-    transform: translateY(-50%) translateY(6px);
-  }
-  50% {
-    transform: translateY(-50%) translateY(-1px);
-  }
-}
-
-.nav-chat-link__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  filter: none;
-}
-
-.nav-chat-link__icon svg {
-  width: 32px;
-  height: 32px;
-}
 
 
 

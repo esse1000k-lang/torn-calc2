@@ -29,16 +29,7 @@
         <circle cx="12" cy="12" r="5" fill="currentColor"></circle>
       </svg>
     </button>
-    <a href="/chat.html" class="nav-chat-link" aria-label="초고속 채팅방">
-      <span class="nav-chat-link__icon" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M21 6.5C21 4.01472 18.9853 2 16.5 2H7.5C5.01472 2 3 4.01472 3 6.5V13.5C3 15.9853 5.01472 18 7.5 18H8.625L9.75 21L14.625 18H16.5C18.9853 18 21 15.9853 21 13.5V6.5Z" fill="#00ff88"/>
-          <path d="M8 10.5C8 11.0523 7.55228 11.5 7 11.5C6.44772 11.5 6 11.0523 6 10.5C6 9.94772 6.44772 9.5 7 9.5C7.55228 9.5 8 9.94772 8 10.5Z" fill="black"/>
-          <path d="M13 10.5C13 11.0523 12.5523 11.5 12 11.5C11.4477 11.5 11 11.0523 11 10.5C11 9.94772 11.4477 9.5 12 9.5C12.5523 9.5 13 9.94772 13 10.5Z" fill="black"/>
-          <path d="M18 10.5C18 11.0523 17.5523 11.5 17 11.5C16.4477 11.5 16 11.0523 16 10.5C16 9.94772 16.4477 9.5 17 9.5C17.5523 9.5 18 9.94772 18 10.5Z" fill="black"/>
-        </svg>
-      </span>
-    </a>
+
   </nav>
   <div class="container">
     <header class="calc-page-hero" aria-label="배당 조회">
@@ -273,7 +264,13 @@
       function isLight() { return document.body.classList.contains('theme-light'); }
       function setMetaColor() { if (metaTheme) metaTheme.setAttribute('content', isLight() ? '#ffffff' : '#0a0a0b'); }
       function renderIcon() {
+        // Show moon icon in light mode, sun icon in dark mode (swapped per request)
         if (isLight()) {
+          btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" />
+            </svg>`;
+        } else {
           btn.innerHTML = `
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <circle cx="12" cy="12" r="4" fill="currentColor" />
@@ -287,11 +284,6 @@
                 <line x1="4.2" y1="19.8" x2="5.6" y2="18.4" />
                 <line x1="18.4" y1="5.6" x2="19.8" y2="4.2" />
               </g>
-            </svg>`;
-        } else {
-          btn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" />
             </svg>`;
         }
       }
