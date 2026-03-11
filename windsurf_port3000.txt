@@ -1,6 +1,0 @@
-﻿
-LocalAddress LocalPort OwningProcess
------------- --------- -------------
-::                3000         16292
-
-
