@@ -60,6 +60,16 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Prevent browsers from caching API responses to ensure clients always fetch fresh data
+app.use('/api', (_req, res, next) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  } catch (e) {}
+  next();
+});
+
 function validateAndNormalizeEthAddress(str) {
   if (!str || typeof str !== 'string') return null;
   const trimmed = str.trim();
@@ -73,7 +83,9 @@ const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || '';
 let inflowDailySeries = { items: [], lastBuiltUtc: 0, building: false };
 
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR && typeof process.env.DATA_DIR === 'string'
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, 'data');
 const INFLOW_DAILY_FILE = path.join(DATA_DIR, 'inflow-daily.json');
 const INFLOW_SEED_URL = process.env.INFLOW_SEED_URL || '';
 function ensureDataDir() {
@@ -89,8 +101,91 @@ function readJsonSafe(file, fallback) {
 }
 function writeJsonSafe(file, obj) {
   try {
-    fs.writeFileSync(file, JSON.stringify(obj));
-  } catch {}
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const tmp = file + '.tmp.' + Date.now() + '.' + Math.floor(Math.random() * 100000);
+    fs.writeFileSync(tmp, JSON.stringify(obj));
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    // preserve original behavior of not throwing to callers, but log to console for ops visibility
+    try { console.error('writeJsonSafe failed for', file, e && e.message); } catch {}
+  }
+}
+
+// Simple lockdir implementation to avoid concurrent rebuilds.
+function lockDirPath(name) {
+  return path.join(DATA_DIR, 'locks', name);
+}
+
+function acquireLock(name, { staleMs = 5 * 60 * 1000 } = {}) {
+  const p = lockDirPath(name);
+  try {
+    fs.mkdirSync(p, { recursive: false });
+    return true;
+  } catch (e) {
+    try {
+      // if exists, check age
+      const st = fs.statSync(p);
+      const age = Date.now() - st.mtimeMs;
+      if (age > staleMs) {
+        // stale lock, remove and retry
+        try { fs.rmdirSync(p, { recursive: true }); } catch {}
+        fs.mkdirSync(p, { recursive: false });
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+}
+
+function releaseLock(name) {
+  const p = lockDirPath(name);
+  try { fs.rmdirSync(p, { recursive: true }); } catch {}
+}
+
+// Simple fetch with retry + backoff
+async function fetchWithRetry(url, { timeoutMs = 12000, attempts = 3, baseDelay = 500 } = {}) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      if (!res) throw new Error('no response');
+      // try parse json/text in caller
+      return res;
+    } catch (e) {
+      const last = i === attempts - 1;
+      if (last) throw e;
+      const delay = baseDelay * Math.pow(2, i);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
+
+// Background rebuild helper for inflow series with locking and retries
+async function rebuildInflowAndPersist(days = 30, tz = 'kst') {
+  const lockName = 'inflow-rebuild';
+  if (!acquireLock(lockName, { staleMs: 10 * 60 * 1000 })) {
+    console.log('rebuildInflowAndPersist: another rebuild in progress');
+    return;
+  }
+  inflowDailySeries.building = true;
+  try {
+    console.log('rebuildInflowAndPersist: starting rebuild');
+    const r = await buildInflowRangeDaysTZ(days, tz);
+    if (r && r.ok) {
+      const payload = { items: r.items, lastBuiltUtc: Date.now() };
+      ensureDataDir();
+      writeJsonSafe(INFLOW_DAILY_FILE, payload);
+      inflowDailySeries = { ...payload, building: false };
+      console.log('rebuildInflowAndPersist: rebuild complete, items=', (r.items || []).length);
+    } else {
+      console.warn('rebuildInflowAndPersist: rebuild returned not ok');
+    }
+  } catch (e) {
+    console.error('rebuildInflowAndPersist failed', e && e.message);
+  } finally {
+    inflowDailySeries.building = false;
+    releaseLock(lockName);
+  }
 }
 
 
@@ -98,7 +193,7 @@ function writeJsonSafe(file, obj) {
 
 async function buildInflowRangeDaysTZ(days, tz) {
   if (!ETHERSCAN_KEY) return { ok: false, items: [] };
-  const timeoutFetch = (url, ms = 15000) => fetch(url, { signal: AbortSignal.timeout(ms) });
+  const timeoutFetch = (url, ms = 15000) => fetchWithRetry(url, { timeoutMs: ms, attempts: 3 });
   const mode = String(tz || 'utc').toLowerCase();
   const KST_MS = 9 * 60 * 60 * 1000;
   const now = new Date();
@@ -202,10 +297,16 @@ app.get('/api/inflow/daily-series', async (_req, res) => {
 // 최신(어제) 일자 한 항목을 빠르게 반환
 app.get('/api/inflow/latest', async (_req, res) => {
   try {
-    ensureDataDir();
-    const r = await buildInflowRangeDaysTZ(1, 'kst');
-    const item = (r && r.ok && Array.isArray(r.items) && r.items.length) ? r.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0] : null;
-    return res.json({ ok: true, item });
+    // Return cached item immediately if available to avoid blocking user requests.
+    if (Array.isArray(inflowDailySeries.items) && inflowDailySeries.items.length) {
+      const item = inflowDailySeries.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0];
+      // Trigger background refresh but don't wait
+      rebuildInflowAndPersist(1, 'kst').catch(() => {});
+      return res.json({ ok: true, item });
+    }
+    // If no cache yet, start rebuild in background and return empty item to caller
+    rebuildInflowAndPersist(1, 'kst').catch(() => {});
+    return res.json({ ok: true, item: null });
   } catch (e) {
     return res.status(500).json({ ok: false, message: e?.message || 'latest failed' });
   }
@@ -238,9 +339,16 @@ app.get('/api/inflow/personal-latest', async (req, res) => {
     const locked = Number(lockedWei) / 1e18;
     const total = Number(totalWei) / 1e18;
     const share = (locked > 0 && total > 0) ? (locked / total) : 0;
-    const inflowR = await buildInflowRangeDaysTZ(1, 'kst');
-    const item = (inflowR && inflowR.ok && Array.isArray(inflowR.items) && inflowR.items.length) ? inflowR.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0] : null;
-    const tornInflow = item ? Number(item.tornInflow || 0) : 0;
+    // Use cached inflow if available (fast). Otherwise trigger background rebuild and use 0 as fallback.
+    let tornInflow = 0;
+    if (Array.isArray(inflowDailySeries.items) && inflowDailySeries.items.length) {
+      const item = inflowDailySeries.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0];
+      tornInflow = Number(item.tornInflow || 0);
+      // refresh in background
+      rebuildInflowAndPersist(1, 'kst').catch(() => {});
+    } else {
+      rebuildInflowAndPersist(1, 'kst').catch(() => {});
+    }
     const myTorn = (share > 0 && tornInflow > 0) ? (tornInflow * share) : 0;
     return res.json({ ok: true, share, tornInflow, myTorn, item });
   } catch (e) {
@@ -277,6 +385,12 @@ app.post('/api/inflow/clear-cache', async (_req, res) => {
   }
 });
 
+app.get('/healthz', (_req, res) => {
+  const last = inflowDailySeries.lastBuiltUtc || 0;
+  const age = last ? (Date.now() - last) : null;
+  res.json({ ok: true, lastBuiltUtc: last, building: !!inflowDailySeries.building, cacheAgeMs: age });
+});
+
 setTimeout(async () => {
   ensureDataDir();
   const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
@@ -284,7 +398,7 @@ setTimeout(async () => {
     inflowDailySeries = cached;
   } else if (INFLOW_SEED_URL) {
     try {
-      const seed = await fetch(INFLOW_SEED_URL, { signal: AbortSignal.timeout(12000) }).then(r => r.json());
+      const seed = await fetchWithRetry(INFLOW_SEED_URL, { timeoutMs: 12000, attempts: 3 }).then(r => r.json());
       if (seed && Array.isArray(seed.items) && seed.items.length) {
         const payload = { items: seed.items, lastBuiltUtc: Date.now() };
         writeJsonSafe(INFLOW_DAILY_FILE, payload);
@@ -293,30 +407,14 @@ setTimeout(async () => {
       }
     } catch {}
   } else {
-    const r = await buildInflowRangeDaysTZ(30, 'kst');
-    if (r && r.ok) {
-      const payload = { items: r.items, lastBuiltUtc: Date.now() };
-      writeJsonSafe(INFLOW_DAILY_FILE, payload);
-      inflowDailySeries = { ...payload, building: false };
-    }
+    // kick off an async rebuild but don't block startup
+    rebuildInflowAndPersist(30, 'kst').catch(e => console.error('startup rebuild failed', e && e.message));
   }
 }, 1000);
 // 매일 어제값만 보강
-setInterval(async () => {
-  try {
-    const r = await buildInflowRangeDaysTZ(1, 'kst');
-    if (r && r.ok) {
-      ensureDataDir();
-      const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
-      const map = new Map();
-      for (const it of Array.isArray(cached.items) ? cached.items : []) map.set(it.dateUtc, Number(it.tornInflow || 0));
-      for (const it of r.items) map.set(it.dateUtc, Number(it.tornInflow || 0));
-      const merged = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1).map(([k,v]) => ({ dateUtc: k, tornInflow: v }));
-      const payload = { items: merged, lastBuiltUtc: Date.now() };
-      writeJsonSafe(INFLOW_DAILY_FILE, payload);
-      inflowDailySeries = { ...payload, building: false };
-    }
-  } catch {}
+setInterval(() => {
+  // run rebuild in background once per day; guarded by lock inside
+  rebuildInflowAndPersist(1, 'kst').catch(e => console.error('scheduled rebuild failed', e && e.message));
 }, 24 * 60 * 60 * 1000);
 
 app.get('/', (_req, res) => {
