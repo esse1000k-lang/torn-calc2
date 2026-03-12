@@ -514,10 +514,8 @@ async function fetchAndCacheNews() {
   if (newsFetchInProgress) return;
   newsFetchInProgress = true;
   try {
-    // Use only the three Korean RSS sources: TokenPost, Block Media, Google News (KR)
+    // Use Google News (KR) only to avoid low-match duplicates from other feeds
     const sources = [
-      { name: 'TokenPost', url: 'https://www.tokenpost.kr/rss' },
-      { name: 'Block Media', url: 'https://www.blockmedia.co.kr/feed' },
       { name: 'Google News (KR)', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' }
     ];
     const results = [];

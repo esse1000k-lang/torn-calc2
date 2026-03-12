@@ -6755,8 +6755,8 @@ main.chat-page-main {
 
 .calculator-page .news-label {
   flex: 0 0 auto;
-  background: rgba(59,130,246,0.06);
-  color: #3b82f6;
+  background: linear-gradient(90deg, rgba(59,130,246,0.12), rgba(96,165,250,0.06));
+  color: #0b63d5;
   border-radius: 999px;
   padding: 0.35rem 0.6rem;
   font-weight: 800;
@@ -6774,8 +6774,8 @@ main.chat-page-main {
   border: 1px solid var(--border);
 }
 .calculator-page .card-news .news-label {
-  background: rgba(59,130,246,0.08);
-  color: #2563eb;
+  background: linear-gradient(90deg, rgba(37,99,235,0.14), rgba(99,102,241,0.06));
+  color: #1e40af;
 }
 .calculator-page .result-section-title .result-section-price {
   text-transform: none;

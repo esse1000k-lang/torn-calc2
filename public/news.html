@@ -60,16 +60,7 @@
       margin: 0; line-height: 1.4;
     }
 
-    /* Back link */
-    .news-back {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      color: var(--text-muted); text-decoration: none;
-      font-size: 0.8rem; font-weight: 500;
-      margin-bottom: 1rem;
-      transition: color 0.15s;
-    }
-    .news-back:hover { color: var(--neon); }
-    .news-back svg { width: 16px; height: 16px; }
+    /* Back link styles removed (nav logo returns to home) */
 
     /* Card wrapper */
     .news-card {
@@ -249,20 +240,11 @@
       <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
     </div>
     <div class="nav-right">
-      <button id="chat-button" class="nav-chat-button" aria-label="채팅" title="채팅">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M21 6c0-1.1-.9-2-2-2H5C3.9 4 3 4.9 3 6v9c0 1.1.9 2 2 2h11l4 4V6z" fill="currentColor"/>
-        </svg>
-      </button>
     </div>
   </nav>
 
   <div class="news-container">
-    <!-- Back link -->
-    <a href="/calculator.html" class="news-back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      배당 조회로 돌아가기
-    </a>
+    <!-- Back link removed: nav logo returns to home -->
 
     <!-- Hero -->
     <header class="news-hero">
@@ -293,15 +275,18 @@
     </div>
   </div>
 
-  <script>
+    <script>
     // Sync theme preference saved by calculator page so news page shows correct colors
     (function(){
-      try {
-        const t = localStorage.getItem('torn_theme');
-        if (t === 'light') document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light');
-        const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', document.body.classList.contains('theme-light') ? '#ffffff' : '#0a0a0b');
-      } catch(e){}
+      function applyTheme() {
+        try {
+          const t = localStorage.getItem('torn_theme');
+          if (t === 'light') document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light');
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', document.body.classList.contains('theme-light') ? '#ffffff' : '#0a0a0b');
+        } catch(e){}
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyTheme); else applyTheme();
     })();
   </script>
 
@@ -338,8 +323,6 @@
     /* Source → badge class & label */
     function badgeFor(src) {
       const s = String(src || '').toLowerCase();
-      if (s.includes('tokenpost') || s.includes('토큰포스트')) return { cls: 'hi-badge--tp', label: 'TP' };
-      if (s.includes('block media') || s.includes('블록미디어') || s.includes('blockmedia')) return { cls: 'hi-badge--bm', label: 'BM' };
       if (s.includes('google')) return { cls: 'hi-badge--gn', label: 'GN' };
       return { cls: 'hi-badge--etc', label: 'NS' };
     }
