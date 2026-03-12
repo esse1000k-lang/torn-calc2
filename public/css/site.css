@@ -6478,15 +6478,19 @@ main.chat-page-main {
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
 }
+.calculator-page .analytics-panel__title:empty {
+  display: none;
+}
 .calculator-page .analytics-panel__value {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--neon);
-  text-shadow: 0 0 14px var(--neon-glow);
+  line-height: 1.3;
+  margin-bottom: 0.55rem;
 }
 .calculator-page .analytics-panel__sub {
-  margin-top: 0.3rem;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
+  line-height: 1.7;
   color: var(--text-muted);
 }
 .calculator-page .analytics-stat-row {
