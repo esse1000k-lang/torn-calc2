@@ -341,8 +341,9 @@ app.get('/api/inflow/personal-latest', async (req, res) => {
     const share = (locked > 0 && total > 0) ? (locked / total) : 0;
     // Use cached inflow if available (fast). Otherwise trigger background rebuild and use 0 as fallback.
     let tornInflow = 0;
+    let item = null;
     if (Array.isArray(inflowDailySeries.items) && inflowDailySeries.items.length) {
-      const item = inflowDailySeries.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0];
+      item = inflowDailySeries.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0];
       tornInflow = Number(item.tornInflow || 0);
       // refresh in background
       rebuildInflowAndPersist(1, 'kst').catch(() => {});
