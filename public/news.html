@@ -248,7 +248,13 @@
     <div class="nav-brand">
       <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
     </div>
-
+    <div class="nav-right">
+      <button id="chat-button" class="nav-chat-button" aria-label="채팅" title="채팅">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M21 6c0-1.1-.9-2-2-2H5C3.9 4 3 4.9 3 6v9c0 1.1.9 2 2 2h11l4 4V6z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
   </nav>
 
   <div class="news-container">
@@ -275,13 +281,7 @@
         최근 180일 이내 뉴스가 없습니다.
       </div>
       <div class="history-list" id="historyList" style="display:none"></div>
-    </div>
 
-    <div class="news-page-bottom">© 2026 Torn<span style="color:var(--neon)">Fi</span> Portfolio</div>
-  </div>
-
-  <!-- Detail modal -->
-  <div class="detail-overlay" id="detailModal">
     <div class="detail-card">
       <div class="detail-card__head">
         <h2 class="detail-card__title" id="detailTitle"></h2>
