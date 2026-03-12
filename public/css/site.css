@@ -92,27 +92,26 @@ body::before {
   right: 0;
   width: 100%;
   z-index: 100;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   height: 50px !important;
   min-height: 50px !important;
   max-height: 50px !important;
-  flex-shrink: 0;
-  padding: 0 1.25rem;
+  padding: 0 0.75rem;
   border-bottom: 1px solid var(--border);
   background: rgba(10, 10, 11, 0.95);
   box-sizing: border-box;
-  overflow: hidden;
 }
 
 .nav-brand {
-  position: relative;
+  position: static;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   height: 100%;
   flex-shrink: 0;
+  justify-self: start;
 }
 
 .nav-logo {
@@ -143,7 +142,7 @@ body::before {
   color: white;
 }
 .nav-logo-fi { 
-  color: var(--neon);
+  color: var(--neon) !important;
 }
 
 /* 차오르기: 그라데이션으로 아래부터 녹색 채움 */
@@ -255,10 +254,7 @@ body::before {
 
 /* 상단 가운데 관리자 (관리자만 표시) - 이모지만 */
 .nav-admin-center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: static;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -267,24 +263,22 @@ body::before {
   line-height: 1;
   text-decoration: none;
   transition: opacity 0.2s;
+  justify-self: center;
 }
 .nav-admin-center:hover {
   opacity: 0.85;
 }
 
 /* Theme toggle button placed at nav center (uses same positioning as .nav-admin-center) */
-.nav-theme-toggle { border: none; background: transparent; padding: 0.2rem; border-radius: 999px; cursor: pointer; }
+.nav-theme-toggle { border: none; background: transparent; padding: 0.2rem; border-radius: 999px; cursor: pointer; justify-self: center; }
 .nav-theme-toggle svg { width: 26px; height: 26px; display: block; }
 .nav-theme-toggle:hover { background: rgba(255,255,255,0.03); }
 body.theme-light .nav-theme-toggle:hover { background: rgba(0,0,0,0.04); }
 
 /* Ensure toggle is visible above other nav elements and uses theme-aware color */
 .nav-theme-toggle {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 250;
+  position: static;
+  z-index: 350;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -300,19 +294,13 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
 
 
 .insights-page .nav-admin-center {
-  left: 55%;
+  left: auto;
+  justify-self: center;
 }
 
 
 
 /* 로그인 페이지: 네비 우측 회원가입 (로고와 동일한 상하 정렬) */
-.nav-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  flex-shrink: 0;
-}
 .nav-register {
   display: inline-flex;
   align-items: center;
@@ -337,15 +325,22 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  margin-left: auto;
-  min-height: 2.25rem;
+  justify-self: end;
+  height: 100%;
 }
 
 .nav-right a {
   color: var(--text-muted);
   text-decoration: none;
   font-size: 0.9rem;
+}
+
+/* Ensure chat anchor doesn't inherit text metrics from generic nav links */
+.nav-right a.nav-chat-button {
+  display: inline-flex;
+  line-height: 0;
+  font-size: 0;
+  padding: 0;
 }
 
 .nav-right a:hover {
@@ -442,6 +437,26 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   color: var(--neon);
 }
 
+/* Chat icon button in nav-right */
+.nav-chat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none !important;
+  background: transparent;
+  color: var(--neon) !important;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: none;
+  transform: translateX(9px);
+}
+.nav-chat-button:hover { background: transparent; color: var(--neon); }
+.nav-chat-button:focus { outline: none; box-shadow: none; }
+.nav-chat-button svg { width: 26px; height: 26px; display: block; fill: currentColor; }
+
 /* 로그아웃 호버 드롭다운 */
 .nav-logout-wrap {
   position: relative;
@@ -451,8 +466,8 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   display: inline-block;
 }
 .nav-logout-dropdown {
-  position: absolute;
-  top: 100%;
+  width: 36px;
+  height: 36px;
   right: 0;
   margin-top: 0.4rem;
   min-width: 200px;
@@ -461,6 +476,7 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 255, 136, 0.08);
+  .nav-chat-button svg { width: 26px; height: 26px; display: block; fill: currentColor; }
   z-index: 100;
   opacity: 0;
   visibility: hidden;

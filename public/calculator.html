@@ -23,14 +23,21 @@
     <div class="nav-brand">
       <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
     </div>
-    <button id="theme-toggle" class="nav-theme-toggle nav-admin-center" aria-label="테마 전환" title="라이트/다크 모드 전환">
-      <!-- default icon will be set by JS -->
+    <button id="theme-toggle" class="nav-theme-toggle" aria-label="테마 전환" title="라이트/다크 모드 전환">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <circle cx="12" cy="12" r="5" fill="currentColor"></circle>
       </svg>
     </button>
-
-
+    <div class="nav-right">
+      <a id="nav-chat" class="nav-chat-button" aria-label="대화" title="대화" href="https://web.telegram.org/k/#@koreatornadocash" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 5.58 2 10c0 2.24 1.12 4.27 2.94 5.72L4 20l4.46-2.23C9.56 18.08 10.75 18.2 12 18.2c5.52 0 10-3.58 10-8C22 5.58 17.52 2 12 2z" fill="currentColor"/>
+          <circle cx="8" cy="10" r="1.2" fill="var(--bg-dark)"/>
+          <circle cx="12" cy="10" r="1.2" fill="var(--bg-dark)"/>
+          <circle cx="16" cy="10" r="1.2" fill="var(--bg-dark)"/>
+        </svg>
+      </a>
+    </div>
   </nav>
   <div class="container">
     <header class="calc-page-hero" aria-label="배당 조회">
