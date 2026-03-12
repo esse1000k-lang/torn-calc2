@@ -165,7 +165,7 @@ async function fetchWithRetry(url, { timeoutMs = 12000, attempts = 3, baseDelay 
 async function rebuildInflowAndPersist(days = 30, tz = 'kst') {
   const lockName = 'inflow-rebuild';
   if (!acquireLock(lockName, { staleMs: 10 * 60 * 1000 })) {
-    console.log('rebuildInflowAndPersist: another rebuild in progress');
+    // Suppressed noisy log: another rebuild in progress
     return;
   }
   inflowDailySeries.building = true;
