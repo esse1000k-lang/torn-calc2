@@ -7,6 +7,7 @@ const { Contract, Interface, JsonRpcProvider } = require('ethers');
 const axios = require('axios');
 const RSSParser = require('rss-parser');
 const rssParser = new RSSParser();
+const { getKimchiPremium } = require('./scripts/compute-kimchi');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -428,30 +429,39 @@ app.get('/api/calculator/premium', async (_req, res) => {
     return res.json(calcPremiumCache.data);
   }
 
-  const timeoutFetch = (url, ms = 2500) => fetch(url, { signal: AbortSignal.timeout(ms) });
-  const [coingeckoRes, upbitRes] = await Promise.allSettled([
-    timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=krw').then((r) => r.json()),
-    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-BTC').then((r) => r.json()),
-  ]);
+  try {
+    // Use the fast, standalone calculator which fetches Upbit, Binance and FX.
+    const kim = await getKimchiPremium({ timeoutMs: 2000 });
 
-  const coingecko = coingeckoRes.status === 'fulfilled' ? coingeckoRes.value : null;
-  const upbit = upbitRes.status === 'fulfilled' ? upbitRes.value : null;
-  const btcKrw = coingecko?.bitcoin?.krw || calcPremiumCache?.data?.btcKrw || null;
-  let premium = null;
-  if (btcKrw && upbit && Array.isArray(upbit) && upbit[0]?.trade_price) {
-    premium = Math.round(((upbit[0].trade_price - btcKrw) / btcKrw) * 10000) / 100;
-  } else if (calcPremiumCache?.data?.premium != null) {
-    premium = calcPremiumCache.data.premium;
+    // Also fetch CoinGecko KRW as a safe btcKrw reference to avoid breaking other consumers.
+    let coingeckoBtcKrw = null;
+    try {
+      const cg = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=krw', { signal: AbortSignal.timeout(1200) }).then(r => r.json()).catch(() => null);
+      coingeckoBtcKrw = cg?.bitcoin?.krw || null;
+    } catch {}
+
+    const payload = {
+      ok: kim.ok === true,
+      sources: {
+        upbitKrw: kim.upbitKrw ?? null,
+        binanceUsdt: kim.binanceUsdt ?? null,
+        usdToKrw: kim.usdToKrw ?? null,
+      },
+      derived: {
+        foreignBtcKrw: kim.foreignKrw ?? null,
+      },
+      premium: kim.premiumPercent ?? null,
+      // Maintain previous `btcKrw` field for backwards compatibility: prefer CoinGecko KRW, else Upbit KRW, else computed foreign KRW
+      btcKrw: coingeckoBtcKrw || (kim.upbitKrw ?? kim.foreignKrw ?? null),
+    };
+
+    calcPremiumCache = { at: now, data: payload };
+    return res.json(payload);
+  } catch (e) {
+    // fallback to cached value if available
+    if (calcPremiumCache) return res.json(calcPremiumCache.data);
+    return res.status(502).json({ ok: false, message: e && e.message ? e.message : 'premium fetch failed' });
   }
-
-  const payload = {
-    ok: true,
-    premium,
-    btcKrw,
-  };
-
-  calcPremiumCache = { at: now, data: payload };
-  res.json(payload);
 });
 
 app.get('/api/calculator/prices', async (_req, res) => {
