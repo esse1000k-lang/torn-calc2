@@ -33,7 +33,8 @@
     .row { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--chip); }
     .row:nth-child(even){ filter: brightness(0.96); }
     .date { font-size:14px; color:var(--mut); }
-    .amt { font-size:15px; font-weight:700; color:var(--neon); }
+    .amt { font-size:15px; font-weight:700; color:var(--neon); display:flex; align-items:baseline; gap:8px; }
+    .amt .krw { font-size:12px; color:var(--mut); font-weight:500; }
     .footer { margin-top:14px; display:flex; justify-content:space-between; font-size:12px; color:var(--mut); }
     .link { color:var(--neon2); text-decoration:none; }
     @media (min-width:480px){ .title{font-size:22px} .amt{font-size:16px} }
@@ -68,18 +69,28 @@
   </div>
   <script>
     (function () {
-      function formatNum(n) {
-        if (n == null || !isFinite(n)) return '0';
-        return Number(n).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+      function formatTorn2(n) {
+        if (n == null || !isFinite(n)) return '0.00';
+        return Number(n).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
+      function formatKrw(n) {
+        if (n == null || !isFinite(n)) return '';
+        return Number(Math.round(n)).toLocaleString('ko-KR') + ' 원';
+      }
+
       function load(days) {
-        var url = '/api/inflow/daily-series' + (days ? ('?days=' + encodeURIComponent(days) + '&tz=kst') : '?tz=kst');
-        fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+        var pricesPromise = fetch('/api/calculator/prices').then(function(r){ return r.json(); }).catch(function(){ return null; });
+        var inflowUrl = '/api/inflow/daily-series' + (days ? ('?days=' + encodeURIComponent(days) + '&tz=kst') : '?tz=kst');
+        Promise.all([pricesPromise, fetch(inflowUrl).then(function(r){ return r.json(); }).catch(function(){ return null; })])
+        .then(function (results) {
+          var prices = results[0] || {};
+          var d = results[1] || {};
           var rows = document.getElementById('rows');
           var lastBuilt = document.getElementById('lastBuilt');
           if (!d || d.ok !== true) { lastBuilt.textContent = '오류'; return; }
           lastBuilt.textContent = new Date(d.lastBuiltUtc || Date.now()).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
           rows.innerHTML = '';
+          var tornKrw = (prices && prices.tornPriceKrw) ? Number(prices.tornPriceKrw) : 0;
           var items = Array.isArray(d.items) ? d.items.slice().sort(function(a,b){ return a.dateUtc < b.dateUtc ? 1 : -1; }) : [];
           items.forEach(function (it) {
             var row = document.createElement('div');
@@ -89,7 +100,15 @@
             dateEl.textContent = it.dateUtc;
             var amtEl = document.createElement('div');
             amtEl.className = 'amt';
-            amtEl.textContent = formatNum(it.tornInflow);
+            var tornText = formatTorn2(it.tornInflow);
+            amtEl.textContent = tornText;
+            if (tornKrw && isFinite(tornKrw) && it.tornInflow != null) {
+              var krwVal = tornKrw * Number(it.tornInflow);
+              var krwSpan = document.createElement('span');
+              krwSpan.className = 'krw';
+              krwSpan.textContent = '(' + formatKrw(krwVal) + ')';
+              amtEl.appendChild(krwSpan);
+            }
             row.appendChild(dateEl);
             row.appendChild(amtEl);
             rows.appendChild(row);
