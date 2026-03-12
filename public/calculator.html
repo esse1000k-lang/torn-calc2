@@ -977,8 +977,73 @@
             // 과도한 이동 방지 (한 패널 정도까지만)
             if (lastDelta > 1) lastDelta = 1;
             if (lastDelta < -1) lastDelta = -1;
-            const offsetPercent = (-100 * currentIndex) + (lastDelta * -100);
+            // Ensure drag follows finger: positive dx (right) should move track to the right.
+            const offsetPercent = (-100 * currentIndex) + (lastDelta * 100);
             track.style.transform = 'translate3d(' + offsetPercent + '%,0,0)';
+          }, { passive: true });
+
+          // Mouse drag support (desktop): mirror touch behavior
+          let mouseDown = false;
+          swipeArea.addEventListener('mousedown', function (e) {
+            // only left button
+            if (e.button !== 0) return;
+            mouseDown = true;
+            touchStartX = e.clientX;
+            touchStartY = e.clientY;
+            dragging = true;
+            axisLocked = false;
+            isHorizontalSwipe = false;
+            lastDelta = 0;
+            track.style.transition = 'none';
+            // prevent text selection while dragging
+            document.body.classList.add('user-select-none');
+            e.preventDefault();
+          }, { passive: false });
+
+          document.addEventListener('mousemove', function (e) {
+            if (!mouseDown || !dragging) return;
+            const x = e.clientX;
+            const y = e.clientY;
+            const dx = x - touchStartX;
+            const dy = y - touchStartY;
+
+            if (!axisLocked) {
+              const adx = Math.abs(dx);
+              const ady = Math.abs(dy);
+              if (adx > 10 && adx >= ady) {
+                axisLocked = true;
+                isHorizontalSwipe = true;
+              } else if (ady > 10 && ady > adx) {
+                // vertical scroll intent: cancel
+                dragging = false;
+                axisLocked = false;
+                track.style.transition = '';
+                track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+                document.body.classList.remove('user-select-none');
+                mouseDown = false;
+                return;
+              } else {
+                return;
+              }
+            }
+
+            if (!isHorizontalSwipe) return;
+
+            const width = swipeArea.clientWidth || 1;
+            lastDelta = dx / width;
+            if (lastDelta > 1) lastDelta = 1;
+            if (lastDelta < -1) lastDelta = -1;
+            const offsetPercent = (-100 * currentIndex) + (lastDelta * 100);
+            track.style.transform = 'translate3d(' + offsetPercent + '%,0,0)';
+          }, { passive: true });
+
+          document.addEventListener('mouseup', function (e) {
+            if (!mouseDown) return;
+            mouseDown = false;
+            document.body.classList.remove('user-select-none');
+            if (!dragging) return;
+            const diff = e.clientX - touchStartX;
+            finishSwipe(diff);
           }, { passive: true });
 
           function finishSwipe(diffX) {

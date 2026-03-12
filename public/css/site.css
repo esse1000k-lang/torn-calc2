@@ -59,6 +59,9 @@ body.theme-light textarea::placeholder {
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Utility to temporarily disable text selection during dragging */
+.user-select-none { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+
 body {
   font-family: 'Outfit', 'Noto Sans KR', sans-serif;
   background: var(--bg-dark);
