@@ -1,3 +1,20 @@
+/* ── News item animation ── */
+@keyframes news-item-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.history-item {
+  display: flex; align-items: flex-start; gap: 0.85rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  animation: news-item-in 0.6s ease-out both;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 6px;
+  margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem;
+}
+.history-item:last-child { border-bottom: none; }
+.history-item:hover { background: rgba(0,255,136,0.03); }
 :root {
   --bg-dark: #0a0a0b;
   --bg-card: #111113;
@@ -6728,7 +6745,6 @@ main.chat-page-main {
   color: var(--text);
   text-decoration: none;
   transform: translateY(0%);
-  transition: transform 0.38s cubic-bezier(.22,.61,.36,1), opacity 0.22s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6764,41 +6780,42 @@ main.chat-page-main {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.calculator-page .news-line.next { transform: translateY(100%) translateZ(0); opacity: 0; }
+.calculator-page .news-line.next { transform: translateY(100%); opacity: 0; }
 .calculator-page .news-line.anim-out {
-  transform: translateY(-120%) translateZ(0) rotateX(6deg) scale(0.995);
+  transform: translateY(-100%);
   opacity: 0;
-  transition: transform 520ms cubic-bezier(.2,1,.22,1), opacity 420ms ease;
+  transition: transform 700ms ease, opacity 500ms ease;
 }
 .calculator-page .news-line.anim-in {
-  transform: translateY(0%) translateZ(0) rotateX(0deg) scale(1);
+  transform: translateY(0%);
   opacity: 1;
-  transition: transform 520ms cubic-bezier(.2,1,.22,1), opacity 420ms ease;
+  transition: transform 700ms ease, opacity 500ms ease;
 }
 
 .calculator-page .news-label {
   flex: 0 0 auto;
-  background: linear-gradient(90deg, rgba(59,130,246,0.12), rgba(96,165,250,0.06));
-  color: #0b63d5;
   border-radius: 999px;
   padding: 0.35rem 0.6rem;
   font-weight: 800;
   font-size: 0.72rem;
   letter-spacing: 0.12em;
+  /* Dark mode default: yellow */
+  background: linear-gradient(90deg, rgba(250,204,21,0.18), rgba(250,204,21,0.06));
+  color: #facc15;
+}
+/* Light mode: blue NEWS label */
+body.theme-light .news-label {
+  background: linear-gradient(90deg, rgba(37,99,235,0.14), rgba(99,102,241,0.06)) !important;
+  color: #1e40af !important;
 }
 
 /* Hover / click affordances for news to invite interaction */
 .calculator-page .card-news:hover { box-shadow: 0 6px 22px rgba(0,0,0,0.55); }
 
-/* Dark-mode specific adjustments: increase contrast so card is visible */
 /* Ensure news card matches other cards (조회 박스) for consistent background */
 .calculator-page .card-news {
   background: var(--bg-card);
   border: 1px solid var(--border);
-}
-.calculator-page .card-news .news-label {
-  background: linear-gradient(90deg, rgba(37,99,235,0.14), rgba(99,102,241,0.06));
-  color: #1e40af;
 }
 .calculator-page .result-section-title .result-section-price {
   text-transform: none;

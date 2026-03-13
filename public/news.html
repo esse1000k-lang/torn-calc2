@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=20260310">
+  <link rel="stylesheet" href="css/site.css?v=20260313">
   <style>
     /* ── News page styles (matches calculator-page card design) ── */
     body.news-page { padding-top: 50px; }
@@ -95,22 +95,6 @@
     /* Item list */
     .history-list { list-style: none; padding: 0; margin: 0; }
 
-    @keyframes news-item-in {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .history-item {
-      display: flex; align-items: flex-start; gap: 0.85rem;
-      padding: 0.85rem 0;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
-      animation: news-item-in 0.35s ease both;
-      cursor: pointer;
-      transition: background 0.15s;
-      border-radius: 6px;
-      margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem;
-    }
-    .history-item:last-child { border-bottom: none; }
-    .history-item:hover { background: rgba(0,255,136,0.03); }
 
     /* Source badge */
     .hi-badge {
@@ -149,72 +133,7 @@
     .hi-meta__dot { opacity: 0.35; }
     .hi-meta__time { font-variant-numeric: tabular-nums; }
 
-    /* ── Detail Modal ── */
-    .detail-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-      z-index: 200;
-      align-items: center; justify-content: center;
-      animation: modal-bg-in 0.2s ease;
-    }
-    @keyframes modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes modal-card-in {
-      from { opacity: 0; transform: translateY(16px) scale(0.97); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .detail-card {
-      max-width: 620px; width: calc(100% - 2rem);
-      margin: auto; padding: 1.5rem;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
-      animation: modal-card-in 0.25s ease;
-      max-height: 80vh; overflow-y: auto;
-    }
-    .detail-card__head {
-      display: flex; justify-content: space-between;
-      align-items: flex-start; gap: 0.75rem;
-      margin-bottom: 0.75rem;
-    }
-    .detail-card__title {
-      font-size: 1.05rem; font-weight: 700;
-      color: var(--neon); line-height: 1.4; margin: 0;
-    }
-    .detail-card__close {
-      flex-shrink: 0;
-      background: rgba(255,255,255,0.04); color: var(--text-muted);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px; padding: 0.35rem 0.65rem;
-      font-size: 0.78rem; cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    .detail-card__close:hover { background: rgba(0,255,136,0.08); color: var(--neon); }
-    .detail-card__meta {
-      font-size: 0.78rem; color: var(--text-muted);
-      margin-bottom: 1rem; padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .detail-card__summary {
-      font-family: 'Noto Sans KR', sans-serif;
-      font-size: 0.88rem; line-height: 1.7;
-      color: var(--text); white-space: pre-line;
-    }
-    .detail-card__link {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      margin-top: 1.25rem; padding: 0.5rem 1rem;
-      background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,255,136,0.04));
-      border: 1px solid rgba(0,255,136,0.2);
-      border-radius: 8px;
-      color: var(--neon); text-decoration: none;
-      font-size: 0.82rem; font-weight: 600;
-      transition: background 0.15s, box-shadow 0.15s;
-    }
-    .detail-card__link:hover {
-      background: linear-gradient(135deg, rgba(0,255,136,0.18), rgba(0,255,136,0.08));
-      box-shadow: 0 0 12px rgba(0,255,136,0.15);
-    }
+    /* ── Detail Modal removed ── */
 
     /* Bottom area */
     .news-page-bottom {
@@ -263,17 +182,7 @@
         최근 180일 이내 뉴스가 없습니다.
       </div>
       <div class="history-list" id="historyList" style="display:none"></div>
-
-    <div class="detail-card">
-      <div class="detail-card__head">
-        <h2 class="detail-card__title" id="detailTitle"></h2>
-        <button class="detail-card__close" id="detailClose">✕ 닫기</button>
-      </div>
-      <div class="detail-card__meta" id="detailMeta"></div>
-      <div class="detail-card__summary" id="detailSummary"></div>
-      <a class="detail-card__link" id="detailLink" href="#" target="_blank" rel="noopener">원문 보기 →</a>
     </div>
-  </div>
 
     <script>
     // Sync theme preference saved by calculator page so news page shows correct colors
@@ -345,8 +254,6 @@
       return Math.floor(months / 12) + '년 전';
     }
 
-    let itemsGlobal = [];
-
     function renderItems(items) {
       if (!items || items.length === 0) {
         emptyEl.style.display = '';
@@ -354,7 +261,6 @@
         countEl.textContent = '';
         return;
       }
-      itemsGlobal = items.slice();
       emptyEl.style.display = 'none';
       listEl.style.display = '';
       listEl.innerHTML = '';
@@ -367,12 +273,17 @@
         const badge = badgeFor(src);
         const timeStr = it.isoDate || it.pubDate || it.time || it.shownAt || it.published || '';
         const rel = relTime(timeStr);
+        const url = it.link || it.url || '#';
 
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.style.animationDelay = Math.min(i * 0.04, 0.6) + 's';
-        div.setAttribute('data-idx', i);
-        div.innerHTML =
+        const a = document.createElement('a');
+        a.className = 'history-item';
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.animationDelay = Math.min(i * 0.04, 0.6) + 's';
+        a.style.textDecoration = 'none';
+        a.style.color = 'inherit';
+        a.innerHTML =
           '<div class="hi-badge ' + esc(badge.cls) + '">' + esc(badge.label) + '</div>' +
           '<div class="hi-body">' +
             '<div class="hi-title">' + esc(text) + '</div>' +
@@ -381,33 +292,9 @@
               (rel ? '<span class="hi-meta__dot">·</span><span class="hi-meta__time">' + esc(rel) + '</span>' : '') +
             '</div>' +
           '</div>';
-        div.addEventListener('click', function () { openDetail(Number(this.getAttribute('data-idx'))); });
-        listEl.appendChild(div);
+        listEl.appendChild(a);
       }
     }
-
-    function openDetail(idx) {
-      const it = itemsGlobal[idx];
-      if (!it) return;
-      const modal = document.getElementById('detailModal');
-      document.getElementById('detailTitle').textContent = it.title_ko || it.title || '';
-      const timeStr = it.isoDate || it.pubDate || it.time || it.shownAt || it.published || '';
-      const rel = relTime(timeStr);
-      document.getElementById('detailMeta').textContent =
-        (it.source || '') + (rel ? ' · ' + rel : '') +
-        (timeStr ? ' · ' + new Date(timeStr).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
-      const summary = it.summary_ko || it.summary || '';
-      document.getElementById('detailSummary').textContent = summary;
-      document.getElementById('detailLink').href = it.link || it.url || '#';
-      modal.style.display = 'flex';
-      document.getElementById('detailClose').onclick = function () { modal.style.display = 'none'; };
-      modal.onclick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
-    }
-
-    /* ESC to close modal */
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') document.getElementById('detailModal').style.display = 'none';
-    });
 
     async function loadRemoteThenLocal() {
       try {

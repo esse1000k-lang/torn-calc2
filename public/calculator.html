@@ -53,7 +53,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=20260310">
+  <link rel="stylesheet" href="css/site.css?v=20260313">
   <style>
     #dailyWalletRewardDisplay { color:#ffd86b; font-weight:600; }
     #dailyRewardLabel { cursor:pointer; font-weight:600; }
@@ -1197,7 +1197,7 @@
     let items = await fetchNews();
     items = (Array.isArray(items) ? items.slice() : []).sort((a,b) => { const ta = a.isoDate || a.pubDate || a.timestamp || ''; const tb = b.isoDate || b.pubDate || b.timestamp || ''; return (isNaN(Date.parse(tb)) ? 0 : Date.parse(tb)) - (isNaN(Date.parse(ta)) ? 0 : Date.parse(ta)); }).slice(0, 7);
     if (!items || items.length === 0) { cur.querySelector('.news-text').textContent = '새로운 뉴스가 없습니다.'; return; }
-    let idx = 0; const ANIM_MS = 520;
+    let idx = 0; const ANIM_MS = 700;
     cur.querySelector('.news-text').textContent = textFor(items[0]);
     saveHistory({ title: textFor(items[0]), url: items[0].link || items[0].url || '', source: items[0].source||'', time: items[0].isoDate||items[0].pubDate||items[0].published });
     function animateTo(nextIndex) { const nextItem = items[nextIndex]; const curTextEl = cur.querySelector('.news-text'); const nxtTextEl = nxt.querySelector('.news-text'); nxtTextEl.textContent = textFor(nextItem); nxt.classList.remove('anim-in'); cur.classList.remove('anim-out'); void nxt.offsetWidth; nxt.classList.add('anim-in'); cur.classList.add('anim-out'); setTimeout(() => { curTextEl.textContent = textFor(nextItem); saveHistory({ title: textFor(nextItem), url: nextItem.link || nextItem.url || '', source: nextItem.source||'', time: nextItem.isoDate||nextItem.pubDate||nextItem.published }); nxt.classList.remove('anim-in'); cur.classList.remove('anim-out'); nxtTextEl.textContent = ''; }, ANIM_MS + 20); }
