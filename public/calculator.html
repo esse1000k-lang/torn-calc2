@@ -115,7 +115,7 @@
         <div class="data-value" id="kimchiPremiumDisplay"> 로딩 중</div>
       </div>
       <div class="input-group">
-        <label for="totalPool">총 스테이킹 수량</label>
+        <label for="totalPool">총 스테이킹 수량 <span id="totalPoolPercent" style="font-weight:600"></span></label>
         <div class="data-value data-value--row data-value--total-pool">
           <input type="text" id="totalPool" inputmode="numeric" autocomplete="off" readonly>
           <span class="value-krw" id="totalPoolKrw"></span>
@@ -350,6 +350,7 @@
       const FEE_RATE = 0.003;
       const REFRESH_INTERVAL_MS = 12000;
       const PREMIUM_REFRESH_INTERVAL_MS = 4000;
+      const TOTAL_SUPPLY = 10000000; // 총 발행량 고정
       const NETWORK_ERR_MSG = '네트워크 오류';
       const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
       const PRICE_CACHE_KEY = 'calculator-price-cache-v5';
@@ -737,7 +738,18 @@
             kimchiPremiumDisplay.style.color = ''; // 0일 때 기본색
           }
         }
-        if (d.totalStaked != null) totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
+        if (d.totalStaked != null) {
+          totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
+          try {
+            var pctEl = document.getElementById('totalPoolPercent');
+            if (pctEl) {
+              var pct = (d.totalStaked / TOTAL_SUPPLY) * 100;
+              pctEl.textContent = '(' + pct.toFixed(2) + '%)';
+            }
+          } catch (e) {}
+        } else {
+          try { var pctEl = document.getElementById('totalPoolPercent'); if (pctEl) pctEl.textContent = ''; } catch(e) {}
+        }
         const btcKrw = btcKrwAuto > 0 ? btcKrwAuto : 0;
         if (btcPriceUsd > 0 && btcKrw > 0) krwPerUsdAuto = btcKrw / btcPriceUsd;
         const krwPerUsd = krwPerUsdAuto > 0 ? krwPerUsdAuto : 0;
@@ -790,6 +802,7 @@
         priceDisplayCenter.textContent = ' ' + msg;
         priceDisplayRight.textContent = ' ' + msg;
         if (kimchiPremiumAuto == null) kimchiPremiumDisplay.textContent = '';
+        try { var pctEl = document.getElementById('totalPoolPercent'); if (pctEl) pctEl.textContent = ''; } catch (e) {}
       }
 
       function applyPriceCache(cache) {
