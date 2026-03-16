@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>뉴스 기록 | TornFi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css?v=20260313">
+  <script>
+/* === Theme init (load from localStorage) === */
+(function () {
+  var doc = document.documentElement;
+  var metaTheme = document.querySelector('meta[name="theme-color"]');
+  function setTheme(isLight) {
+    if (isLight) {
+      if (document.body) document.body.classList.add('theme-light');
+      doc.classList.add('theme-light-root');
+      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
+    } else {
+      if (document.body) document.body.classList.remove('theme-light');
+      doc.classList.remove('theme-light-root');
+      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
+    }
+  }
+  try { var saved = localStorage.getItem('torn_theme'); setTheme(saved === 'light'); } catch (e) {}
+})();
+/* === BroadcastChannel listener === */
+(function () {
+  try {
+    var channel = new BroadcastChannel('torn_theme_channel');
+    channel.onmessage = function(e) {
+      if (e.data && e.data.type === 'theme_changed') {
+        var metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (e.data.light) { document.body.classList.add('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#ffffff'); }
+        else { document.body.classList.remove('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b'); }
+      }
+    };
+  } catch(e) {}
+})();
+  </script>
+  <style>
+    /* ── News page styles (matches calculator-page card design) ── */
+    body.news-page { padding-top: 50px; }
+
+    .news-container {
+      position: relative; z-index: 1;
+      max-width: 620px; margin: 0 auto;
+      padding: 0.5rem 1.5rem 2rem;
+    }
+
+    /* Hero banner */
+    @keyframes news-hero-shine {
+      0%,100% { transform: translateX(-100%); opacity: 0; }
+      50%     { transform: translateX(200%); opacity: 1; }
+    }
+    .news-hero {
+      text-align: center;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, rgba(0,255,136,0.07) 0%, rgba(255,215,0,0.05) 50%, transparent 100%);
+      border: 1px solid rgba(0,255,136,0.15);
+      border-radius: 16px;
+      padding: 1.5rem 1.25rem;
+      position: relative; overflow: hidden;
+    }
+    .news-hero::before {
+      content: '📰'; position: absolute;
+      top: 50%; left: 80%;
+      transform: translate(-50%,-50%);
+      font-size: 8rem; opacity: 0.045;
+      pointer-events: none;
+    }
+    .news-hero::after {
+      content: ''; position: absolute;
+      top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      animation: news-hero-shine 7s infinite;
+    }
+    .news-hero__title {
+      position: relative; z-index: 1;
+      font-size: 1.3rem; font-weight: 700;
+      color: var(--neon);
+      letter-spacing: 0.04em; margin: 0 0 0.3rem;
+      text-shadow: 0 0 18px rgba(0,255,136,0.2);
+    }
+    .news-hero__desc {
+      position: relative; z-index: 1;
+      font-size: 0.78rem; font-weight: 500;
+      color: var(--text-muted);
+      margin: 0; line-height: 1.4;
+    }
+
+    /* Back link styles removed (nav logo returns to home) */
+
+    /* Card wrapper */
+    .news-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .news-card__header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .news-card__title {
+      font-size: 0.95rem; font-weight: 700;
+      color: var(--neon); letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .news-card__count {
+      font-size: 0.72rem; color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Empty state */
+    .news-empty {
+      text-align: center; padding: 2.5rem 1rem;
+      color: var(--text-muted); font-size: 0.85rem;
+    }
+    .news-empty__icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
+    /* Item list */
+    .history-list { list-style: none; padding: 0; margin: 0; }
+
+
+    /* Source badge */
+    .hi-badge {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2.2rem; height: 2.2rem;
+      border-radius: 8px;
+      font-size: 0.65rem; font-weight: 700;
+      color: #000; line-height: 1;
+      text-transform: uppercase;
+      margin-top: 0.1rem;
+    }
+    .hi-badge--tp  { background: linear-gradient(135deg, #00ff88, #00cc6a); }
+    .hi-badge--bm  { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    .hi-badge--gn  { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+    .hi-badge--etc { background: linear-gradient(135deg, #a78bfa, #7c3aed); }
+
+    .hi-body { flex: 1; min-width: 0; }
+
+    .hi-title {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 0.88rem; font-weight: 500;
+      color: var(--text); line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+      transition: color 0.15s;
+    }
+    .history-item:hover .hi-title { color: var(--neon); }
+
+    .hi-meta {
+      display: flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.3rem;
+      font-size: 0.72rem; color: var(--text-muted);
+    }
+    .hi-meta__source { font-weight: 600; }
+    .hi-meta__dot { opacity: 0.35; }
+    .hi-meta__time { font-variant-numeric: tabular-nums; }
+
+    /* ── Detail Modal removed ── */
+
+    /* Bottom area */
+    .news-page-bottom {
+      text-align: center; padding: 1.5rem 0 1rem;
+      font-size: 0.72rem; color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .news-container { padding: 0.5rem 1rem 1.5rem; }
+      .news-hero { padding: 1.2rem 1rem; }
+      .news-hero__title { font-size: 1.15rem; }
+      .news-card { padding: 1rem; }
+      .hi-badge { width: 1.9rem; height: 1.9rem; font-size: 0.58rem; }
+      .detail-card { padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body class="news-page">
+  <script>
+  /* === Final theme enforcement on body load === */
+  (function() {
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    var saved = localStorage.getItem('torn_theme');
+    if (saved === 'light') {
+      document.body.classList.add('theme-light');
+      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
+    } else {
+      document.body.classList.remove('theme-light');
+      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
+    }
+  })();
+  </script>
+  <!-- Navigation (same as home) -->
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
+    </div>
+    <button id="theme-toggle" class="nav-theme-toggle" aria-label="테마 전환" title="라이트/다크 모드 전환">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="5" fill="currentColor"></circle>
+      </svg>
+    </button>
+    <div class="nav-right">
+      <a id="nav-chat" class="nav-chat-button" aria-label="대화" title="대화" href="https://t.me/koreatornadocash" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 5.58 2 10c0 2.24 1.12 4.27 2.94 5.72L4 20l4.46-2.23C9.56 18.08 10.75 18.2 12 18.2c5.52 0 10-3.58 10-8C22 5.58 17.52 2 12 2z" fill="currentColor"/>
+          <circle cx="8" cy="10" r="1.2" fill="var(--bg-dark)"/>
+          <circle cx="12" cy="10" r="1.2" fill="var(--bg-dark)"/>
+          <circle cx="16" cy="10" r="1.2" fill="var(--bg-dark)"/>
+        </svg>
+      </a>
+    </div>
+  </nav>
+
+  <div class="news-container">
+    <!-- Back link removed: nav logo returns to home -->
+
+    <!-- Hero -->
+    <header class="news-hero">
+      <h1 class="news-hero__title">🌪️ 뉴스 기록</h1>
+      <p class="news-hero__desc">Tornado Cash &amp; TORN 관련 최신 뉴스 모아보기</p>
+    </header>
+
+    <!-- Card -->
+    <div class="news-card">
+      <div class="news-card__header">
+        <span class="news-card__title">📋 전체 기사</span>
+        <span class="news-card__count" id="newsCount"></span>
+      </div>
+      <div id="empty" class="news-empty" style="display:none">
+        <div class="news-empty__icon">🔍</div>
+        최근 180일 이내 뉴스가 없습니다.
+      </div>
+      <div class="history-list" id="historyList" style="display:none"></div>
+    </div>
+
+    <script>
+    // Sync theme from storage (when changed in calculator.html)
+    window.addEventListener('storage', function(e) {
+      if (e.key === 'torn_theme') {
+        try {
+          if (e.newValue === 'light') {
+            document.body.classList.add('theme-light');
+          } else {
+            document.body.classList.remove('theme-light');
+          }
+          var metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) {
+            metaTheme.setAttribute('content', e.newValue === 'light' ? '#ffffff' : '#0a0a0b');
+          }
+        } catch (err) {}
+      }
+    });
+
+    const KEY = 'one_line_news_history_v1';
+    const listEl = document.getElementById('historyList');
+    const emptyEl = document.getElementById('empty');
+    const countEl = document.getElementById('newsCount');
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    const KEEP_MS = 180 * 24 * 60 * 60 * 1000;
+
+    function pruneOldEntries() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        const cutoff = Date.now() - KEEP_MS;
+        const kept = arr.filter(function (it) {
+          const t = it.shownAt || it.time || it.published;
+          if (!t) return false;
+          const ts = Date.parse(t);
+          return !isNaN(ts) && ts >= cutoff;
+        });
+        if (kept.length !== arr.length) localStorage.setItem(KEY, JSON.stringify(kept));
+        return kept;
+      } catch (e) { return []; }
+    }
+
+    /* Source → badge class & label */
+    function badgeFor(src) {
+      const s = String(src || '').toLowerCase();
+      if (s.includes('google')) return { cls: 'hi-badge--gn', label: 'GN' };
+      return { cls: 'hi-badge--etc', label: 'NEWS' };
+    }
+
+    /* Relative time */
+    function relTime(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d)) return '';
+      const diff = Date.now() - d.getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return '방금 전';
+      if (mins < 60) return mins + '분 전';
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + '시간 전';
+      const days = Math.floor(hrs / 24);
+      if (days < 30) return days + '일 전';
+      const months = Math.floor(days / 30);
+      if (months < 12) return months + '개월 전';
+      return Math.floor(months / 12) + '년 전';
+    }
+
+    function renderItems(items) {
+      if (!items || items.length === 0) {
+        emptyEl.style.display = '';
+        listEl.style.display = 'none';
+        countEl.textContent = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      listEl.style.display = '';
+      listEl.innerHTML = '';
+      countEl.textContent = items.length + '건';
+
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const text = it.title || it.text || it.headline || '';
+        const src = it.source || '';
+        const badge = badgeFor(src);
+        const timeStr = it.isoDate || it.pubDate || it.time || it.shownAt || it.published || '';
+        const rel = relTime(timeStr);
+        const url = it.link || it.url || '#';
+
+        const a = document.createElement('a');
+        a.className = 'history-item';
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.animationDelay = Math.min(i * 0.04, 0.6) + 's';
+        a.style.textDecoration = 'none';
+        a.style.color = 'inherit';
+        a.innerHTML =
+          '<div class="hi-badge ' + esc(badge.cls) + '">' + esc(badge.label) + '</div>' +
+          '<div class="hi-body">' +
+            '<div class="hi-title">' + esc(text) + '</div>' +
+            '<div class="hi-meta">' +
+              '<span class="hi-meta__source">' + esc(src) + '</span>' +
+              (rel ? '<span class="hi-meta__dot">·</span><span class="hi-meta__time">' + esc(rel) + '</span>' : '') +
+            '</div>' +
+          '</div>';
+        listEl.appendChild(a);
+      }
+    }
+
+    async function loadRemoteThenLocal() {
+      try {
+        const resp = await fetch('/api/news/latest', { cache: 'no-store' });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.ok && Array.isArray(data.items) && data.items.length > 0) {
+            pruneOldEntries();
+            renderItems(data.items);
+            return;
+          }
+        }
+      } catch (e) { console.warn('remote failed', e); }
+      try {
+        const raw = await fetch('/data/news_raw.json', { cache: 'no-store' });
+        if (raw.ok) {
+          const arr = await raw.json();
+          if (Array.isArray(arr) && arr.length) { pruneOldEntries(); renderItems(arr); return; }
+        }
+      } catch (e) { console.warn('static fallback failed', e); }
+      const keptLocal = pruneOldEntries();
+      renderItems(keptLocal.slice().reverse());
+    }
+
+    loadRemoteThenLocal();
+  </script>
+  <script>
+    // Theme toggle button logic with BroadcastChannel for cross-tab sync
+    (function(){
+      const btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      let channel;
+      try { channel = new BroadcastChannel('torn_theme_channel'); } catch(e){}
+      function isLight() { return document.body.classList.contains('theme-light'); }
+      function setMetaColor() { if (metaTheme) metaTheme.setAttribute('content', isLight() ? '#ffffff' : '#0a0a0b'); }
+      function renderIcon() {
+        if (isLight()) {
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" /></svg>`;
+        } else {
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor" /><g stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="18.4" y1="18.4" x2="19.8" y2="19.8" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.2" y1="19.8" x2="5.6" y2="18.4" /><line x1="18.4" y1="5.6" x2="19.8" y2="4.2" /></g></svg>`;
+        }
+      }
+      function applyTheme(light) {
+        if (light) document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light');
+        try { localStorage.setItem('torn_theme', light ? 'light' : 'dark'); } catch(e){}
+        setMetaColor(); renderIcon();
+        if (channel) channel.postMessage({ type: 'theme_changed', light: light });
+      }
+      function toggleTheme() { applyTheme(!isLight()); }
+      if (channel) channel.onmessage = function(e) { if (e.data && e.data.type === 'theme_changed') { var light = e.data.light; if (light) document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light'); setMetaColor(); renderIcon(); } };
+      btn.addEventListener('click', toggleTheme);
+      renderIcon(); setMetaColor();
+    })();
+  </script>
+</body>
+</html>

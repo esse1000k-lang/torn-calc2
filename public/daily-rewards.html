@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>TORN 리워드 전체 유입 | TornFi Portfolio</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="manifest" href="/manifest.json">
+  <script>
+/* === Theme init (load from localStorage) === */
+(function () {
+  var doc = document.documentElement;
+  var metaTheme = document.querySelector('meta[name="theme-color"]');
+  function setTheme(isLight) {
+    if (isLight) {
+      if (document.body) document.body.classList.add('theme-light');
+      doc.classList.add('theme-light-root');
+      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
+    } else {
+      if (document.body) document.body.classList.remove('theme-light');
+      doc.classList.remove('theme-light-root');
+      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
+    }
+  }
+  try { var saved = localStorage.getItem('torn_theme'); setTheme(saved === 'light'); } catch (e) {}
+})();
+/* === BroadcastChannel listener === */
+(function () {
+  try {
+    var channel = new BroadcastChannel('torn_theme_channel');
+    channel.onmessage = function(e) {
+      if (e.data && e.data.type === 'theme_changed') {
+        var metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (e.data.light) { document.body.classList.add('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#ffffff'); }
+        else { document.body.classList.remove('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b'); }
+      }
+    };
+  } catch(e) {}
+})();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css?v=20260313">
+  <style>
+    .daily-rewards-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .daily-rewards-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+    .daily-rewards-row:last-child { border-bottom: none; }
+    .daily-rewards-date { font-size: 13px; color: var(--text-muted); }
+    .daily-rewards-amt { font-size: 15px; font-weight: 600; color: var(--neon); }
+    .daily-rewards-krw { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-left: 8px; }
+    .card .btn-rebuild { width: 100%; padding: 12px 16px; background: linear-gradient(180deg, rgba(0,255,136,0.12), rgba(0,255,136,0.04)); color: var(--neon); border: 1px solid rgba(0,255,136,0.22); border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .card .btn-rebuild:hover:not(:disabled) { background: linear-gradient(180deg, rgba(0,255,136,0.18), rgba(0,255,136,0.08)); }
+    .card .btn-rebuild:active:not(:disabled) { transform: scale(0.98); }
+    .card .btn-rebuild:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</head>
+<body class="calculator-page">
+  <script>
+  /* === Final theme enforcement on body load === */
+  (function() {
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    var saved = localStorage.getItem('torn_theme');
+    if (saved === 'light') {
+      document.body.classList.add('theme-light');
+      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
+    } else {
+      document.body.classList.remove('theme-light');
+      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
+    }
+  })();
+  </script>
+  <nav class="site-nav">
+    <div class="nav-brand">
+      <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
+    </div>
+    <button id="theme-toggle" class="nav-theme-toggle" aria-label="테마 전환" title="라이트/다크 모드 전환">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="5" fill="currentColor"></circle>
+      </svg>
+    </button>
+    <div class="nav-right">
+      <a id="nav-chat" class="nav-chat-button" aria-label="대화" title="대화" href="https://t.me/koreatornadocash" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 5.58 2 10c0 2.24 1.12 4.27 2.94 5.72L4 20l4.46-2.23C9.56 18.08 10.75 18.2 12 18.2c5.52 0 10-3.58 10-8C22 5.58 17.52 2 12 2z" fill="currentColor"/>
+          <circle cx="8" cy="10" r="1.2" fill="var(--bg-dark)"/>
+          <circle cx="12" cy="10" r="1.2" fill="var(--bg-dark)"/>
+          <circle cx="16" cy="10" r="1.2" fill="var(--bg-dark)"/>
+        </svg>
+      </a>
+    </div>
+  </nav>
+  <div class="container">
+    <header class="calc-page-hero" aria-label="TORN 리워드 전체 유입">
+      <h1 class="calc-page-hero__title">TORN 리워드 전체 유입</h1>
+      <p class="calc-page-hero__desc">배당 컨트랙트 기준 · 한국 시간 하루(00:00~23:59)</p>
+    </header>
+
+    <div class="card">
+      <div class="card-title">🌪️ 정보</div>
+      <div class="input-group">
+        <label>업데이트(자정 이후)</label>
+        <div class="data-value" id="lastBuilt">로딩 중</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <button id="rebuildBtn" class="btn-rebuild">갱신</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌪️ 유입 현황</div>
+      <div class="daily-rewards-list" id="rows"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      function formatTorn2(n) {
+        if (n == null || !isFinite(n)) return '0.00';
+        return Number(n).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      function formatKrw(n) {
+        if (n == null || !isFinite(n)) return '';
+        return Number(Math.round(n)).toLocaleString('ko-KR') + ' 원';
+      }
+
+      function load(days) {
+        var pricesPromise = fetch('/api/calculator/prices').then(function(r){ return r.json(); }).catch(function(){ return null; });
+        var inflowUrl = '/api/inflow/daily-series' + (days ? ('?days=' + encodeURIComponent(days) + '&tz=kst') : '?tz=kst');
+        Promise.all([pricesPromise, fetch(inflowUrl).then(function(r){ return r.json(); }).catch(function(){ return null; })])
+        .then(function (results) {
+          var prices = results[0] || {};
+          var d = results[1] || {};
+          var rows = document.getElementById('rows');
+          var lastBuilt = document.getElementById('lastBuilt');
+          if (!d || d.ok !== true) { lastBuilt.textContent = '오류'; console.error('[Daily Rewards] Data load failed:', d); return; }
+          console.log('[Daily Rewards] Data loaded successfully, items count:', (d.items || []).length);
+          lastBuilt.textContent = new Date(d.lastBuiltUtc || Date.now()).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+          rows.innerHTML = '';
+          var tornKrw = (prices && prices.tornPriceKrw) ? Number(prices.tornPriceKrw) : 0;
+          var items = Array.isArray(d.items) ? d.items.slice().sort(function(a,b){ return a.dateUtc < b.dateUtc ? 1 : -1; }) : [];
+          items.forEach(function (it) {
+            var row = document.createElement('div');
+            row.className = 'daily-rewards-row';
+            var dateEl = document.createElement('div');
+            dateEl.className = 'daily-rewards-date';
+            var dateObj = new Date(it.dateUtc + 'T00:00:00Z');
+            var dayOfWeek = dateObj.toLocaleDateString('ko-KR', { weekday: 'short', timeZone: 'Asia/Seoul' });
+            dateEl.textContent = it.dateUtc + ' (' + dayOfWeek + ')';
+            var amtWrapper = document.createElement('div');
+            var amtEl = document.createElement('span');
+            amtEl.className = 'daily-rewards-amt';
+            var tornText = formatTorn2(it.tornInflow);
+            amtEl.textContent = tornText;
+            amtWrapper.appendChild(amtEl);
+            if (tornKrw && isFinite(tornKrw) && it.tornInflow != null) {
+              var krwVal = tornKrw * Number(it.tornInflow);
+              var krwSpan = document.createElement('span');
+              krwSpan.className = 'daily-rewards-krw';
+              krwSpan.textContent = '(' + formatKrw(krwVal) + ')';
+              amtWrapper.appendChild(krwSpan);
+            }
+            row.appendChild(dateEl);
+            row.appendChild(amtWrapper);
+            rows.appendChild(row);
+          });
+        }).catch(function (err) {
+          var lastBuilt = document.getElementById('lastBuilt');
+          lastBuilt.textContent = '네트워크 오류';
+          console.error('[Daily Rewards] Network error:', err);
+        });
+      }
+      load(30);
+      
+      // 서버의 정확한 KST 자정 시간을 기준으로 자동 갱신 (클라이언트 타임존과 무관)
+      function scheduleMidnightRefresh() {
+        fetch('/api/inflow/time-to-next-midnight')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d && d.ok && d.msUntilMidnight > 0) {
+              console.log('[Daily Rewards] Next midnight refresh scheduled in ' + (d.msUntilMidnight / 1000 / 60).toFixed(1) + ' minutes');
+              setTimeout(function() {
+                console.log('[Daily Rewards] Midnight reached, refreshing data...');
+                load(30);
+                scheduleMidnightRefresh();
+              }, d.msUntilMidnight);
+            }
+          })
+          .catch(function(err) {
+            console.error('[Daily Rewards] Failed to fetch time-to-next-midnight:', err);
+            // 폴백: 1시간마다 재시도
+            setTimeout(function() {
+              scheduleMidnightRefresh();
+            }, 60 * 60 * 1000);
+          });
+      }
+      scheduleMidnightRefresh();
+      
+      document.getElementById('rebuildBtn').addEventListener('click', function () {
+        var lastBuilt = document.getElementById('lastBuilt');
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = '갱신 중...';
+        lastBuilt.textContent = '갱신 중...';
+        
+        fetch('/api/inflow/rebuild', { method: 'POST' })
+          .then(function (r) { 
+            if (!r.ok) throw new Error('Rebuild failed: ' + r.status);
+            return r.json(); 
+          })
+          .then(function (d) {
+            if (!d || !d.ok) throw new Error('Rebuild response not ok');
+            console.log('[Daily Rewards] Rebuild complete, waiting 1 second for data propagation...');
+            // 에더스캔 데이터 반영 대기
+            setTimeout(function() {
+              console.log('[Daily Rewards] Loading updated data...');
+              load(30);
+              btn.textContent = '갱신';
+              btn.disabled = false;
+            }, 1000);
+          })
+          .catch(function (err) {
+            console.error('[Daily Rewards] Rebuild error:', err);
+            lastBuilt.textContent = '갱신 오류: ' + (err.message || '데이터 없음');
+            btn.textContent = '갱신';
+            btn.disabled = false;
+          });
+      });
+    })();
+  </script>
+  <script>
+    // Theme toggle button logic with BroadcastChannel for cross-tab sync
+    (function(){
+      const btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      let channel;
+      try { channel = new BroadcastChannel('torn_theme_channel'); } catch(e){}
+      function isLight() { return document.body.classList.contains('theme-light'); }
+      function setMetaColor() { if (metaTheme) metaTheme.setAttribute('content', isLight() ? '#ffffff' : '#0a0a0b'); }
+      function renderIcon() {
+        if (isLight()) {
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor" /></svg>`;
+        } else {
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor" /><g stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="18.4" y1="18.4" x2="19.8" y2="19.8" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.2" y1="19.8" x2="5.6" y2="18.4" /><line x1="18.4" y1="5.6" x2="19.8" y2="4.2" /></g></svg>`;
+        }
+      }
+      function applyTheme(light) {
+        if (light) document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light');
+        try { localStorage.setItem('torn_theme', light ? 'light' : 'dark'); } catch(e){}
+        setMetaColor(); renderIcon();
+        if (channel) channel.postMessage({ type: 'theme_changed', light: light });
+      }
+      function toggleTheme() { applyTheme(!isLight()); }
+      if (channel) channel.onmessage = function(e) { if (e.data && e.data.type === 'theme_changed') { var light = e.data.light; if (light) document.body.classList.add('theme-light'); else document.body.classList.remove('theme-light'); setMetaColor(); renderIcon(); } };
+      btn.addEventListener('click', toggleTheme);
+      // Re-init theme from localStorage
+      var saved = localStorage.getItem('torn_theme');
+      if (saved === 'light') { document.body.classList.add('theme-light'); } else { document.body.classList.remove('theme-light'); }
+      renderIcon(); setMetaColor();
+    })();
+  </script>
