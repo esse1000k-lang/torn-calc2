@@ -83,27 +83,11 @@ function validateAndNormalizeEthAddress(str) {
   return trimmed;
 }
 
-const INFLOW_REWARD_ADDR = REWARD_CONTRACT_ADDRESS;
-const TORN_TOKEN_ADDR = TORN_TOKEN;
-const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY || process.env.CALC_ETHERSCAN_API_KEY || '';
-let inflowDailySeries = { items: [], lastBuiltUtc: 0, building: false };
-
 const DATA_DIR = process.env.DATA_DIR && typeof process.env.DATA_DIR === 'string'
   ? path.resolve(process.env.DATA_DIR)
   : path.join(__dirname, 'data');
-const INFLOW_DAILY_FILE = path.join(DATA_DIR, 'inflow-daily.json');
-const INFLOW_SEED_URL = process.env.INFLOW_SEED_URL || '';
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-function readJsonSafe(file, fallback) {
-  try {
-    if (!fs.existsSync(file)) return fallback;
-    const raw = fs.readFileSync(file, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : fallback;
-  } catch { return fallback; }
 }
 function writeJsonSafe(file, obj) {
   try {
@@ -118,336 +102,9 @@ function writeJsonSafe(file, obj) {
   }
 }
 
-// Simple lockdir implementation to avoid concurrent rebuilds.
-function lockDirPath(name) {
-  return path.join(DATA_DIR, 'locks', name);
-}
-
-function acquireLock(name, { staleMs = 5 * 60 * 1000 } = {}) {
-  const p = lockDirPath(name);
-  try {
-    fs.mkdirSync(p, { recursive: false });
-    return true;
-  } catch (e) {
-    try {
-      // if exists, check age
-      const st = fs.statSync(p);
-      const age = Date.now() - st.mtimeMs;
-      if (age > staleMs) {
-        // stale lock, remove and retry
-        try { fs.rmdirSync(p, { recursive: true }); } catch {}
-        fs.mkdirSync(p, { recursive: false });
-        return true;
-      }
-    } catch {}
-    return false;
-  }
-}
-
-function releaseLock(name) {
-  const p = lockDirPath(name);
-  try { fs.rmdirSync(p, { recursive: true }); } catch {}
-}
-
-// Simple fetch with retry + backoff
-async function fetchWithRetry(url, { timeoutMs = 12000, attempts = 3, baseDelay = 500 } = {}) {
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-      if (!res) throw new Error('no response');
-      // try parse json/text in caller
-      return res;
-    } catch (e) {
-      const last = i === attempts - 1;
-      if (last) throw e;
-      const delay = baseDelay * Math.pow(2, i);
-      await new Promise(r => setTimeout(r, delay));
-    }
-  }
-}
-
-// Background rebuild helper for inflow series with locking and retries
-async function rebuildInflowAndPersist(days = 30, tz = 'kst') {
-  const lockName = 'inflow-rebuild';
-  if (!acquireLock(lockName, { staleMs: 10 * 60 * 1000 })) {
-    // Suppressed noisy log: another rebuild in progress
-    return;
-  }
-  inflowDailySeries.building = true;
-  try {
-    console.log('rebuildInflowAndPersist: starting rebuild');
-    const r = await buildInflowRangeDaysTZ(days, tz);
-    if (r && r.ok) {
-      const payload = { items: r.items, lastBuiltUtc: Date.now() };
-      ensureDataDir();
-      writeJsonSafe(INFLOW_DAILY_FILE, payload);
-      inflowDailySeries = { ...payload, building: false };
-      console.log('rebuildInflowAndPersist: rebuild complete, items=', (r.items || []).length);
-    } else {
-      console.warn('rebuildInflowAndPersist: rebuild returned not ok');
-    }
-  } catch (e) {
-    console.error('rebuildInflowAndPersist failed', e && e.message);
-  } finally {
-    inflowDailySeries.building = false;
-    releaseLock(lockName);
-  }
-}
-
-
-
-
-async function buildInflowRangeDaysTZ(days, tz) {
-  if (!ETHERSCAN_KEY) return { ok: false, items: [] };
-  const timeoutFetch = (url, ms = 15000) => fetchWithRetry(url, { timeoutMs: ms, attempts: 3 });
-  const mode = String(tz || 'utc').toLowerCase();
-  const KST_MS = 9 * 60 * 60 * 1000;
-  const now = new Date();
-  let startTs = 0;
-  let endTs = 0;
-  if (mode === 'kst') {
-    const nowKst = new Date(now.getTime() + KST_MS);
-    const startKst = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate() - Math.max(1, days), 0, 0, 0, 0));
-    const endKst = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate() - 1, 23, 59, 59, 999));
-    startTs = Math.floor((startKst.getTime() - KST_MS) / 1000);
-    endTs = Math.floor((endKst.getTime() - KST_MS) / 1000);
-  } else {
-    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - Math.max(1, days), 0, 0, 0, 0));
-    const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 23, 59, 59, 999));
-    startTs = Math.floor(startDate.getTime() / 1000);
-    endTs = Math.floor(endDate.getTime() / 1000);
-  }
-  const startBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${startTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
-  const endBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${endTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
-  const [startInfo, endInfo] = await Promise.all([
-    timeoutFetch(startBlockUrl).then(r=>r.json()).catch(()=>null),
-    timeoutFetch(endBlockUrl).then(r=>r.json()).catch(()=>null),
-  ]);
-  const startBlock = (startInfo && startInfo.status === '1') ? parseInt(startInfo.result, 10) : 0;
-  const endBlock = (endInfo && endInfo.status === '1') ? parseInt(endInfo.result, 10) : startBlock;
-  if (!startBlock || !endBlock) return { ok: false, items: [] };
-  const OFFSET = 1000;
-  let page = 1;
-  const map = new Map();
-  while (true) {
-    const url =
-      `https://api.etherscan.io/v2/api?chainid=1&module=account&action=tokentx` +
-      `&contractaddress=${TORN_TOKEN_ADDR}` +
-      `&address=${INFLOW_REWARD_ADDR}` +
-      `&startblock=${startBlock}` +
-      `&endblock=${endBlock}` +
-      `&page=${page}&offset=${OFFSET}&sort=asc` +
-      `&apikey=${ETHERSCAN_KEY}`;
-    const data = await timeoutFetch(url).then(r=>r.json()).catch(()=>null);
-    const list = (data && data.status === '1' && Array.isArray(data.result)) ? data.result : [];
-    if (!list.length) break;
-    for (const tx of list) {
-      const ts = parseInt(tx.timeStamp || '0', 10);
-      if (ts >= startTs && ts <= endTs) {
-        const d = mode === 'kst' ? new Date((ts * 1000) + KST_MS) : new Date(ts * 1000);
-        const key = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString().slice(0,10);
-        const prev = map.get(key) || 0;
-        const val = Number(tx.value || '0') / 1e18;
-        if (isFinite(val) && val > 0) map.set(key, prev + val);
-      }
-    }
-    if (list.length < OFFSET) break;
-    page += 1;
-  }
-  const items = Array.from(map.entries()).sort((a,b)=> a[0] < b[0] ? -1 : 1).map(([k,v]) => ({ dateUtc: k, tornInflow: v }));
-  return { ok: true, items };
-}
-
-app.get('/api/inflow/daily-series', async (_req, res) => {
-  if (!inflowDailySeries.items.length) {
-    ensureDataDir();
-    const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
-    if (Array.isArray(cached.items) && cached.items.length) {
-      inflowDailySeries = cached;
-      return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
-    }
-    try {
-      const q = parseInt(String(_req.query.days || '30'), 10);
-      const days = isNaN(q) || q < 1 ? 30 : Math.min(5000, q);
-      const r = await buildInflowRangeDaysTZ(days, 'kst');
-      if (r.ok) {
-        const payload = { items: r.items, lastBuiltUtc: Date.now() };
-        ensureDataDir();
-        writeJsonSafe(INFLOW_DAILY_FILE, payload);
-        inflowDailySeries = { ...payload, building: false };
-        return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
-      }
-      return res.json({ ok: false, lastBuiltUtc: 0, items: [] });
-    } catch {
-      return res.json({ ok: true, lastBuiltUtc: 0, items: [] });
-    }
-  }
-  // on-demand quick refresh for recent N days
-  if (_req.query.days) {
-    try {
-      const q = parseInt(String(_req.query.days), 10);
-      const days = isNaN(q) || q < 1 ? 30 : Math.min(5000, q);
-      const r = await buildInflowRangeDaysTZ(days, 'kst');
-      if (r.ok) {
-        const payload = { items: r.items, lastBuiltUtc: Date.now() };
-        ensureDataDir();
-        writeJsonSafe(INFLOW_DAILY_FILE, payload);
-        inflowDailySeries = { ...payload, building: false };
-        return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
-      }
-    } catch {}
-  }
-  res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
-});
-
-// 최신(어제) 일자 한 항목을 빠르게 반환
-app.get('/api/inflow/latest', async (_req, res) => {
-  try {
-    // Return cached item immediately if available to avoid blocking user requests.
-    if (Array.isArray(inflowDailySeries.items) && inflowDailySeries.items.length) {
-      const item = inflowDailySeries.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0];
-      // Trigger background refresh but don't wait
-      rebuildInflowAndPersist(1, 'kst').catch(() => {});
-      return res.json({ ok: true, item });
-    }
-    // If no cache yet, start rebuild in background and return empty item to caller
-    rebuildInflowAndPersist(1, 'kst').catch(() => {});
-    return res.json({ ok: true, item: null });
-  } catch (e) {
-    return res.status(500).json({ ok: false, message: e?.message || 'latest failed' });
-  }
-});
-
-app.get('/api/inflow/personal-latest', async (req, res) => {
-  try {
-    const addr = String(req.query.walletAddress || '').trim();
-    if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ ok: false, message: '유효한 주소가 아닙니다' });
-    const tz = 'kst';
-    const KST_MS = 9 * 60 * 60 * 1000;
-    const now = new Date();
-    // pick yesterday end by tz
-    let endTs;
-    const nowKst = new Date(now.getTime() + KST_MS);
-    const endKst = new Date(Date.UTC(nowKst.getUTCFullYear(), nowKst.getUTCMonth(), nowKst.getUTCDate() - 1, 23, 59, 59, 999));
-    endTs = Math.floor((endKst.getTime() - KST_MS) / 1000);
-    const timeoutFetch = (url, ms = 12000) => fetch(url, { signal: AbortSignal.timeout(ms) });
-    const endBlockUrl = `https://api.etherscan.io/v2/api?chainid=1&module=block&action=getblocknobytime&timestamp=${endTs}&closest=before&apikey=${ETHERSCAN_KEY}`;
-    const endInfo = await timeoutFetch(endBlockUrl).then(r=>r.json()).catch(()=>null);
-    const endBlock = (endInfo && endInfo.status === '1') ? parseInt(endInfo.result, 10) : 0;
-    const provider = sharedProvider;
-    const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], provider);
-    const tornToken = new Contract(TORN_TOKEN_ADDR, ['function balanceOf(address account) view returns (uint256)'], provider);
-    const overrides = endBlock ? { blockTag: endBlock } : {};
-    const [lockedWei, totalWei] = await Promise.all([
-      stakingContract.lockedBalance(addr, overrides).catch(()=>0n),
-      tornToken.balanceOf(GOVERNANCE, overrides).catch(()=>0n),
-    ]);
-    const locked = Number(lockedWei) / 1e18;
-    const total = Number(totalWei) / 1e18;
-    const share = (locked > 0 && total > 0) ? (locked / total) : 0;
-    // Use cached inflow if available (fast). Otherwise trigger background rebuild and use 0 as fallback.
-    let tornInflow = 0;
-    let item = null;
-    if (Array.isArray(inflowDailySeries.items) && inflowDailySeries.items.length) {
-      item = inflowDailySeries.items.slice().sort((a,b)=> a.dateUtc < b.dateUtc ? 1 : -1)[0];
-      tornInflow = Number(item.tornInflow || 0);
-      // refresh in background
-      rebuildInflowAndPersist(1, 'kst').catch(() => {});
-    } else {
-      rebuildInflowAndPersist(1, 'kst').catch(() => {});
-    }
-    const myTorn = (share > 0 && tornInflow > 0) ? (tornInflow * share) : 0;
-    return res.json({ ok: true, share, tornInflow, myTorn, item });
-  } catch (e) {
-    return res.status(500).json({ ok: false, message: e?.message || 'personal failed' });
-  }
-});
-
-// 강제 재빌드: 최근 N일을 이더스캔 로그로 재집계하여 캐시 반영
-app.post('/api/inflow/rebuild', async (req, res) => {
-  try {
-    const r = await buildInflowRangeDaysTZ(30, 'kst');
-    if (r && r.ok) {
-      const payload = { items: r.items, lastBuiltUtc: Date.now() };
-      ensureDataDir();
-      writeJsonSafe(INFLOW_DAILY_FILE, payload);
-      inflowDailySeries = { ...payload, building: false };
-      return res.json({ ok: true, lastBuiltUtc: inflowDailySeries.lastBuiltUtc, items: inflowDailySeries.items });
-    }
-    res.status(400).json({ ok: false, message: 'rebuild failed' });
-  } catch (e) {
-    res.status(500).json({ ok: false, message: e?.message || 'error' });
-  }
-});
-
-// 캐시 삭제: 파일 및 메모리 캐시 초기화
-app.post('/api/inflow/clear-cache', async (_req, res) => {
-  try {
-    ensureDataDir();
-    if (fs.existsSync(INFLOW_DAILY_FILE)) fs.unlinkSync(INFLOW_DAILY_FILE);
-    inflowDailySeries = { items: [], lastBuiltUtc: 0, building: false };
-    res.json({ ok: true });
-  } catch {
-    res.status(500).json({ ok: false });
-  }
-});
-
-// 다음 자정(KST 00:00)까지 남은 시간 반환: 클라이언트가 정확히 자정을 감지하기 위해 사용
-app.get('/api/inflow/time-to-next-midnight', (_req, res) => {
-  const now = new Date();
-  const KST_MS = 9 * 60 * 60 * 1000;
-  const kstTime = new Date(now.getTime() + KST_MS);
-  const nextMidnightKst = new Date(kstTime);
-  nextMidnightKst.setDate(nextMidnightKst.getDate() + 1);
-  nextMidnightKst.setHours(0, 0, 0, 0);
-  const msUntilMidnight = nextMidnightKst.getTime() - kstTime.getTime();
-  res.json({ ok: true, msUntilMidnight, nextMidnightKstIso: nextMidnightKst.toISOString() });
-});
-
 app.get('/healthz', (_req, res) => {
-  const last = inflowDailySeries.lastBuiltUtc || 0;
-  const age = last ? (Date.now() - last) : null;
-  res.json({ ok: true, lastBuiltUtc: last, building: !!inflowDailySeries.building, cacheAgeMs: age });
+  res.json({ ok: true });
 });
-
-setTimeout(async () => {
-  ensureDataDir();
-  const cached = readJsonSafe(INFLOW_DAILY_FILE, { items: [], lastBuiltUtc: 0 });
-  if (Array.isArray(cached.items) && cached.items.length) {
-    inflowDailySeries = cached;
-  } else if (INFLOW_SEED_URL) {
-    try {
-      const seed = await fetchWithRetry(INFLOW_SEED_URL, { timeoutMs: 12000, attempts: 3 }).then(r => r.json());
-      if (seed && Array.isArray(seed.items) && seed.items.length) {
-        const payload = { items: seed.items, lastBuiltUtc: Date.now() };
-        writeJsonSafe(INFLOW_DAILY_FILE, payload);
-        inflowDailySeries = { ...payload, building: false };
-        return;
-      }
-    } catch {}
-  } else {
-    // kick off an async rebuild but don't block startup
-    rebuildInflowAndPersist(30, 'kst').catch(e => console.error('startup rebuild failed', e && e.message));
-  }
-}, 1000);
-
-// 자정(KST 00:00)마다 어제값 갱신
-function scheduleNextMidnightRebuild() {
-  const now = new Date();
-  const KST_MS = 9 * 60 * 60 * 1000;
-  const kstTime = new Date(now.getTime() + KST_MS);
-  const nextMidnightKst = new Date(kstTime);
-  nextMidnightKst.setDate(nextMidnightKst.getDate() + 1);
-  nextMidnightKst.setHours(0, 0, 0, 0);
-  const msUntilMidnight = nextMidnightKst.getTime() - kstTime.getTime();
-
-  setTimeout(() => {
-    console.log('Scheduled midnight rebuild triggered at', new Date().toISOString());
-    rebuildInflowAndPersist(1, 'kst').catch(e => console.error('scheduled rebuild failed', e && e.message));
-    scheduleNextMidnightRebuild();
-  }, msUntilMidnight);
-}
-scheduleNextMidnightRebuild();
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'calculator.html'));
@@ -629,10 +286,11 @@ app.get('/api/calculator/wallet', async (req, res) => {
     const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], sharedProvider);
     const rewardContract = new Contract(REWARD_CONTRACT_ADDRESS, ['function checkReward(address account) view returns (uint256 rewards)'], sharedProvider);
     const tornToken = new Contract(TORN_TOKEN, ['function balanceOf(address account) view returns (uint256)'], sharedProvider);
-    const [stakedWei, rewardWei, balanceWei] = await Promise.all([
+    const [stakedWei, rewardWei, balanceWei, ethBalanceWei] = await Promise.all([
       stakingContract.lockedBalance(walletAddress),
       rewardContract.checkReward(walletAddress).catch(() => 0n),
       tornToken.balanceOf(walletAddress).catch(() => 0n),
+      sharedProvider.getBalance(walletAddress).catch(() => 0n),
     ]);
     const toNumber = (value) => Number(value) / Math.pow(10, 18);
     res.json({
@@ -641,63 +299,38 @@ app.get('/api/calculator/wallet', async (req, res) => {
       staked: toNumber(stakedWei),
       reward: toNumber(rewardWei),
       walletBalance: toNumber(balanceWei),
+      ethBalance: toNumber(ethBalanceWei),
     });
   } catch (error) {
     res.status(502).json({ ok: false, message: error?.message || '지갑 조회에 실패했습니다.' });
   }
 });
 
-// News endpoint: gather only Korean RSS feeds, dedupe and cache results
-let newsFetchInProgress = false;
+// News endpoint: gather Korean RSS feeds, dedupe and cache results
+let newsFetchInProgress = 0; // timestamp of last fetch start (0 = idle)
+const NEWS_FETCH_STALE_MS = 2 * 60 * 1000; // reset stuck guard after 2 min
 async function fetchAndCacheNews() {
-  if (newsFetchInProgress) return;
-  newsFetchInProgress = true;
+  const now = Date.now();
+  if (newsFetchInProgress && (now - newsFetchInProgress) < NEWS_FETCH_STALE_MS) return;
+  newsFetchInProgress = now;
   try {
-    // Use multiple Google News queries to catch more recent articles
+    // Google News RSS queries — results are pre-filtered by Google's relevance
     const sources = [
-      { name: 'Google News (KR) - Tornado+Cash+TORN', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' },
-      { name: 'Google News (KR) - 토네이도캐시', url: 'https://news.google.com/rss/search?q=토네이도캐시&hl=ko&gl=KR&ceid=KR:ko' },
-      { name: 'Google News (KR) - TORN', url: 'https://news.google.com/rss/search?q=TORN+token&hl=ko&gl=KR&ceid=KR:ko' }
+      { name: 'Google News', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' },
+      { name: 'Google News', url: 'https://news.google.com/rss/search?q=%ED%86%A0%EB%84%A4%EC%9D%B4%EB%8F%84%EC%BA%90%EC%8B%9C&hl=ko&gl=KR&ceid=KR:ko' },
+      { name: 'Google News', url: 'https://news.google.com/rss/search?q=TORN+token&hl=ko&gl=KR&ceid=KR:ko' }
     ];
     const results = [];
 
-    // keywords: expanded set to catch variants
-    const NEWS_KEYWORDS = [
-      '토네이도 캐시', '토네이도', '토네이도캐시',
-      'tornadocash', 'tornado cash', 'tornado',
-      'torn', 'torn.'
-    ];
-
-    // helper: try parsing RSS; if it fails, fetch the page and look for an RSS link or parse returned XML
-    async function parseFeedWithFallback(url) {
-      try {
-        return await rssParser.parseURL(url);
-      } catch (err) {
-        try {
-          const resp = await axios.get(url, { timeout: 10000 });
-          const html = String(resp.data || '');
-          // look for <link type="application/rss+xml" href="...">
-          let m = html.match(/<link[^>]+type=["']application\/rss\+xml["'][^>]*href=["']([^"']+)["']/i);
-          if (!m) m = html.match(/href=["']([^"']+\.(?:xml|rss|atom))["']/i);
-          if (m && m[1]) {
-            try {
-              const feedUrl = new URL(m[1], url).toString();
-              return await rssParser.parseURL(feedUrl);
-            } catch (e2) {
-              // fallthrough to parseString
-            }
-          }
-          // as a last resort, try to parse the fetched body as XML
-          return await rssParser.parseString(html);
-        } catch (e) {
-          throw err;
-        }
-      }
-    }
-
     for (const s of sources) {
       try {
-        const feed = await parseFeedWithFallback(s.url);
+        let feed;
+        try {
+          feed = await rssParser.parseURL(s.url);
+        } catch {
+          const resp = await axios.get(s.url, { timeout: 10000 });
+          feed = await rssParser.parseString(String(resp.data || ''));
+        }
         if (feed && Array.isArray(feed.items)) {
           feed.items.forEach(item => results.push({
             source: s.name,
@@ -708,35 +341,31 @@ async function fetchAndCacheNews() {
           }));
         }
       } catch (e) {
-        console.error(`${s.name} RSS fetch failed:`, e && e.message);
+        console.error('News RSS fetch failed:', s.url.substring(0, 60), e && e.message);
       }
     }
 
-    // Filter by keywords and retention (180 days)
-    const retentionDays = 180;
-    const cutoff = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+    // Dedupe by link, apply 180-day retention
+    const cutoff = Date.now() - (180 * 24 * 60 * 60 * 1000);
     const map = new Map();
     results.forEach(it => {
       const title = String(it.title || '');
       const key = (it.link || title).trim();
-      if (!key) return;
-      if (map.has(key)) return;
+      if (!key || map.has(key)) return;
       let ts = 0;
-      try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch(e) { ts = 0; }
-      const summary = String(it.summary || '');
-      const textLower = (title + ' ' + summary).toLowerCase();
-      if (!NEWS_KEYWORDS.some(kw => textLower.includes(kw))) return;
-        if (ts && ts < cutoff) return;
+      try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch { ts = 0; }
+      if (ts && ts < cutoff) return;
       map.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
     });
 
-    const items = Array.from(map.values()).sort((a,b)=> (b.timestamp||0)-(a.timestamp||0)).slice(0,50);
+    const items = Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 50);
 
     newsCache = { at: Date.now(), data: items };
     try { ensureDataDir(); writeJsonSafe(path.join(DATA_DIR, 'news_raw.json'), items); } catch (e) { console.warn('failed to write news_raw.json', e && e.message); }
+    console.log('News fetched:', items.length, 'items');
     return items;
   } finally {
-    newsFetchInProgress = false;
+    newsFetchInProgress = 0;
   }
 }
 
