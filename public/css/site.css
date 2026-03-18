@@ -6265,7 +6265,7 @@ main.chat-page-main {
   flex-wrap: wrap;
 }
 .calculator-page .value-krw {
-  font-size: 0.8rem;
+  font-size: 0.65rem;
   font-weight: 500;
   color: var(--text-muted);
   flex-shrink: 0;
