@@ -9,196 +9,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css?v=20260318">
-  <script>
-/* === Theme init (load from localStorage) === */
-(function () {
-  var doc = document.documentElement;
-  var metaTheme = document.querySelector('meta[name="theme-color"]');
-  function setTheme(isLight) {
-    if (isLight) {
-      if (document.body) document.body.classList.add('theme-light');
-      doc.classList.add('theme-light-root');
-      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
-    } else {
-      if (document.body) document.body.classList.remove('theme-light');
-      doc.classList.remove('theme-light-root');
-      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
-    }
-  }
-  try { var saved = localStorage.getItem('torn_theme'); setTheme(saved === 'light'); } catch (e) {}
-})();
-/* === BroadcastChannel listener === */
-(function () {
-  try {
-    var channel = new BroadcastChannel('torn_theme_channel');
-    channel.onmessage = function(e) {
-      if (e.data && e.data.type === 'theme_changed') {
-        var metaTheme = document.querySelector('meta[name="theme-color"]');
-        if (e.data.light) { document.body.classList.add('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#ffffff'); }
-        else { document.body.classList.remove('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b'); }
-      }
-    };
-  } catch(e) {}
-})();
-  </script>
-  <style>
-    /* ── News page styles (matches calculator-page card design) ── */
-    body.news-page { padding-top: 50px; }
-
-    .news-container {
-      position: relative; z-index: 1;
-      max-width: 620px; margin: 0 auto;
-      padding: 0.5rem 1.5rem 2rem;
-    }
-
-    /* Hero banner */
-    @keyframes news-hero-shine {
-      0%,100% { transform: translateX(-100%); opacity: 0; }
-      50%     { transform: translateX(200%); opacity: 1; }
-    }
-    .news-hero {
-      text-align: center;
-      margin-bottom: 1.25rem;
-      background: linear-gradient(135deg, rgba(0,255,136,0.07) 0%, rgba(255,215,0,0.05) 50%, transparent 100%);
-      border: 1px solid rgba(0,255,136,0.15);
-      border-radius: 16px;
-      padding: 1.5rem 1.25rem;
-      position: relative; overflow: hidden;
-    }
-    .news-hero::before {
-      content: '📰'; position: absolute;
-      top: 50%; left: 80%;
-      transform: translate(-50%,-50%);
-      font-size: 8rem; opacity: 0.045;
-      pointer-events: none;
-    }
-    .news-hero::after {
-      content: ''; position: absolute;
-      top: 0; left: -100%; width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-      animation: news-hero-shine 7s infinite;
-    }
-    .news-hero__title {
-      position: relative; z-index: 1;
-      font-size: 1.3rem; font-weight: 700;
-      color: var(--neon);
-      letter-spacing: 0.04em; margin: 0 0 0.3rem;
-      text-shadow: 0 0 18px rgba(0,255,136,0.2);
-    }
-    .news-hero__desc {
-      position: relative; z-index: 1;
-      font-size: 0.78rem; font-weight: 500;
-      color: var(--text-muted);
-      margin: 0; line-height: 1.4;
-    }
-
-    /* Back link styles removed (nav logo returns to home) */
-
-    /* Card wrapper */
-    .news-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
-    }
-    .news-card__header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 1rem; padding-bottom: 0.6rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .news-card__title {
-      font-size: 0.95rem; font-weight: 700;
-      color: var(--neon); letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-    .news-card__count {
-      font-size: 0.72rem; color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    /* Empty state */
-    .news-empty {
-      text-align: center; padding: 2.5rem 1rem;
-      color: var(--text-muted); font-size: 0.85rem;
-    }
-    .news-empty__icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
-
-    /* Item list */
-    .history-list { list-style: none; padding: 0; margin: 0; }
-
-
-    /* Source badge */
-    .hi-badge {
-      flex-shrink: 0;
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 2.2rem; height: 2.2rem;
-      border-radius: 8px;
-      font-size: 0.65rem; font-weight: 700;
-      color: #000; line-height: 1;
-      text-transform: uppercase;
-      margin-top: 0.1rem;
-    }
-    .hi-badge--tp  { background: linear-gradient(135deg, #00ff88, #00cc6a); }
-    .hi-badge--bm  { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
-    .hi-badge--gn  { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
-    .hi-badge--etc { background: linear-gradient(135deg, #a78bfa, #7c3aed); }
-
-    .hi-body { flex: 1; min-width: 0; }
-
-    .hi-title {
-      font-family: 'Noto Sans KR', sans-serif;
-      font-size: 0.88rem; font-weight: 500;
-      color: var(--text); line-height: 1.45;
-      display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-      transition: color 0.15s;
-    }
-    .history-item:hover .hi-title { color: var(--neon); }
-
-    .hi-meta {
-      display: flex; align-items: center; gap: 0.4rem;
-      margin-top: 0.3rem;
-      font-size: 0.72rem; color: var(--text-muted);
-    }
-    .hi-meta__source { font-weight: 600; }
-    .hi-meta__dot { opacity: 0.35; }
-    .hi-meta__time { font-variant-numeric: tabular-nums; }
-
-    /* ── Detail Modal removed ── */
-
-    /* Bottom area */
-    .news-page-bottom {
-      text-align: center; padding: 1.5rem 0 1rem;
-      font-size: 0.72rem; color: var(--text-muted);
-    }
-
-    /* Responsive */
-    @media (max-width: 640px) {
-      .news-container { padding: 0.5rem 1rem 1.5rem; }
-      .news-hero { padding: 1.2rem 1rem; }
-      .news-hero__title { font-size: 1.15rem; }
-      .news-card { padding: 1rem; }
-      .hi-badge { width: 1.9rem; height: 1.9rem; font-size: 0.58rem; }
-      .detail-card { padding: 1.25rem; }
-    }
-  </style>
+  <script>try{if(localStorage.getItem('torn_theme')==='light')document.documentElement.classList.add('theme-light-root')}catch(e){}</script>
 </head>
 <body class="news-page">
-  <script>
-  /* === Final theme enforcement on body load === */
-  (function() {
-    var metaTheme = document.querySelector('meta[name="theme-color"]');
-    var saved = localStorage.getItem('torn_theme');
-    if (saved === 'light') {
-      document.body.classList.add('theme-light');
-      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
-    } else {
-      document.body.classList.remove('theme-light');
-      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
-    }
-  })();
-  </script>
+  <script>try{if(localStorage.getItem('torn_theme')==='light')document.body.classList.add('theme-light')}catch(e){}</script>
   <!-- Navigation (same as home) -->
   <nav class="site-nav">
     <div class="nav-brand">
@@ -294,6 +108,9 @@
     function badgeFor(src) {
       const s = String(src || '').toLowerCase();
       if (s.includes('google')) return { cls: 'hi-badge--gn', label: 'GN' };
+      if (s.includes('토큰포스트')) return { cls: 'hi-badge--tp', label: 'TP' };
+      if (s.includes('블록미디어')) return { cls: 'hi-badge--bm', label: 'BM' };
+      if (s.includes('블록스트리트')) return { cls: 'hi-badge--bs', label: 'BS' };
       return { cls: 'hi-badge--etc', label: 'NEWS' };
     }
 

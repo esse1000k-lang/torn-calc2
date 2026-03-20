@@ -22,6 +22,18 @@ let calcTotalStakedCache = null;
 let newsCache = null; // { at: ms, data: [...] }
 const NEWS_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
+// Seed newsCache from disk at startup (survive restarts)
+try {
+  const newsFile = path.join(__dirname, 'data', 'news_raw.json');
+  if (fs.existsSync(newsFile)) {
+    const saved = JSON.parse(fs.readFileSync(newsFile, 'utf8'));
+    if (Array.isArray(saved) && saved.length > 0) {
+      newsCache = { at: 0, data: saved }; // at:0 = treated as stale, triggers refresh on first request
+      console.log('News cache seeded from disk:', saved.length, 'items');
+    }
+  }
+} catch (e) { console.warn('Could not seed news cache from disk:', e && e.message); }
+
 /* ── Shared RPC provider & contract constants (created once) ── */
 const TORN_TOKEN = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
 const GOVERNANCE = '0x2F50508a8a3D323B91336FA3eA6ae50E55f32185';
@@ -56,6 +68,7 @@ setTimeout(() => getUniswapPairAddress().catch(() => {}), 500);
 
 const pairAbi = ['function getReserves() view returns (uint112,uint112,uint32)', 'function token0() view returns (address)'];
 const pairIface = new Interface(pairAbi);
+const balanceIface = new Interface(['function balanceOf(address account) view returns (uint256)']);
 const multicallContract = new Contract(MULTICALL3, ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] returnData)'], sharedProvider);
 
 app.use(express.json({ limit: '1mb' }));
@@ -65,6 +78,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '1d',
   etag: false
 }));
+// Serve data/ directory for news_raw.json fallback (no long cache)
+app.use('/data', express.static(path.join(__dirname, 'data'), { maxAge: 0 }));
 
 // Prevent browsers from caching API responses to ensure clients always fetch fresh data
 app.use('/api', (_req, res, next) => {
@@ -120,13 +135,6 @@ app.get('/api/calculator/premium', async (_req, res) => {
     // Use the fast, standalone calculator which fetches Upbit, Binance and FX.
     const kim = await getKimchiPremium({ timeoutMs: 2000 });
 
-    // Also fetch CoinGecko KRW as a safe btcKrw reference to avoid breaking other consumers.
-    let coingeckoBtcKrw = null;
-    try {
-      const cg = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=krw', { signal: AbortSignal.timeout(1200) }).then(r => r.json()).catch(() => null);
-      coingeckoBtcKrw = cg?.bitcoin?.krw || null;
-    } catch {}
-
     const payload = {
       ok: kim.ok === true,
       sources: {
@@ -138,8 +146,7 @@ app.get('/api/calculator/premium', async (_req, res) => {
         foreignBtcKrw: kim.foreignKrw ?? null,
       },
       premium: kim.premiumPercent ?? null,
-      // Maintain previous `btcKrw` field for backwards compatibility: prefer CoinGecko KRW, else Upbit KRW, else computed foreign KRW
-      btcKrw: coingeckoBtcKrw || (kim.upbitKrw ?? kim.foreignKrw ?? null),
+      btcKrw: kim.upbitKrw ?? kim.foreignKrw ?? null,
     };
 
     calcPremiumCache = { at: now, data: payload };
@@ -175,7 +182,6 @@ app.get('/api/calculator/prices', async (_req, res) => {
       // Include totalStaked in the same multicall if cache is stale
       const needStaked = totalStakedFromCache === null;
       if (needStaked) {
-        const balanceIface = new Interface(['function balanceOf(address account) view returns (uint256)']);
         calls.push({ target: TORN_TOKEN, allowFailure: true, callData: balanceIface.encodeFunctionData('balanceOf', [GOVERNANCE]) });
       }
       const results = await multicallContract.aggregate3(calls);
@@ -192,7 +198,6 @@ app.get('/api/calculator/prices', async (_req, res) => {
       // Decode totalStaked if fetched
       let totalStaked = totalStakedFromCache;
       if (needStaked && results?.[2]?.success && results[2].returnData) {
-        const balanceIface = new Interface(['function balanceOf(address account) view returns (uint256)']);
         const [wei] = balanceIface.decodeFunctionResult('balanceOf', results[2].returnData);
         totalStaked = Number(wei) / 1e18;
       }
@@ -314,36 +319,59 @@ async function fetchAndCacheNews() {
   if (newsFetchInProgress && (now - newsFetchInProgress) < NEWS_FETCH_STALE_MS) return;
   newsFetchInProgress = now;
   try {
-    // Google News RSS queries — results are pre-filtered by Google's relevance
-    const sources = [
+    // Keyword filter for general feeds (Google News feeds are already keyword-filtered)
+    const NEWS_KW = /tornado.?cash|토네이도.?캐시|torn\b|해킹|해커|hacker|hack(?:ed|ing)/i;
+
+    // Google News RSS (pre-filtered by query)
+    const googleSources = [
       { name: 'Google News', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' },
       { name: 'Google News', url: 'https://news.google.com/rss/search?q=%ED%86%A0%EB%84%A4%EC%9D%B4%EB%8F%84%EC%BA%90%EC%8B%9C&hl=ko&gl=KR&ceid=KR:ko' },
-      { name: 'Google News', url: 'https://news.google.com/rss/search?q=TORN+token&hl=ko&gl=KR&ceid=KR:ko' }
+      { name: 'Google News', url: 'https://news.google.com/rss/search?q=TORN+token&hl=ko&gl=KR&ceid=KR:ko' },
+      { name: 'Google News', url: 'https://news.google.com/rss/search?q=%EC%95%94%ED%98%B8%ED%99%94%ED%8F%90+%ED%95%B4%ED%82%B9+OR+%ED%95%B4%EC%BB%A4&hl=ko&gl=KR&ceid=KR:ko' }
+    ];
+    // Korean media general feeds — fetched & keyword-filtered server-side
+    const koreanSources = [
+      { name: '토큰포스트', url: 'https://www.tokenpost.kr/rss' },
+      { name: '블록미디어', url: 'https://www.blockmedia.co.kr/feed/' },
+      { name: '블록스트리트', url: 'https://www.blockstreet.co.kr/rss' }
     ];
     const results = [];
 
-    for (const s of sources) {
-      try {
-        let feed;
-        try {
-          feed = await rssParser.parseURL(s.url);
-        } catch {
-          const resp = await axios.get(s.url, { timeout: 10000 });
-          feed = await rssParser.parseString(String(resp.data || ''));
-        }
+    async function parseFeed(url) {
+      try { return await rssParser.parseURL(url); } catch {
+        const resp = await axios.get(url, { timeout: 10000 });
+        return await rssParser.parseString(String(resp.data || ''));
+      }
+    }
+
+    // Fetch all feeds in parallel
+    const allJobs = [
+      ...googleSources.map(s => parseFeed(s.url).then(feed => {
         if (feed && Array.isArray(feed.items)) {
           feed.items.forEach(item => results.push({
-            source: s.name,
-            title: item.title || '',
+            source: s.name, title: item.title || '',
             link: item.link || item.guid || '',
             isoDate: item.isoDate || item.pubDate || null,
             summary: item.contentSnippet || item.summary || item.content || ''
           }));
         }
-      } catch (e) {
-        console.error('News RSS fetch failed:', s.url.substring(0, 60), e && e.message);
-      }
-    }
+      }).catch(e => console.error('RSS failed:', s.url.substring(0, 50), e && e.message))),
+      ...koreanSources.map(s => parseFeed(s.url).then(feed => {
+        if (feed && Array.isArray(feed.items)) {
+          feed.items.forEach(item => {
+            const text = (item.title || '') + ' ' + (item.contentSnippet || item.summary || '');
+            if (!NEWS_KW.test(text)) return;
+            results.push({
+              source: s.name, title: item.title || '',
+              link: item.link || item.guid || '',
+              isoDate: item.isoDate || item.pubDate || null,
+              summary: item.contentSnippet || item.summary || item.content || ''
+            });
+          });
+        }
+      }).catch(e => console.error('RSS failed:', s.name, e && e.message)))
+    ];
+    await Promise.allSettled(allJobs);
 
     // Dedupe by link, apply 180-day retention
     const cutoff = Date.now() - (180 * 24 * 60 * 60 * 1000);
@@ -360,8 +388,17 @@ async function fetchAndCacheNews() {
 
     const items = Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 50);
 
+    // Don't overwrite good cache with empty results (feeds may have failed)
+    if (items.length === 0 && newsCache && newsCache.data.length > 0) {
+      console.warn('News fetch returned 0 items, keeping existing', newsCache.data.length, 'cached items');
+      newsCache.at = Date.now(); // refresh timestamp to avoid rapid retries
+      return newsCache.data;
+    }
+
     newsCache = { at: Date.now(), data: items };
-    try { ensureDataDir(); writeJsonSafe(path.join(DATA_DIR, 'news_raw.json'), items); } catch (e) { console.warn('failed to write news_raw.json', e && e.message); }
+    if (items.length > 0) {
+      try { ensureDataDir(); writeJsonSafe(path.join(DATA_DIR, 'news_raw.json'), items); } catch (e) { console.warn('failed to write news_raw.json', e && e.message); }
+    }
     console.log('News fetched:', items.length, 'items');
     return items;
   } finally {
@@ -379,9 +416,13 @@ app.get('/api/news/latest', async (req, res) => {
       fetchAndCacheNews().catch(() => {});
       return res.json({ ok: true, source: 'stale', items: newsCache.data });
     }
-    // no cache: start background fetch and return empty immediately
-    fetchAndCacheNews().catch(() => {});
-    return res.json({ ok: true, source: 'pending', items: [] });
+    // no cache: await first fetch so user doesn't see empty page
+    try {
+      const items = await fetchAndCacheNews();
+      return res.json({ ok: true, source: 'fresh', items: items || [] });
+    } catch {
+      return res.json({ ok: true, source: 'empty', items: [] });
+    }
   } catch (e) {
     return res.status(500).json({ ok: false, message: 'news unavailable' });
   }

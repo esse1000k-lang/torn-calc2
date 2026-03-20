@@ -8,47 +8,10 @@
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="manifest" href="/manifest.json">
   <script>
-/* === Theme init (load from localStorage) === */
-(function () {
-  var doc = document.documentElement;
-  var metaTheme = document.querySelector('meta[name="theme-color"]');
-  function setTheme(isLight) {
-    if (isLight) { 
-      if (document.body) document.body.classList.add('theme-light');
-      doc.classList.add('theme-light-root');
-      if (metaTheme) metaTheme.setAttribute('content', '#ffffff'); 
-    } else { 
-      if (document.body) document.body.classList.remove('theme-light');
-      doc.classList.remove('theme-light-root');
-      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b'); 
-    }
-  }
-  try { var saved = localStorage.getItem('torn_theme'); setTheme(saved === 'light'); } catch (e) {}
-  function setViewportHeight() { doc.style.setProperty('--vh', window.innerHeight * 0.01 + 'px'); }
-  setViewportHeight();
-  window.addEventListener('resize', setViewportHeight);
-  window.addEventListener('orientationchange', function () { setTimeout(setViewportHeight, 100); });
-})();
-/* === BroadcastChannel listener === */
-(function () {
-  try {
-    var channel = new BroadcastChannel('torn_theme_channel');
-    channel.onmessage = function(e) {
-      if (e.data && e.data.type === 'theme_changed') {
-        var metaTheme = document.querySelector('meta[name="theme-color"]');
-        if (e.data.light) { document.body.classList.add('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#ffffff'); }
-        else { document.body.classList.remove('theme-light'); if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b'); }
-      }
-    };
-  } catch(e) {}
-})();
-/* === autocomplete-off (inline) === */
-(function () {
-  function apply(el) { if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) el.setAttribute('autocomplete', 'off'); }
-  function applyAll(root) { (root || document).querySelectorAll('input, textarea').forEach(apply); }
-  function init() { applyAll(); var observer = new MutationObserver(function (mutations) { mutations.forEach(function (m) { m.addedNodes.forEach(function (node) { if (node.nodeType !== 1) return; apply(node); if (node.querySelectorAll) applyAll(node); }); }); }); observer.observe(document.body, { childList: true, subtree: true }); }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-})();
+  /* Theme init — apply saved theme before first paint */
+  (function(){
+    try { if(localStorage.getItem('torn_theme')==='light') document.documentElement.classList.add('theme-light-root'); } catch(e){}
+  })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,20 +20,7 @@
 
 </head>
 <body class="calculator-page">
-  <script>
-  /* === Final theme enforcement on body load === */
-  (function() {
-    var metaTheme = document.querySelector('meta[name="theme-color"]');
-    var saved = localStorage.getItem('torn_theme');
-    if (saved === 'light') {
-      document.body.classList.add('theme-light');
-      if (metaTheme) metaTheme.setAttribute('content', '#ffffff');
-    } else {
-      document.body.classList.remove('theme-light');
-      if (metaTheme) metaTheme.setAttribute('content', '#0a0a0b');
-    }
-  })();
-  </script>
+  <script>try{if(localStorage.getItem('torn_theme')==='light'){document.body.classList.add('theme-light');document.querySelector('meta[name="theme-color"]').setAttribute('content','#ffffff');}}catch(e){}</script>
   <nav class="site-nav">
     <div class="nav-brand">
       <a href="/" class="nav-logo"><span class="nav-logo-torn">Torn</span><span class="nav-logo-fi">Fi</span></a>
