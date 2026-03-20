@@ -395,7 +395,8 @@
 
       function formatAssetAmount(n, suffix, digits) {
         if (n == null || !isFinite(n) || n <= 0) return '';
-        return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: digits }) + ' ' + suffix;
+        var s = n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: digits });
+        return suffix ? s + ' ' + suffix : s;
       }
 
       function formatKrwHangulOnly(n) {
@@ -537,8 +538,8 @@
         })();
         const ethHolding = totalTorn > 0 && tornPriceUsd > 0 && ethPriceUsd > 0 ? (totalTorn * tornPriceUsd) / ethPriceUsd : 0;
         const btcHolding = totalTorn > 0 && tornPriceUsd > 0 && btcPriceUsd > 0 ? (totalTorn * tornPriceUsd) / btcPriceUsd : 0;
-        holdingsEthDisplay.textContent = formatAssetAmount(ethHolding, 'ETH', 2);
-        holdingsBtcDisplay.textContent = formatAssetAmount(btcHolding, 'BTC', 2);
+        holdingsEthDisplay.textContent = formatAssetAmount(ethHolding, '', 2);
+        holdingsBtcDisplay.textContent = formatAssetAmount(btcHolding, '', 2);
 
         const investmentKrw = parseNum(investmentKrwInput.value);
         const avgBuyPriceKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw / totalTorn : 0;
