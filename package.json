@@ -4,9 +4,7 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "prestart": "node scripts/kill-port-3000.js",
     "start": "node server.js",
-    "predev": "node scripts/kill-port-3000.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {

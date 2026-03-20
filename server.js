@@ -71,12 +71,16 @@ const pairIface = new Interface(pairAbi);
 const balanceIface = new Interface(['function balanceOf(address account) view returns (uint256)']);
 const multicallContract = new Contract(MULTICALL3, ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] returnData)'], sharedProvider);
 
+// Wallet contracts (created once, reused across all requests)
+const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], sharedProvider);
+const rewardContract = new Contract(REWARD_CONTRACT_ADDRESS, ['function checkReward(address account) view returns (uint256 rewards)'], sharedProvider);
+const tornTokenContract = new Contract(TORN_TOKEN, ['function balanceOf(address account) view returns (uint256)'], sharedProvider);
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(compression({ level: 9, threshold: 512 }));
+app.use(compression({ level: 6, threshold: 512 }));
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '1d',
-  etag: false
+  maxAge: '1d'
 }));
 // Serve data/ directory for news_raw.json fallback (no long cache)
 app.use('/data', express.static(path.join(__dirname, 'data'), { maxAge: 0 }));
@@ -288,13 +292,10 @@ app.get('/api/calculator/wallet', async (req, res) => {
   if (!walletAddress) return res.status(400).json({ ok: false, message: '유효한 이더리움 주소가 아닙니다.' });
 
   try {
-    const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], sharedProvider);
-    const rewardContract = new Contract(REWARD_CONTRACT_ADDRESS, ['function checkReward(address account) view returns (uint256 rewards)'], sharedProvider);
-    const tornToken = new Contract(TORN_TOKEN, ['function balanceOf(address account) view returns (uint256)'], sharedProvider);
     const [stakedWei, rewardWei, balanceWei, ethBalanceWei] = await Promise.all([
       stakingContract.lockedBalance(walletAddress),
       rewardContract.checkReward(walletAddress).catch(() => 0n),
-      tornToken.balanceOf(walletAddress).catch(() => 0n),
+      tornTokenContract.balanceOf(walletAddress).catch(() => 0n),
       sharedProvider.getBalance(walletAddress).catch(() => 0n),
     ]);
     const toNumber = (value) => Number(value) / Math.pow(10, 18);
