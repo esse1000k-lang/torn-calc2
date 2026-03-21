@@ -18,21 +18,30 @@ const CALC_TOTAL_STAKED_CACHE_TTL_MS = 60 * 1000;
 let calcPriceCache = null;
 let calcPremiumCache = null;
 let calcTotalStakedCache = null;
-// News cache
-let newsCache = null; // { at: ms, data: [...] }
-const NEWS_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+// ── News system: accumulate-and-merge design ──
+// news_raw.json is the single source of truth (persistent, survives restarts).
+// New articles are merged in; old articles stay until 180-day expiry.
+const NEWS_POLL_INTERVAL_MS = 5 * 60 * 1000; // poll RSS every 5 min
+const NEWS_RETENTION_MS = 180 * 24 * 60 * 60 * 1000; // 180 days
+const NEWS_FILE = path.join(__dirname, 'data', 'news_raw.json');
 
-// Seed newsCache from disk at startup (survive restarts)
+// In-memory mirror of news_raw.json (Map keyed by link for fast dedup)
+let newsMap = new Map();
+let newsLastPoll = 0; // timestamp of last successful poll
+
+// Load existing articles from disk at startup
 try {
-  const newsFile = path.join(__dirname, 'data', 'news_raw.json');
-  if (fs.existsSync(newsFile)) {
-    const saved = JSON.parse(fs.readFileSync(newsFile, 'utf8'));
-    if (Array.isArray(saved) && saved.length > 0) {
-      newsCache = { at: 0, data: saved }; // at:0 = treated as stale, triggers refresh on first request
-      console.log('News cache seeded from disk:', saved.length, 'items');
+  if (fs.existsSync(NEWS_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(NEWS_FILE, 'utf8'));
+    if (Array.isArray(saved)) {
+      saved.forEach(it => {
+        const key = (it.link || it.title || '').trim();
+        if (key) newsMap.set(key, it);
+      });
+      console.log('News loaded from disk:', newsMap.size, 'articles');
     }
   }
-} catch (e) { console.warn('Could not seed news cache from disk:', e && e.message); }
+} catch (e) { console.warn('Could not load news from disk:', e && e.message); }
 
 /* ── Shared RPC provider & contract constants (created once) ── */
 const TORN_TOKEN = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
@@ -80,7 +89,13 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(compression({ level: 6, threshold: 512 }));
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '1d'
+  maxAge: '2h',
+  setHeaders(res, filePath) {
+    // HTML files should never be cached to ensure updates propagate immediately
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  }
 }));
 // Serve data/ directory for news_raw.json fallback (no long cache)
 app.use('/data', express.static(path.join(__dirname, 'data'), { maxAge: 0 }));
@@ -312,31 +327,40 @@ app.get('/api/calculator/wallet', async (req, res) => {
   }
 });
 
-// News endpoint: gather Korean RSS feeds, dedupe and cache results
-let newsFetchInProgress = 0; // timestamp of last fetch start (0 = idle)
-const NEWS_FETCH_STALE_MS = 2 * 60 * 1000; // reset stuck guard after 2 min
-async function fetchAndCacheNews() {
-  const now = Date.now();
-  if (newsFetchInProgress && (now - newsFetchInProgress) < NEWS_FETCH_STALE_MS) return;
-  newsFetchInProgress = now;
+// ── News: accumulate-and-merge fetch logic ──
+let newsFetchLock = 0; // prevent concurrent fetches
+const NEWS_FETCH_LOCK_TIMEOUT = 2 * 60 * 1000;
+
+function getNewsSorted() {
+  return Array.from(newsMap.values())
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+}
+
+function persistNews() {
   try {
-    // Keyword filter for general feeds (Google News feeds are already keyword-filtered)
+    ensureDataDir();
+    writeJsonSafe(NEWS_FILE, getNewsSorted());
+  } catch (e) { console.warn('persistNews failed:', e && e.message); }
+}
+
+async function pollNewsFeeds() {
+  const now = Date.now();
+  if (newsFetchLock && (now - newsFetchLock) < NEWS_FETCH_LOCK_TIMEOUT) return;
+  newsFetchLock = now;
+  try {
     const NEWS_KW = /tornado.?cash|토네이도.?캐시|torn\b|해킹|해커|hacker|hack(?:ed|ing)/i;
 
-    // Google News RSS (pre-filtered by query)
     const googleSources = [
       { name: 'Google News', url: 'https://news.google.com/rss/search?q=Tornado+Cash+OR+TORN&hl=ko&gl=KR&ceid=KR:ko' },
       { name: 'Google News', url: 'https://news.google.com/rss/search?q=%ED%86%A0%EB%84%A4%EC%9D%B4%EB%8F%84%EC%BA%90%EC%8B%9C&hl=ko&gl=KR&ceid=KR:ko' },
       { name: 'Google News', url: 'https://news.google.com/rss/search?q=TORN+token&hl=ko&gl=KR&ceid=KR:ko' },
       { name: 'Google News', url: 'https://news.google.com/rss/search?q=%EC%95%94%ED%98%B8%ED%99%94%ED%8F%90+%ED%95%B4%ED%82%B9+OR+%ED%95%B4%EC%BB%A4&hl=ko&gl=KR&ceid=KR:ko' }
     ];
-    // Korean media general feeds — fetched & keyword-filtered server-side
     const koreanSources = [
       { name: '토큰포스트', url: 'https://www.tokenpost.kr/rss' },
       { name: '블록미디어', url: 'https://www.blockmedia.co.kr/feed/' },
       { name: '블록스트리트', url: 'https://www.blockstreet.co.kr/rss' }
     ];
-    const results = [];
 
     async function parseFeed(url) {
       try { return await rssParser.parseURL(url); } catch {
@@ -345,24 +369,24 @@ async function fetchAndCacheNews() {
       }
     }
 
-    // Fetch all feeds in parallel
+    const freshItems = [];
     const allJobs = [
       ...googleSources.map(s => parseFeed(s.url).then(feed => {
         if (feed && Array.isArray(feed.items)) {
-          feed.items.forEach(item => results.push({
+          feed.items.forEach(item => freshItems.push({
             source: s.name, title: item.title || '',
             link: item.link || item.guid || '',
             isoDate: item.isoDate || item.pubDate || null,
             summary: item.contentSnippet || item.summary || item.content || ''
           }));
         }
-      }).catch(e => console.error('RSS failed:', s.url.substring(0, 50), e && e.message))),
+      }).catch(e => console.error('RSS fail:', s.url.substring(0, 50), e && e.message))),
       ...koreanSources.map(s => parseFeed(s.url).then(feed => {
         if (feed && Array.isArray(feed.items)) {
           feed.items.forEach(item => {
             const text = (item.title || '') + ' ' + (item.contentSnippet || item.summary || '');
             if (!NEWS_KW.test(text)) return;
-            results.push({
+            freshItems.push({
               source: s.name, title: item.title || '',
               link: item.link || item.guid || '',
               isoDate: item.isoDate || item.pubDate || null,
@@ -370,78 +394,68 @@ async function fetchAndCacheNews() {
             });
           });
         }
-      }).catch(e => console.error('RSS failed:', s.name, e && e.message)))
+      }).catch(e => console.error('RSS fail:', s.name, e && e.message)))
     ];
     await Promise.allSettled(allJobs);
 
-    // Dedupe by link, apply 180-day retention
-    const cutoff = Date.now() - (180 * 24 * 60 * 60 * 1000);
-    const map = new Map();
-    results.forEach(it => {
-      const title = String(it.title || '');
-      const key = (it.link || title).trim();
-      if (!key || map.has(key)) return;
+    // ── Merge new items into persistent map (never replace) ──
+    const cutoff = Date.now() - NEWS_RETENTION_MS;
+    let added = 0;
+    freshItems.forEach(it => {
+      const key = (it.link || it.title || '').trim();
+      if (!key) return;
+      if (newsMap.has(key)) return; // already stored
       let ts = 0;
       try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch { ts = 0; }
-      if (ts && ts < cutoff) return;
-      map.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
+      if (ts && ts < cutoff) return; // older than 180 days
+      newsMap.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
+      added++;
     });
 
-    const items = Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 50);
-
-    // Don't overwrite good cache with empty results (feeds may have failed)
-    if (items.length === 0 && newsCache && newsCache.data.length > 0) {
-      console.warn('News fetch returned 0 items, keeping existing', newsCache.data.length, 'cached items');
-      newsCache.at = Date.now(); // refresh timestamp to avoid rapid retries
-      return newsCache.data;
+    // ── Prune expired articles (>180 days) ──
+    for (const [key, it] of newsMap) {
+      if (it.timestamp && it.timestamp < cutoff) newsMap.delete(key);
     }
 
-    newsCache = { at: Date.now(), data: items };
-    if (items.length > 0) {
-      try { ensureDataDir(); writeJsonSafe(path.join(DATA_DIR, 'news_raw.json'), items); } catch (e) { console.warn('failed to write news_raw.json', e && e.message); }
+    if (added > 0) {
+      persistNews();
+      console.log('News: +' + added + ' new, total ' + newsMap.size);
     }
-    console.log('News fetched:', items.length, 'items');
-    return items;
+    newsLastPoll = Date.now();
   } finally {
-    newsFetchInProgress = 0;
+    newsFetchLock = 0;
   }
 }
 
-// API: return cache-only; trigger background fetch when appropriate
-app.get('/api/news/latest', async (req, res) => {
+// API: always return accumulated articles; trigger background poll if stale
+app.get('/api/news/latest', async (_req, res) => {
   try {
-    const now = Date.now();
-    if (newsCache && (now - newsCache.at) < NEWS_CACHE_TTL_MS) return res.json({ ok: true, source: 'cache', items: newsCache.data });
-    if (newsCache) {
-      // return stale but trigger background refresh
-      fetchAndCacheNews().catch(() => {});
-      return res.json({ ok: true, source: 'stale', items: newsCache.data });
+    // If never polled yet and map is empty, do a blocking first fetch
+    if (!newsLastPoll && newsMap.size === 0) {
+      try { await pollNewsFeeds(); } catch {}
+    } else if (Date.now() - newsLastPoll > NEWS_POLL_INTERVAL_MS) {
+      // stale: trigger background refresh, respond immediately
+      pollNewsFeeds().catch(() => {});
     }
-    // no cache: await first fetch so user doesn't see empty page
-    try {
-      const items = await fetchAndCacheNews();
-      return res.json({ ok: true, source: 'fresh', items: items || [] });
-    } catch {
-      return res.json({ ok: true, source: 'empty', items: [] });
-    }
+    return res.json({ ok: true, count: newsMap.size, items: getNewsSorted() });
   } catch (e) {
     return res.status(500).json({ ok: false, message: 'news unavailable' });
   }
 });
 
-// Force refresh endpoint (admin/manual)
-app.post('/api/news/refresh', async (req, res) => {
+// Force refresh endpoint
+app.post('/api/news/refresh', async (_req, res) => {
   try {
-    await fetchAndCacheNews();
-    return res.json({ ok: true, items: newsCache ? newsCache.data : [] });
+    await pollNewsFeeds();
+    return res.json({ ok: true, count: newsMap.size, items: getNewsSorted() });
   } catch (e) {
     return res.status(500).json({ ok: false, message: 'refresh failed' });
   }
 });
 
-// Schedule periodic background fetch (startup + interval)
-setTimeout(() => { fetchAndCacheNews().catch(()=>{}); }, 1000);
-setInterval(() => { fetchAndCacheNews().catch(()=>{}); }, NEWS_CACHE_TTL_MS);
+// Periodic background poll (single interval, no duplicates)
+setTimeout(() => { pollNewsFeeds().catch(() => {}); }, 2000);
+setInterval(() => { pollNewsFeeds().catch(() => {}); }, NEWS_POLL_INTERVAL_MS);
 
 
 
