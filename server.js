@@ -25,6 +25,11 @@ const NEWS_POLL_INTERVAL_MS = 5 * 60 * 1000; // poll RSS every 5 min
 const NEWS_RETENTION_MS = 180 * 24 * 60 * 60 * 1000; // 180 days
 const NEWS_FILE = path.join(__dirname, 'data', 'news_raw.json');
 
+// Strip trailing " - SourceName" (Google News syndication pattern) for dedup
+function normalizeTitle(title) {
+  return (title || '').replace(/\s+-\s+\S[^-]*$/, '').trim();
+}
+
 // In-memory mirror of news_raw.json (Map keyed by link for fast dedup)
 let newsMap = new Map();
 let newsLastPoll = 0; // timestamp of last successful poll
@@ -34,9 +39,14 @@ try {
   if (fs.existsSync(NEWS_FILE)) {
     const saved = JSON.parse(fs.readFileSync(NEWS_FILE, 'utf8'));
     if (Array.isArray(saved)) {
+      const loadedTitles = new Set();
       saved.forEach(it => {
         const key = (it.link || it.title || '').trim();
-        if (key) newsMap.set(key, it);
+        if (!key) return;
+        const norm = normalizeTitle(it.title);
+        if (norm && loadedTitles.has(norm)) return; // title duplicate
+        newsMap.set(key, it);
+        if (norm) loadedTitles.add(norm);
       });
       console.log('News loaded from disk:', newsMap.size, 'articles');
     }
@@ -331,9 +341,20 @@ app.get('/api/calculator/wallet', async (req, res) => {
 let newsFetchLock = 0; // prevent concurrent fetches
 const NEWS_FETCH_LOCK_TIMEOUT = 2 * 60 * 1000;
 
+let newsSortedCache = null;
 function getNewsSorted() {
-  return Array.from(newsMap.values())
+  if (newsSortedCache) return newsSortedCache;
+  const items = Array.from(newsMap.values())
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  const seen = new Set();
+  newsSortedCache = items.filter(it => {
+    const norm = normalizeTitle(it.title);
+    if (!norm) return true;
+    if (seen.has(norm)) return false;
+    seen.add(norm);
+    return true;
+  });
+  return newsSortedCache;
 }
 
 function persistNews() {
@@ -363,10 +384,8 @@ async function pollNewsFeeds() {
     ];
 
     async function parseFeed(url) {
-      try { return await rssParser.parseURL(url); } catch {
-        const resp = await axios.get(url, { timeout: 10000 });
-        return await rssParser.parseString(String(resp.data || ''));
-      }
+      const resp = await axios.get(url, { timeout: 10000, maxRedirects: 5, responseType: 'text' });
+      return await rssParser.parseString(String(resp.data || ''));
     }
 
     const freshItems = [];
@@ -400,26 +419,37 @@ async function pollNewsFeeds() {
 
     // ── Merge new items into persistent map (never replace) ──
     const cutoff = Date.now() - NEWS_RETENTION_MS;
+    // Build title index for dedup
+    const existingTitles = new Set();
+    for (const it of newsMap.values()) {
+      const norm = normalizeTitle(it.title);
+      if (norm) existingTitles.add(norm);
+    }
     let added = 0;
     freshItems.forEach(it => {
       const key = (it.link || it.title || '').trim();
       if (!key) return;
-      if (newsMap.has(key)) return; // already stored
+      if (newsMap.has(key)) return; // already stored (by link)
+      const normTitle = normalizeTitle(it.title);
+      if (normTitle && existingTitles.has(normTitle)) return; // title duplicate
       let ts = 0;
       try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch { ts = 0; }
       if (ts && ts < cutoff) return; // older than 180 days
       newsMap.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
+      if (normTitle) existingTitles.add(normTitle);
       added++;
     });
 
     // ── Prune expired articles (>180 days) ──
+    let pruned = 0;
     for (const [key, it] of newsMap) {
-      if (it.timestamp && it.timestamp < cutoff) newsMap.delete(key);
+      if (it.timestamp && it.timestamp < cutoff) { newsMap.delete(key); pruned++; }
     }
 
-    if (added > 0) {
+    if (added > 0 || pruned > 0) {
+      newsSortedCache = null;
       persistNews();
-      console.log('News: +' + added + ' new, total ' + newsMap.size);
+      console.log('News: +' + added + ' new, -' + pruned + ' expired, total ' + newsMap.size);
     }
     newsLastPoll = Date.now();
   } finally {
@@ -437,7 +467,9 @@ app.get('/api/news/latest', async (_req, res) => {
       // stale: trigger background refresh, respond immediately
       pollNewsFeeds().catch(() => {});
     }
-    return res.json({ ok: true, count: newsMap.size, items: getNewsSorted() });
+    const sorted = getNewsSorted();
+    const items = sorted.map(({ summary, ...rest }) => rest);
+    return res.json({ ok: true, count: items.length, items });
   } catch (e) {
     return res.status(500).json({ ok: false, message: 'news unavailable' });
   }
@@ -447,7 +479,9 @@ app.get('/api/news/latest', async (_req, res) => {
 app.post('/api/news/refresh', async (_req, res) => {
   try {
     await pollNewsFeeds();
-    return res.json({ ok: true, count: newsMap.size, items: getNewsSorted() });
+    const sorted = getNewsSorted();
+    const items = sorted.map(({ summary, ...rest }) => rest);
+    return res.json({ ok: true, count: items.length, items });
   } catch (e) {
     return res.status(500).json({ ok: false, message: 'refresh failed' });
   }

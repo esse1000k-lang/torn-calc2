@@ -110,11 +110,11 @@
       listEl.style.display = '';
       countEl.textContent = items.length + '건';
 
-      var newKeys = items.map(function(it) { return it.link || it.title; }).join('|');
-      if (listEl.dataset.keys === newKeys) return;
-      listEl.dataset.keys = newKeys;
-      listEl.innerHTML = '';
+      var sig = items.length + ':' + (items[0] ? (items[0].timestamp || items[0].isoDate || '') : '');
+      if (listEl.dataset.sig === sig) return;
+      listEl.dataset.sig = sig;
 
+      var frag = document.createDocumentFragment();
       for (var i = 0; i < items.length; i++) {
         var it = items[i];
         var text = it.title || '';
@@ -141,8 +141,10 @@
               (rel ? '<span class="hi-meta__dot">·</span><span class="hi-meta__time">' + esc(rel) + '</span>' : '') +
             '</div>' +
           '</div>';
-        listEl.appendChild(a);
+        frag.appendChild(a);
       }
+      listEl.innerHTML = '';
+      listEl.appendChild(frag);
     }
 
     async function loadNews() {
