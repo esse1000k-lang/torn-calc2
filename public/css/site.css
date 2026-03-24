@@ -977,7 +977,8 @@ body.news-page { padding-top: 50px; }
 .history-item:link,
 .history-item:visited,
 .history-item:hover,
-.history-item:active { text-decoration: none; color: inherit; }
+.history-item:active { text-decoration: none !important; color: inherit; }
+.history-item * { text-decoration: none !important; }
 .history-item:hover { background: rgba(52,211,153,0.03); }
 
 .hi-badge {
