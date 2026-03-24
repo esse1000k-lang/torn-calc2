@@ -53,6 +53,7 @@ body.theme-light textarea::placeholder {
 
 /* ── Reset & globals ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
+a, a:link, a:visited, a:hover, a:active { text-decoration: none; color: inherit; }
 .user-select-none { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
 
 body {
@@ -974,11 +975,6 @@ body.news-page { padding-top: 50px; }
   color: inherit;
 }
 .history-item:last-child { border-bottom: none; }
-.history-item:link,
-.history-item:visited,
-.history-item:hover,
-.history-item:active { text-decoration: none !important; color: inherit; }
-.history-item * { text-decoration: none !important; }
 .history-item:hover { background: rgba(52,211,153,0.03); }
 
 .hi-badge {

@@ -145,8 +145,7 @@ app.use(compression({ level: 6, threshold: 512 }));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '2h',
   setHeaders(res, filePath) {
-    // HTML files should never be cached to ensure updates propagate immediately
-    if (filePath.endsWith('.html')) {
+    if (filePath.endsWith('.html') || filePath.endsWith('.css') || filePath.endsWith('.js')) {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     }
   }
