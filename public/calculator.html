@@ -76,7 +76,7 @@
         <div class="data-value" id="kimchiPremiumDisplay"> 로딩 중</div>
       </div>
       <div class="input-group">
-        <label for="totalPool">총 스테이킹 수량 <span id="totalPoolPercent" style="font-weight:600"></span></label>
+        <label for="totalPool">총 스테이킹 수량 <span id="totalPoolPercent"></span></label>
         <div class="data-value data-value--row data-value--total-pool">
           <input type="text" id="totalPool" inputmode="numeric" autocomplete="off" readonly>
           <span class="value-krw" id="totalPoolKrw"></span>
@@ -166,9 +166,9 @@
       </div>
       <div class="analytics-input-grid">
         <div class="input-group input-group--investment">
-          <div class="label-row" style="display: flex; align-items: center; margin-bottom: 0.45rem;">
-            <label for="investmentKrw" style="display: inline !important; margin-bottom: 0 !important; flex-shrink: 0;">내 투자금 (원화)</label>
-            <span class="value-hangul" id="investmentKrwHangul" style="font-size: 0.55rem; font-weight: 500; color: #fff; flex-shrink: 0; margin-left: 0.25rem;"></span>
+          <div class="label-row">
+            <label for="investmentKrw">내 투자금 (원화)</label>
+            <span class="value-hangul" id="investmentKrwHangul"></span>
           </div>
           <div class="data-value data-value--row data-value--input">
             <div class="investment-input-wrapper">
@@ -425,11 +425,7 @@
               chunkStr += digits[hundred] + '백';
             }
             if (ten > 0) {
-              if (ten === 1 && chunk < 10000) {
-                chunkStr += '십';
-              } else {
-                chunkStr += tens[ten];
-              }
+              chunkStr += tens[ten];
             }
             if (one > 0) {
               chunkStr += digits[one];
@@ -732,11 +728,10 @@
           priceDisplayWrap.classList.add('loading');
           kimchiPremiumDisplay.textContent = ' 로딩 중';
         }
-        var pricesPromise = fetchCalculatorPrices().then(applyApiPrices).catch(function (err) {
+        fetchCalculatorPrices().then(applyApiPrices).catch(function (err) {
           const msg = String(err && err.message || '').includes('fetch') ? NETWORK_ERR_MSG : (err.message || '조회 실패');
           setPriceError(msg);
         });
-        Promise.allSettled([pricesPromise]).then(function () {});
       }
 
       function updatePremiumData() {
@@ -813,190 +808,88 @@
         }
         tabs.forEach(function (tab) { tab.addEventListener('click', function () { switchToTab(tab.getAttribute('data-tab')); }); });
         
-        // Add swipe functionality
+        // Swipe & drag support (shared logic for touch + mouse)
         const swipeArea = document.querySelector('.dividend-swipe-area');
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let dragging = false;
-        let axisLocked = false;
-        let isHorizontalSwipe = false;
-        let lastDelta = 0;
+        let touchStartX = 0, touchStartY = 0, dragging = false, axisLocked = false, isHorizontalSwipe = false, lastDelta = 0;
+
+        function startDrag(x, y) {
+          touchStartX = x; touchStartY = y;
+          dragging = true; axisLocked = false; isHorizontalSwipe = false; lastDelta = 0;
+          track.style.transition = 'none';
+        }
+        function resetDrag() {
+          dragging = false; axisLocked = false;
+          track.style.transition = '';
+          track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+        }
+        function moveDrag(x, y) {
+          if (!dragging) return;
+          var dx = x - touchStartX, dy = y - touchStartY;
+          if (!axisLocked) {
+            var adx = Math.abs(dx), ady = Math.abs(dy);
+            if (adx > 10 && adx >= ady) { axisLocked = true; isHorizontalSwipe = true; }
+            else if (ady > 10 && ady > adx) { resetDrag(); return; }
+            else return;
+          }
+          if (!isHorizontalSwipe) return;
+          var w = swipeArea.clientWidth || 1;
+          lastDelta = Math.max(-1, Math.min(1, dx / w));
+          track.style.transform = 'translate3d(' + ((-100 * currentIndex) + lastDelta * 100) + '%,0,0)';
+        }
+        function finishSwipe(diffX) {
+          dragging = false; axisLocked = false; isHorizontalSwipe = false;
+          track.style.transition = '';
+          var w = swipeArea.clientWidth || 1, threshold = Math.min(50, w * 0.15);
+          if (!diffX || Math.abs(diffX) <= threshold) {
+            track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+            return;
+          }
+          switchToTab(tabOrder[diffX < 0 ? Math.min(tabOrder.length - 1, currentIndex + 1) : Math.max(0, currentIndex - 1)]);
+        }
 
         if (swipeArea && track) {
           swipeArea.addEventListener('touchstart', function(e) {
-            const touch = e.changedTouches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            dragging = true;
-            axisLocked = false;
-            isHorizontalSwipe = false;
-            lastDelta = 0;
-            // 드래그 중에는 transition을 끄고 손가락을 바로 따라오게
-            track.style.transition = 'none';
+            startDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
           }, { passive: true });
-
           swipeArea.addEventListener('touchmove', function(e) {
-            if (!dragging) return;
-            const touch = e.changedTouches[0];
-            const x = touch.clientX;
-            const y = touch.clientY;
-            const dx = x - touchStartX;
-            const dy = y - touchStartY;
-
-            if (!axisLocked) {
-              const adx = Math.abs(dx);
-              const ady = Math.abs(dy);
-              if (adx > 10 && adx >= ady) {
-                axisLocked = true;
-                isHorizontalSwipe = true;
-              } else if (ady > 10 && ady > adx) {
-                // 세로 스크롤 제스처로 판단: 원래 위치로 되돌리고 종료
-                dragging = false;
-                axisLocked = false;
-                track.style.transition = '';
-                track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
-                return;
-              } else {
-                return;
-              }
-            }
-
-            if (!isHorizontalSwipe) return;
-
-            const width = swipeArea.clientWidth || 1;
-            lastDelta = dx / width;
-            // 과도한 이동 방지 (한 패널 정도까지만)
-            if (lastDelta > 1) lastDelta = 1;
-            if (lastDelta < -1) lastDelta = -1;
-            // Ensure drag follows finger: positive dx (right) should move track to the right.
-            const offsetPercent = (-100 * currentIndex) + (lastDelta * 100);
-            track.style.transform = 'translate3d(' + offsetPercent + '%,0,0)';
+            moveDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+          }, { passive: true });
+          swipeArea.addEventListener('touchend', function(e) {
+            if (dragging) finishSwipe(e.changedTouches[0].clientX - touchStartX);
+          }, { passive: true });
+          swipeArea.addEventListener('touchcancel', function() {
+            if (dragging) finishSwipe(0);
           }, { passive: true });
 
-          // Mouse drag support (desktop): mirror touch behavior
-          let mouseDown = false;
-          swipeArea.addEventListener('mousedown', function (e) {
-            // only left button
+          var mouseDown = false;
+          swipeArea.addEventListener('mousedown', function(e) {
             if (e.button !== 0) return;
             mouseDown = true;
-            touchStartX = e.clientX;
-            touchStartY = e.clientY;
-            dragging = true;
-            axisLocked = false;
-            isHorizontalSwipe = false;
-            lastDelta = 0;
-            track.style.transition = 'none';
-            // prevent text selection while dragging
+            startDrag(e.clientX, e.clientY);
             document.body.classList.add('user-select-none');
             e.preventDefault();
           }, { passive: false });
-
-          document.addEventListener('mousemove', function (e) {
-            if (!mouseDown || !dragging) return;
-            const x = e.clientX;
-            const y = e.clientY;
-            const dx = x - touchStartX;
-            const dy = y - touchStartY;
-
-            if (!axisLocked) {
-              const adx = Math.abs(dx);
-              const ady = Math.abs(dy);
-              if (adx > 10 && adx >= ady) {
-                axisLocked = true;
-                isHorizontalSwipe = true;
-              } else if (ady > 10 && ady > adx) {
-                // vertical scroll intent: cancel
-                dragging = false;
-                axisLocked = false;
-                track.style.transition = '';
-                track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
-                document.body.classList.remove('user-select-none');
-                mouseDown = false;
-                return;
-              } else {
-                return;
-              }
-            }
-
-            if (!isHorizontalSwipe) return;
-
-            const width = swipeArea.clientWidth || 1;
-            lastDelta = dx / width;
-            if (lastDelta > 1) lastDelta = 1;
-            if (lastDelta < -1) lastDelta = -1;
-            const offsetPercent = (-100 * currentIndex) + (lastDelta * 100);
-            track.style.transform = 'translate3d(' + offsetPercent + '%,0,0)';
+          document.addEventListener('mousemove', function(e) {
+            if (!mouseDown) return;
+            moveDrag(e.clientX, e.clientY);
+            if (!dragging) { document.body.classList.remove('user-select-none'); mouseDown = false; }
           }, { passive: true });
-
-          document.addEventListener('mouseup', function (e) {
+          document.addEventListener('mouseup', function(e) {
             if (!mouseDown) return;
             mouseDown = false;
             document.body.classList.remove('user-select-none');
-            if (!dragging) return;
-            const diff = e.clientX - touchStartX;
-            finishSwipe(diff);
-          }, { passive: true });
-
-          function finishSwipe(diffX) {
-            dragging = false;
-            axisLocked = false;
-            isHorizontalSwipe = false;
-            // 애니메이션 복원
-            track.style.transition = '';
-
-            const width = swipeArea.clientWidth || 1;
-            const threshold = Math.min(50, width * 0.15);
-
-            if (!diffX || Math.abs(diffX) <= threshold) {
-              // 스와이프가 충분하지 않으면 제자리로 스냅
-              track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
-              return;
-            }
-
-            if (diffX < 0) {
-              // 왼쪽으로 스와이프: 다음 탭 (끝에서는 더 가지 않음)
-              const nextIndex = Math.min(tabOrder.length - 1, currentIndex + 1);
-              switchToTab(tabOrder[nextIndex]);
-            } else {
-              // 오른쪽으로 스와이프: 이전 탭 (처음에서는 더 가지 않음)
-              const prevIndex = Math.max(0, currentIndex - 1);
-              switchToTab(tabOrder[prevIndex]);
-            }
-          }
-
-          swipeArea.addEventListener('touchend', function(e) {
-            if (!dragging) return;
-            const touch = e.changedTouches[0];
-            const diff = touch.clientX - touchStartX;
-            finishSwipe(diff);
-          }, { passive: true });
-
-          swipeArea.addEventListener('touchcancel', function() {
-            if (!dragging) return;
-            finishSwipe(0);
+            if (dragging) finishSwipe(e.clientX - touchStartX);
           }, { passive: true });
         }
-        
-        // Add keyboard arrow key support
+
         document.addEventListener('keydown', function(e) {
-          // Only handle arrow keys when not in input fields
-          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            return;
-          }
-          
-          const currentActive = document.querySelector('.dividend-tab--active');
-          const currentTabName = currentActive ? currentActive.getAttribute('data-tab') : tabOrder[currentIndex];
-          
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
           if (e.key === 'ArrowLeft') {
-            // Left arrow - previous tab
             e.preventDefault();
-            const prevIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
-            switchToTab(tabOrder[prevIndex]);
+            switchToTab(tabOrder[(currentIndex - 1 + tabOrder.length) % tabOrder.length]);
           } else if (e.key === 'ArrowRight') {
-            // Right arrow - next tab
             e.preventDefault();
-            const nextIndex = (currentIndex + 1) % tabOrder.length;
-            switchToTab(tabOrder[nextIndex]);
+            switchToTab(tabOrder[(currentIndex + 1) % tabOrder.length]);
           }
         });
         switchToTab('eth');
@@ -1004,8 +897,8 @@
 
       userTornInput.addEventListener('input', calculate);
       userTornInput.addEventListener('change', calculate);
-      totalPoolInput.addEventListener('input', function(){ calculate(); });
-      totalPoolInput.addEventListener('change', function(){ calculate(); });
+      totalPoolInput.addEventListener('input', calculate);
+      totalPoolInput.addEventListener('change', calculate);
       investmentKrwInput.addEventListener('input', updateInvestmentKrwDisplay);
       investmentKrwInput.addEventListener('input', updateAnalyticsCard);
       investmentKrwInput.addEventListener('change', updateAnalyticsCard);

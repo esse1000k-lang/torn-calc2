@@ -2,8 +2,6 @@
 // Fast kimchi premium calculator (Binance USDT -> KRW, Upbit KRW)
 const DEFAULT_TIMEOUT = 2500;
 
-const timeoutFetch = (url, ms = DEFAULT_TIMEOUT) => fetch(url, { signal: AbortSignal.timeout(ms) }).then(r => r.json());
-
 async function getKimchiPremium({ fxUrl = 'https://api.exchangerate.host/latest?base=USD&symbols=KRW', timeoutMs = DEFAULT_TIMEOUT, fxFallbackUrl = 'https://open.er-api.com/v6/latest/USD' } = {}) {
   const tf = (u) => fetch(u, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
   try {

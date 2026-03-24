@@ -30,6 +30,44 @@ function normalizeTitle(title) {
   return (title || '').replace(/\s+-\s+\S[^-]*$/, '').trim();
 }
 
+// Extract keywords from title for fuzzy similarity matching
+function titleKeywords(title) {
+  const text = normalizeTitle(title)
+    .replace(/["'"'\[\](){}…·|:!?%$#@^&*~`「」『』《》〈〉]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return text.split(/[\s,]+/)
+    .map(w => w.replace(/[^가-힣a-zA-Z0-9]/g, '')
+      .replace(/(에서|에게|까지|부터|으로|에는|에도)$/, '')
+      .replace(/(에|을|를|은|는|와|과|로)$/, ''))
+    .filter(w => w.length >= 2);
+}
+
+// Check if two words match: exact, substring (≥3 chars), or edit-distance-1 (same length ≥3)
+function wordsMatch(a, b) {
+  if (a === b) return true;
+  if (a.length >= 3 && b.includes(a)) return true;
+  if (b.length >= 3 && a.includes(b)) return true;
+  if (a.length === b.length && a.length >= 3) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) { if (a[i] !== b[i] && ++d > 1) return false; }
+    return d === 1;
+  }
+  return false;
+}
+
+// Check if two titles are about the same topic (fuzzy keyword overlap)
+function areTitlesSimilar(kwA, kwB) {
+  if (kwA.length < 3 || kwB.length < 3) return false;
+  let overlap = 0;
+  const used = new Set();
+  for (const a of kwA) {
+    for (let j = 0; j < kwB.length; j++) {
+      if (!used.has(j) && wordsMatch(a, kwB[j])) { overlap++; used.add(j); break; }
+    }
+  }
+  return overlap >= 2 && overlap / Math.min(kwA.length, kwB.length) >= 0.30;
+}
+
 // In-memory mirror of news_raw.json (Map keyed by link for fast dedup)
 let newsMap = new Map();
 let newsLastPoll = 0; // timestamp of last successful poll
@@ -39,14 +77,20 @@ try {
   if (fs.existsSync(NEWS_FILE)) {
     const saved = JSON.parse(fs.readFileSync(NEWS_FILE, 'utf8'));
     if (Array.isArray(saved)) {
-      const loadedTitles = new Set();
+      const loadedKw = [];
+      const loadedNorm = new Set();
       saved.forEach(it => {
         const key = (it.link || it.title || '').trim();
         if (!key) return;
         const norm = normalizeTitle(it.title);
-        if (norm && loadedTitles.has(norm)) return; // title duplicate
+        if (norm && loadedNorm.has(norm)) return;
+        const kw = titleKeywords(it.title);
+        for (let j = 0; j < loadedKw.length; j++) {
+          if (areTitlesSimilar(kw, loadedKw[j])) return;
+        }
         newsMap.set(key, it);
-        if (norm) loadedTitles.add(norm);
+        if (norm) loadedNorm.add(norm);
+        loadedKw.push(kw);
       });
       console.log('News loaded from disk:', newsMap.size, 'articles');
     }
@@ -107,9 +151,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
   }
 }));
-// Serve data/ directory for news_raw.json fallback (no long cache)
-app.use('/data', express.static(path.join(__dirname, 'data'), { maxAge: 0 }));
-
 // Prevent browsers from caching API responses to ensure clients always fetch fresh data
 app.use('/api', (_req, res, next) => {
   try {
@@ -127,12 +168,6 @@ function validateAndNormalizeEthAddress(str) {
   return trimmed;
 }
 
-const DATA_DIR = process.env.DATA_DIR && typeof process.env.DATA_DIR === 'string'
-  ? path.resolve(process.env.DATA_DIR)
-  : path.join(__dirname, 'data');
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-}
 function writeJsonSafe(file, obj) {
   try {
     const dir = path.dirname(file);
@@ -346,20 +381,28 @@ function getNewsSorted() {
   if (newsSortedCache) return newsSortedCache;
   const items = Array.from(newsMap.values())
     .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  const seen = new Set();
-  newsSortedCache = items.filter(it => {
+  const accepted = [];
+  const acceptedKw = [];
+  const seenNorm = new Set();
+  for (const it of items) {
     const norm = normalizeTitle(it.title);
-    if (!norm) return true;
-    if (seen.has(norm)) return false;
-    seen.add(norm);
-    return true;
-  });
+    if (norm && seenNorm.has(norm)) continue;
+    const kw = titleKeywords(it.title);
+    let dominated = false;
+    for (let j = 0; j < acceptedKw.length; j++) {
+      if (areTitlesSimilar(kw, acceptedKw[j])) { dominated = true; break; }
+    }
+    if (dominated) continue;
+    if (norm) seenNorm.add(norm);
+    accepted.push(it);
+    acceptedKw.push(kw);
+  }
+  newsSortedCache = accepted;
   return newsSortedCache;
 }
 
 function persistNews() {
   try {
-    ensureDataDir();
     writeJsonSafe(NEWS_FILE, getNewsSorted());
   } catch (e) { console.warn('persistNews failed:', e && e.message); }
 }
@@ -419,24 +462,25 @@ async function pollNewsFeeds() {
 
     // ── Merge new items into persistent map (never replace) ──
     const cutoff = Date.now() - NEWS_RETENTION_MS;
-    // Build title index for dedup
-    const existingTitles = new Set();
+    // Build keyword index for fuzzy dedup
+    const existingKw = [];
     for (const it of newsMap.values()) {
-      const norm = normalizeTitle(it.title);
-      if (norm) existingTitles.add(norm);
+      existingKw.push(titleKeywords(it.title));
     }
     let added = 0;
     freshItems.forEach(it => {
       const key = (it.link || it.title || '').trim();
       if (!key) return;
       if (newsMap.has(key)) return; // already stored (by link)
-      const normTitle = normalizeTitle(it.title);
-      if (normTitle && existingTitles.has(normTitle)) return; // title duplicate
+      const kw = titleKeywords(it.title);
+      for (let j = 0; j < existingKw.length; j++) {
+        if (areTitlesSimilar(kw, existingKw[j])) return;
+      }
       let ts = 0;
       try { ts = it.isoDate ? Date.parse(it.isoDate) : 0; } catch { ts = 0; }
       if (ts && ts < cutoff) return; // older than 180 days
       newsMap.set(key, Object.assign({ timestamp: ts || Date.now() }, it));
-      if (normTitle) existingTitles.add(normTitle);
+      existingKw.push(kw);
       added++;
     });
 
