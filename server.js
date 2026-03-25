@@ -30,6 +30,18 @@ function normalizeTitle(title) {
   return (title || '').replace(/\s+-\s+\S[^-]*$/, '').trim();
 }
 
+// Domain-common stop words: too frequent in this niche to be useful for dedup
+const TITLE_STOP_WORDS = new Set([
+  '토네이도', '캐시', 'tornado', 'cash', 'torn',
+  '암호화폐', '가상화폐', '가상자산', '코인', 'crypto', 'cryptocurrency',
+  '해킹', '해커', 'hack', 'hacked', 'hacking', 'hacker',
+  '비트코인', 'bitcoin', 'btc', '이더리움', 'ethereum', 'eth',
+  '블록체인', 'blockchain', '디파이', 'defi',
+  '달러', '만', '억', '원', '규모', '약', '상당',
+  '미국', '북한', '한국',
+  '자금', '세탁', '제재', '탈취', '공격', '피해',
+]);
+
 // Extract keywords from title for fuzzy similarity matching
 function titleKeywords(title) {
   const text = normalizeTitle(title)
@@ -39,7 +51,7 @@ function titleKeywords(title) {
     .map(w => w.replace(/[^가-힣a-zA-Z0-9]/g, '')
       .replace(/(에서|에게|까지|부터|으로|에는|에도)$/, '')
       .replace(/(에|을|를|은|는|와|과|로)$/, ''))
-    .filter(w => w.length >= 2);
+    .filter(w => w.length >= 2 && !TITLE_STOP_WORDS.has(w.toLowerCase()));
 }
 
 // Check if two words match: exact, substring (≥3 chars), or edit-distance-1 (same length ≥3)

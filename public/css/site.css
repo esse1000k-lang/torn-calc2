@@ -581,7 +581,7 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   margin-bottom: 0.5rem;
 }
 .calculator-page .share-label {
-  font-size: 0.78rem; font-weight: 600;
+  font-size: 0.84rem; font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.04em;
 }

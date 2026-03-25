@@ -50,7 +50,7 @@
     <div class="card">
       <div class="card-title">🌪️ 정보</div>
       <div class="input-group">
-        <label>현재 가격</label>
+        <label>$TORN</label>
         <div class="data-value data-value--row price-cols" id="priceDisplayWrap">
           <div class="price-col">
             <span class="price-col-label">유니스왑</span>
@@ -59,7 +59,7 @@
           </div>
           <span class="price-col-arrow price-col-arrow--red" aria-hidden="true"></span>
           <div class="price-col">
-            <span class="price-col-label">마켓 평균 가격</span>
+            <span class="price-col-label">마켓 평균</span>
             <span class="data-value" id="priceDisplayCenter"> 로딩 중</span>
             <span class="price-col-krw" id="priceDisplayCenterKrw"></span>
           </div>
@@ -72,17 +72,17 @@
         </div>
       </div>
       <div class="input-group">
-        <label>현재 김치프리미엄</label>
+        <label>김치 프리미엄</label>
         <div class="data-value" id="kimchiPremiumDisplay"> 로딩 중</div>
       </div>
       <div class="input-group">
-        <label for="totalPool">총 스테이킹 수량 <span id="totalPoolPercent"></span></label>
+        <label for="totalPool">전체 스테이킹 수량 <span id="totalPoolPercent"></span></label>
         <div class="data-value data-value--row data-value--total-pool">
           <input type="text" id="totalPool" inputmode="numeric" autocomplete="off" readonly>
           <span class="value-krw" id="totalPoolKrw"></span>
         </div>
       </div>
-      <p class="hint">TORN 시세, DEX / CEX 활용, 김치프리미엄 BTC 기반 반영(국내 미상장), 스테이킹 정보 이더스캔(etherscan)</p>
+      <p class="hint" style="font-size:0.5625rem">TORN 시세, DEX / CEX 활용, 김치 프리미엄 BTC 기반 반영(국내 미상장), 스테이킹 정보 이더스캔(etherscan)</p>
     </div>
     
     <!-- One-line news slot between 정보 and 조회 -->
@@ -115,21 +115,21 @@
         </p>
       </div>
       <div class="input-group">
-        <label for="userTorn">내 TORN 스테이킹</label>
+        <label for="userTorn">TORN 스테이킹</label>
         <div class="data-value data-value--row data-value--input">
           <input type="number" id="userTorn" min="0" step="any" value="">
           <span class="value-krw" id="userTornKrw"></span>
         </div>
       </div>
       <div class="input-group">
-        <label>총 누적 리워드</label>
+        <label>누적 리워드</label>
         <div class="data-value data-value--row">
           <span id="unclaimedRewardDisplay"></span>
           <span class="value-krw" id="unclaimedRewardKrw"></span>
         </div>
       </div>
       <div class="input-group">
-        <label>지갑 TORN 보유</label>
+        <label>지갑 잔액</label>
         <div class="data-value data-value--row">
           <span id="walletTornBalanceDisplay"></span>
           <span class="value-krw" id="walletTornBalanceKrw"></span>
@@ -167,7 +167,7 @@
       <div class="analytics-input-grid">
         <div class="input-group input-group--investment">
           <div class="label-row">
-            <label for="investmentKrw">내 투자금 (원화)</label>
+            <label for="investmentKrw">내 투자금 (입력)</label>
             <span class="value-hangul" id="investmentKrwHangul"></span>
           </div>
           <div class="data-value data-value--row data-value--input">
@@ -178,30 +178,30 @@
           </div>
         </div>
         <div class="input-group input-group--investment">
-          <label>자동 계산 평균 단가</label>
+          <label>투자금 달러 환산</label>
           <div class="data-value data-value--row analytics-average-box">
-            <span class="analytics-average-box__value" id="avgBuyPriceInlineDisplay"></span>
-            <span class="analytics-average-box__sub" id="avgBuyPriceInlineUsdDisplay"></span>
+            <span class="analytics-average-box__value" id="investmentUsdDisplay"></span>
+            <span class="analytics-average-box__sub" id="investmentUsdRateDisplay"></span>
           </div>
         </div>
       </div>
       <div class="analytics-results">
         <div class="analytics-result-row">
-          <span class="analytics-result-label">개당 평균 단가</span>
+          <span class="analytics-result-label">평균 단가</span>
           <div class="analytics-result-wrap">
             <span class="analytics-result-value" id="avgBuyPriceDisplay"></span>
             <span class="analytics-result-sub" id="avgBuyPriceUsdDisplay"></span>
           </div>
         </div>
         <div class="analytics-result-row">
-          <span class="analytics-result-label">현재 평가금액</span>
+          <span class="analytics-result-label">자산 가치</span>
           <div class="analytics-result-wrap">
             <span class="analytics-result-value" id="currentValueDisplay"></span>
             <span class="analytics-result-sub" id="currentValueTornDisplay"></span>
           </div>
         </div>
         <div class="analytics-result-row">
-          <span class="analytics-result-label">현재 손익</span>
+          <span class="analytics-result-label">손익</span>
           <div class="analytics-result-wrap">
             <span class="analytics-result-value" id="profitDisplay"></span>
             <span class="analytics-result-sub" id="profitRateDisplay"></span>
@@ -310,8 +310,8 @@
       const holdingsBtcDisplay = document.getElementById('holdingsBtcDisplay');
       const investmentKrwInput = document.getElementById('investmentKrw');
       const investmentKrwHangul = document.getElementById('investmentKrwHangul');
-      const avgBuyPriceInlineDisplay = document.getElementById('avgBuyPriceInlineDisplay');
-      const avgBuyPriceInlineUsdDisplay = document.getElementById('avgBuyPriceInlineUsdDisplay');
+      const investmentUsdDisplay = document.getElementById('investmentUsdDisplay');
+      const investmentUsdRateDisplay = document.getElementById('investmentUsdRateDisplay');
       const avgBuyPriceDisplay = document.getElementById('avgBuyPriceDisplay');
       const avgBuyPriceUsdDisplay = document.getElementById('avgBuyPriceUsdDisplay');
       const currentValueDisplay = document.getElementById('currentValueDisplay');
@@ -336,7 +336,7 @@
 
       function colorizeKimchi() {
         if (kimchiPremiumAuto == null) return;
-        kimchiPremiumDisplay.style.color = kimchiPremiumAuto < 0 ? 'rgba(255, 100, 100, 0.8)' : kimchiPremiumAuto > 0 ? 'rgba(100, 150, 255, 0.8)' : '';
+        kimchiPremiumDisplay.style.color = kimchiPremiumAuto < 0 ? 'rgba(255, 100, 100, 0.8)' : kimchiPremiumAuto > 0 ? 'rgba(100, 150, 255, 0.8)' : '#ffffff';
       }
 
       function fetchCalculatorPrices() {
@@ -546,10 +546,12 @@
         const profitRate = costBasisKrw > 0 && hasValuation ? ((totalValueKrw - costBasisKrw) / costBasisKrw) * 100 : null;
         avgBuyPriceDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
         avgBuyPriceUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
-        avgBuyPriceInlineDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
-        avgBuyPriceInlineUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
+        const investmentUsd = investmentKrw > 0 && krwPerUsdAuto > 0 ? investmentKrw / krwPerUsdAuto : 0;
+        investmentUsdDisplay.textContent = investmentUsd > 0 ? formatUsd(investmentUsd) : '';
+        investmentUsdRateDisplay.textContent = krwPerUsdAuto > 0 ? '₩' + Math.round(krwPerUsdAuto).toLocaleString() + '/USD' : '';
         currentValueDisplay.textContent = hasValuation ? formatKrw(totalValueKrw) : '';
-        currentValueTornDisplay.textContent = totalTorn > 0 ? formatTorn2Decimals(totalTorn) + ' TORN' + (costBasisKrw > 0 ? ' · 원가 ' + formatKrw(costBasisKrw) : '') : '';
+        const currentValueUsd = hasValuation && krwPerUsdAuto > 0 ? totalValueKrw / krwPerUsdAuto : 0;
+        currentValueTornDisplay.textContent = currentValueUsd > 0 ? formatUsd(currentValueUsd) : '';
         profitDisplay.textContent = costBasisKrw > 0 && hasValuation ? formatSignedKrw(profitKrw) : '';
         profitDisplay.classList.toggle('analytics-result-value--positive', costBasisKrw > 0 && hasValuation && profitKrw > 0);
         profitDisplay.classList.toggle('analytics-result-value--negative', costBasisKrw > 0 && hasValuation && profitKrw < 0);
