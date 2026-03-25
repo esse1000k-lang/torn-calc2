@@ -6,6 +6,48 @@ const compression = require('compression');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
 const { getKimchiPremium } = require('./scripts/compute-kimchi');
 
+// ── Rate Limiting (식당 줄 서기) ───────────────────────────────────────
+/**
+ * Simple in-memory rate limiter for API endpoints
+ * Prevents clients from overwhelming external APIs
+ */
+class RateLimiter {
+  constructor(windowMs, maxRequests) {
+    this.windowMs = windowMs;
+    this.maxRequests = maxRequests;
+    this.requests = new Map();
+  }
+
+  isAllowed(identifier) {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+
+    // Clean old entries
+    for (const [key, timestamps] of this.requests.entries()) {
+      const recentTimestamps = timestamps.filter(ts => ts > windowStart);
+      if (recentTimestamps.length === 0) {
+        this.requests.delete(key);
+      } else {
+        this.requests.set(key, recentTimestamps);
+      }
+    }
+
+    const clientRequests = this.requests.get(identifier) || [];
+    
+    if (clientRequests.length >= this.maxRequests) {
+      return false; // Rate limited
+    }
+
+    clientRequests.push(now);
+    this.requests.set(identifier, clientRequests);
+    return true;
+  }
+}
+
+// Create rate limiters: 5 requests/second for general API, stricter for blockchain calls
+const GENERAL_RATE_LIMITER = new RateLimiter(1000, 10);   // 10 req/sec
+const BLOCKCHAIN_RATE_LIMITER = new RateLimiter(1000, 3); // 3 req/sec (more strict)
+
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const CALC_PRICE_CACHE_TTL_MS = 30 * 1000;      // 가격 캐시: 30 초 (불필요한 외부 API 호출 감소)
@@ -25,13 +67,81 @@ const DEFILLAMA_COINS = 'ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C,eth
 const STAKING_CONTRACT_ADDRESS = '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce';
 const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
 
-const SHARED_RPC_URL = (() => {
-  const raw = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
-  if (!raw) return 'https://rpc.ankr.com/eth';
-  if (/^https?:\/\//i.test(raw)) return raw;
-  return 'https://mainnet.infura.io/v3/' + raw;
-})();
-const sharedProvider = new JsonRpcProvider(SHARED_RPC_URL || 'https://rpc.ankr.com/eth', 1);
+// ── RPC Failover (우체국 여러 개) ───────────────────────────────────────
+/**
+ * Multiple RPC endpoints with automatic failover
+ * If one endpoint fails, automatically tries the next one
+ */
+const buildRpcEndpoints = () => {
+  const endpoints = [];
+  
+  // Add user-provided RPC from environment variables
+  const envRpc = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
+  if (envRpc) {
+    if (/^https?:\/\//i.test(envRpc)) {
+      endpoints.push(envRpc);
+    } else {
+      // Assume it's an Infura API key
+      endpoints.push(`https://mainnet.infura.io/v3/${envRpc}`);
+    }
+  }
+
+  // Add public RPC fallbacks (우체국 목록)
+  const publicFallbacks = [
+    'https://rpc.ankr.com/eth',
+    'https://eth-mainnet.g.alchemy.com/v2/demo',
+    'https://cloudflare-eth.com'
+  ];
+
+  // Add fallbacks that aren't already in the list
+  for (const fallback of publicFallbacks) {
+    if (!endpoints.includes(fallback)) {
+      endpoints.push(fallback);
+    }
+  }
+
+  return endpoints;
+};
+
+const RPC_ENDPOINTS = buildRpcEndpoints();
+let currentRpcIndex = 0;
+
+/**
+ * Fetch with RPC failover - tries multiple endpoints until one succeeds
+ */
+async function fetchWithRpcFailover(url, options = {}, maxRetries = RPC_ENDPOINTS.length) {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, { ...options });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      console.debug(`RPC attempt ${attempt + 1} failed:`, error.message);
+      
+      // Try next endpoint on next iteration
+      if (attempt < maxRetries - 1) {
+        currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
+      }
+    }
+  }
+  
+  console.error('All RPC endpoints failed:', lastError?.message);
+  throw lastError || new Error('All RPC endpoints unavailable');
+}
+
+// Create provider with failover support
+const createProviderWithFailover = () => {
+  // Use the first available endpoint initially
+  const primaryUrl = RPC_ENDPOINTS[0] || 'https://rpc.ankr.com/eth';
+  return new JsonRpcProvider(primaryUrl, 1);
+};
+
+const sharedProvider = createProviderWithFailover();
 
 // Cache the immutable Uniswap V2 pair address (TORN/WETH)
 let cachedPairAddr = null;
@@ -102,6 +212,12 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/api/calculator/premium', async (_req, res) => {
+  // ── Rate Limiting Check (식당 줄 서기) ───────────────────────────────
+  const clientIp = _req.ip || _req.socket.remoteAddress || 'unknown';
+  if (!GENERAL_RATE_LIMITER.isAllowed(clientIp)) {
+    return res.status(429).json({ ok: false, message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
+  }
+
   const now = Date.now();
   // Return cached data if still valid
   if (calcPremiumCache && now - calcPremiumCache.at < CALC_PREMIUM_CACHE_TTL_MS) {
@@ -135,6 +251,17 @@ app.get('/api/calculator/premium', async (_req, res) => {
 });
 
 app.get('/api/calculator/prices', async (_req, res) => {
+  // ── Rate Limiting Check (식당 줄 서기 - 블록체인 호출은 더 엄격하게 제한) ─────────────────
+  const clientIp = _req.ip || _req.socket.remoteAddress || 'unknown';
+  if (!BLOCKCHAIN_RATE_LIMITER.isAllowed(clientIp)) {
+    // If rate limited, return cached data instead of error (기능 상실 방지)
+    if (calcPriceCache) {
+      console.log('Rate limit exceeded, returning cached price data');
+      return res.json(calcPriceCache.data);
+    }
+    return res.status(429).json({ ok: false, message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
+  }
+
   const now = Date.now();
   // Return cached data if still valid
   if (calcPriceCache && now - calcPriceCache.at < CALC_PRICE_CACHE_TTL_MS) {
@@ -263,6 +390,12 @@ app.get('/api/calculator/prices', async (_req, res) => {
 });
 
 app.get('/api/calculator/wallet', async (req, res) => {
+  // ── Rate Limiting Check (식당 줄 서기) ───────────────────────────────
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!BLOCKCHAIN_RATE_LIMITER.isAllowed(clientIp)) {
+    return res.status(429).json({ ok: false, message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
+  }
+
   const walletAddress = validateAndNormalizeEthAddress(String(req.query.walletAddress || ''));
   if (!walletAddress) return res.status(400).json({ ok: false, message: '유효한 이더리움 주소가 아닙니다.' });
 

@@ -2,8 +2,48 @@
 // Fast kimchi premium calculator (Binance USDT -> KRW, Upbit KRW)
 const DEFAULT_TIMEOUT = 2500;
 
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Fetch with exponential backoff retry (친구한테 3 번 말걸기)
+ * @param {string} url - Request URL
+ * @param {number} timeoutMs - Timeout per request
+ * @param {number} maxRetries - Maximum retry attempts (default: 3)
+ */
+async function fetchWithRetry(url, timeoutMs = DEFAULT_TIMEOUT, maxRetries = 3) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        // Exponential backoff: 100ms → 200ms → 400ms
+        const delay = Math.pow(2, attempt) * 100;
+        await sleep(delay);
+      }
+    }
+  }
+  throw lastError || new Error('Max retries exceeded');
+}
+
 async function getKimchiPremium({ fxUrl = 'https://api.exchangerate.host/latest?base=USD&symbols=KRW', timeoutMs = DEFAULT_TIMEOUT, fxFallbackUrl = 'https://open.er-api.com/v6/latest/USD' } = {}) {
-  const tf = (u) => fetch(u, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json());
+  // Use fetchWithRetry for better reliability (retry 로직 적용)
+  const tf = async (u) => {
+    try {
+      return await fetchWithRetry(u, timeoutMs, 3);
+    } catch {
+      // Fallback to original behavior if retry also fails
+      return await fetch(u, { signal: AbortSignal.timeout(timeoutMs) }).then(r => r.json()).catch(() => null);
+    }
+  };
+  
   try {
     const [upbitRes, binanceRes, exrRes] = await Promise.allSettled([
       tf('https://api.upbit.com/v1/ticker?markets=KRW-BTC'),
