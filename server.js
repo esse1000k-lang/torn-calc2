@@ -1,18 +1,16 @@
 require('dotenv').config();
 
 const path = require('path');
-const fs = require('fs');
 const express = require('express');
 const compression = require('compression');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
-const axios = require('axios');
 const { getKimchiPremium } = require('./scripts/compute-kimchi');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const CALC_PRICE_CACHE_TTL_MS = 12 * 1000;
-const CALC_PREMIUM_CACHE_TTL_MS = 3 * 1000;
-const CALC_TOTAL_STAKED_CACHE_TTL_MS = 60 * 1000;
+const CALC_PRICE_CACHE_TTL_MS = 30 * 1000;      // 가격 캐시: 30 초 (불필요한 외부 API 호출 감소)
+const CALC_PREMIUM_CACHE_TTL_MS = 15 * 1000;     // 김치프리미엄: 15 초
+const CALC_TOTAL_STAKED_CACHE_TTL_MS = 120 * 1000; // 총 스테이킹량: 2 분
 let calcPriceCache = null;
 let calcPremiumCache = null;
 let calcTotalStakedCache = null;
@@ -59,9 +57,16 @@ const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function locked
 const rewardContract = new Contract(REWARD_CONTRACT_ADDRESS, ['function checkReward(address account) view returns (uint256 rewards)'], sharedProvider);
 const tornTokenContract = new Contract(TORN_TOKEN, ['function balanceOf(address account) view returns (uint256)'], sharedProvider);
 
-app.use(express.json({ limit: '1mb' }));
+// JSON parser with stricter limits (security)
+app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(compression({ level: 6, threshold: 512 }));
+// Compression middleware with optimized settings
+// Note: deflate only (safer than gzip for Express 4.x)
+app.use(compression({ 
+  level: 9,           // 최대 압축률 (CPU 사용 증가하지만 트래픽 감소)
+  threshold: 1024,    // 1KB 이상 응답만 압축
+  filter: () => true  // 모든 MIME 타입 압축 허용
+}));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '2h',
   setHeaders(res, filePath) {

@@ -1,0 +1,817 @@
+/**
+ * TornFi Calculator - Client-side Logic
+ * Separated from HTML for better maintainability and caching
+ */
+(function () {
+  'use strict';
+
+  // ── Constants ───────────────────────────────────────────────────────
+  const FEE_RATE = 0.003;
+  const REFRESH_INTERVAL_MS = 12000;
+  const PREMIUM_REFRESH_INTERVAL_MS = 4000;
+  const TOTAL_SUPPLY = 10000000; // 총 발행량 고정
+  const NETWORK_ERR_MSG = '네트워크 오류';
+  const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
+  const PRICE_CACHE_KEY = 'calculator-price-cache-v5';
+  const PRICE_CACHE_TTL_MS = 18000;
+
+  const WITHDRAW_AMOUNTS = [0.1, 1, 10, 100];
+  const WITHDRAW_WBTC_AMOUNTS = [0.1, 1, 10];
+  const WITHDRAW_USD_AMOUNTS = [100, 1000, 10000, 100000];
+
+  // ── DOM Elements Cache ───────────────────────────────────────────────
+  const userTornInput = document.getElementById('userTorn');
+  const totalPoolInput = document.getElementById('totalPool');
+  const totalPoolKrwEl = document.getElementById('totalPoolKrw');
+  const shareBar = document.getElementById('shareBar');
+  const shareText = document.getElementById('shareText');
+
+  const divEls = {
+    0.1: document.getElementById('div01'),
+    1: document.getElementById('div1'),
+    10: document.getElementById('div10'),
+    100: document.getElementById('div100')
+  };
+  const krwEls = {
+    0.1: document.getElementById('krw01'),
+    1: document.getElementById('krw1'),
+    10: document.getElementById('krw10'),
+    100: document.getElementById('krw100')
+  };
+  const divElsWbtc = {
+    0.1: document.getElementById('divWbtc01'),
+    1: document.getElementById('divWbtc1'),
+    10: document.getElementById('divWbtc10')
+  };
+  const krwElsWbtc = {
+    0.1: document.getElementById('krwWbtc01'),
+    1: document.getElementById('krwWbtc1'),
+    10: document.getElementById('krwWbtc10')
+  };
+  const divElsUsd = {
+    100: document.getElementById('divUsd100'),
+    1000: document.getElementById('divUsd1000'),
+    10000: document.getElementById('divUsd10000'),
+    100000: document.getElementById('divUsd100000')
+  };
+  const krwElsUsd = {
+    100: document.getElementById('krwUsd100'),
+    1000: document.getElementById('krwUsd1000'),
+    10000: document.getElementById('krwUsd10000'),
+    100000: document.getElementById('krwUsd100000')
+  };
+
+  const priceDisplayWrap = document.getElementById('priceDisplayWrap');
+  const priceDisplayLeft = document.getElementById('priceDisplayLeft');
+  const priceDisplayCenter = document.getElementById('priceDisplayCenter');
+  const priceDisplayRight = document.getElementById('priceDisplayRight');
+  const priceDisplayLeftKrw = document.getElementById('priceDisplayLeftKrw');
+  const priceDisplayCenterKrw = document.getElementById('priceDisplayCenterKrw');
+  const priceDisplayRightKrw = document.getElementById('priceDisplayRightKrw');
+
+  const dividendEthPriceDisplay = document.getElementById('dividendEthPriceDisplay');
+  const dividendWbtcPriceDisplay = document.getElementById('dividendWbtcPriceDisplay');
+  const dividendUsdPriceDisplay = document.getElementById('dividendUsdPriceDisplay');
+  const kimchiPremiumDisplay = document.getElementById('kimchiPremiumDisplay');
+
+  const userTornKrwEl = document.getElementById('userTornKrw');
+  const walletAddressInput = document.getElementById('walletAddress');
+  const walletStakedDisplay = document.getElementById('walletStakedDisplay');
+  const unclaimedRewardDisplay = document.getElementById('unclaimedRewardDisplay');
+  const walletTornBalanceDisplay = document.getElementById('walletTornBalanceDisplay');
+  const totalHoldingsSumDisplay = document.getElementById('totalHoldingsSumDisplay');
+
+  const walletStakedKrwEl = document.getElementById('walletStakedKrw');
+  const unclaimedRewardKrwEl = document.getElementById('unclaimedRewardKrw');
+  const walletTornBalanceKrwEl = document.getElementById('walletTornBalanceKrw');
+  const totalHoldingsSumKrwEl = document.getElementById('totalHoldingsSumKrw');
+
+  const gasPriceDisplay = document.getElementById('gasPriceDisplay');
+  const gasPriceKrwDisplay = document.getElementById('gasPriceKrwDisplay');
+  const holdingsEthDisplay = document.getElementById('holdingsEthDisplay');
+  const holdingsBtcDisplay = document.getElementById('holdingsBtcDisplay');
+
+  const investmentKrwInput = document.getElementById('investmentKrw');
+  const investmentKrwHangul = document.getElementById('investmentKrwHangul');
+  const investmentUsdDisplay = document.getElementById('investmentUsdDisplay');
+  const avgBuyPriceDisplay = document.getElementById('avgBuyPriceDisplay');
+  const avgBuyPriceUsdDisplay = document.getElementById('avgBuyPriceUsdDisplay');
+  const currentValueDisplay = document.getElementById('currentValueDisplay');
+  const currentValueTornDisplay = document.getElementById('currentValueTornDisplay');
+  const profitDisplay = document.getElementById('profitDisplay');
+  const profitRateDisplay = document.getElementById('profitRateDisplay');
+
+  // ── State Variables ──────────────────────────────────────────────────
+  let tornPriceUsd = 0;
+  let tornPriceUsdDex = 0;
+  let tornPriceUsdCenter = 0;
+  let tornPriceUsdCex = 0;
+  let ethPriceUsd = 0;
+  let btcPriceUsd = 0;
+  let tornPriceKrw = 0;
+  let btcKrwAuto = 0;
+  let krwPerUsdAuto = 0;
+  let gasPriceGweiAuto = 0;
+  let gasCostKrwAuto = 0;
+  let kimchiPremiumAuto = null;
+  let walletQueryTimer = null;
+  let walletEthBalance = 0;
+
+  // ── Helper Functions ─────────────────────────────────────────────────
+
+  function colorizeKimchi() {
+    if (kimchiPremiumAuto == null) return;
+    kimchiPremiumDisplay.style.color = 
+      kimchiPremiumAuto < 0 ? 'rgba(255, 100, 100, 0.8)' :
+      kimchiPremiumAuto > 0 ? 'rgba(100, 150, 255, 0.8)' : '#ffffff';
+  }
+
+  function fetchCalculatorPrices() {
+    return fetch('/api/calculator/prices').then(function (r) { return r.json(); });
+  }
+
+  function fetchCalculatorPremium() {
+    return fetch('/api/calculator/premium').then(function (r) { return r.json(); });
+  }
+
+  function parseNum(value) {
+    const n = parseFloat(String(value || '').replace(/,/g, ''));
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+
+  function parseDisplayNum(text) {
+    if (!text || text === '' || text === '조회 중') return 0;
+    const n = parseFloat(String(text).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+
+  function formatTorn2Decimals(value) {
+    const n = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(n) || n < 0) return '0';
+    return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function formatTorn(n) {
+    if (n == null) return '';
+    if (n >= 1) return n.toFixed(2) + ' TORN';
+    if (n > 0) return n.toFixed(4) + ' TORN';
+    return '0 TORN';
+  }
+
+  function formatUsd(price) {
+    if (price == null || price <= 0) return '';
+    return '$' + (price < 0.01 ? price.toFixed(6) : price.toFixed(2));
+  }
+
+  function formatKrw(n) {
+    if (n == null || n <= 0) return ' 원';
+    return Math.floor(n).toLocaleString('ko-KR') + ' 원';
+  }
+
+  function formatSignedKrw(n) {
+    if (n == null || !isFinite(n) || n === 0) return '0 원';
+    const abs = Math.floor(Math.abs(n)).toLocaleString('ko-KR') + ' 원';
+    return n > 0 ? '+' + abs : '-' + abs;
+  }
+
+  function formatPercent(n) {
+    if (n == null || !isFinite(n)) return '';
+    const sign = n > 0 ? '+' : '';
+    return sign + n.toFixed(2) + '%';
+  }
+
+  function formatAssetAmount(n, suffix, digits) {
+    if (n == null || !isFinite(n) || n <= 0) return '';
+    var s = n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: digits });
+    return suffix ? s + ' ' + suffix : s;
+  }
+
+  function formatKrwHangulOnly(n) {
+    if (n == null || !isFinite(n) || n <= 0) return '';
+    const units = ['', '만', '억', '조', '경'];
+    const digits = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+    const tens = ['', '십', '이십', '삼십', '사십', '오십', '육십', '칠십', '팔십', '구십'];
+
+    let result = '';
+    let unitIndex = 0;
+    let remaining = Math.floor(n);
+
+    while (remaining > 0 && unitIndex < units.length) {
+      const chunk = remaining % 10000;
+      if (chunk > 0) {
+        let chunkStr = '';
+        const thousand = Math.floor(chunk / 1000);
+        const hundred = Math.floor((chunk % 1000) / 100);
+        const ten = Math.floor((chunk % 100) / 10);
+        const one = chunk % 10;
+
+        if (thousand > 0) chunkStr += digits[thousand] + '천';
+        if (hundred > 0) chunkStr += digits[hundred] + '백';
+        if (ten > 0) chunkStr += tens[ten];
+        if (one > 0) chunkStr += digits[one];
+
+        result = chunkStr + units[unitIndex] + ' ' + result;
+      }
+      remaining = Math.floor(remaining / 10000);
+      unitIndex++;
+    }
+    return result.trim();
+  }
+
+  function updateInvestmentKrwHangul() {
+    const value = parseNum(investmentKrwInput.value);
+    investmentKrwHangul.textContent = value > 0 ? ' ' + formatKrwHangulOnly(value) : '';
+  }
+
+  function formatNumberWithCommas(value) {
+    const cleanValue = value.replace(/,/g, '');
+    if (!cleanValue || isNaN(cleanValue)) return '';
+    return Number(cleanValue).toLocaleString('ko-KR');
+  }
+
+  function updateInvestmentKrwDisplay() {
+    const rawValue = investmentKrwInput.value;
+    const formattedValue = formatNumberWithCommas(rawValue);
+
+    if (formattedValue !== investmentKrwInput.value) {
+      const cursorStart = investmentKrwInput.selectionStart;
+      const cursorEnd = investmentKrwInput.selectionEnd;
+      investmentKrwInput.value = formattedValue;
+
+      const lengthDiff = formattedValue.length - rawValue.length;
+      const newCursorStart = cursorStart + lengthDiff;
+      const newCursorEnd = cursorEnd + lengthDiff;
+      investmentKrwInput.setSelectionRange(newCursorStart, newCursorEnd);
+    }
+    updateInvestmentKrwHangul();
+  }
+
+  function setTextIfAvailable(el, value, fallback) {
+    if (!el) return;
+    if (value) { el.textContent = value; return; }
+    if (fallback != null) el.textContent = fallback;
+  }
+
+  // ── Wallet & Analytics Updates ───────────────────────────────────────
+
+  function updateWalletKrwDisplays() {
+    function krwFromTorn(torn) {
+      if (torn == null || torn <= 0 || tornPriceKrw <= 0) return 0;
+      var krw = torn * tornPriceKrw;
+      if (kimchiPremiumAuto != null) krw = krw * (1 + kimchiPremiumAuto / 100);
+      return krw;
+    }
+    function krwFromEth(eth) {
+      if (eth == null || eth <= 0 || ethPriceUsd <= 0 || krwPerUsdAuto <= 0) return 0;
+      return eth * ethPriceUsd * krwPerUsdAuto;
+    }
+
+    const staked = parseDisplayNum(walletStakedDisplay.textContent);
+    const reward = parseDisplayNum(unclaimedRewardDisplay.textContent);
+    const walletBal = parseDisplayNum(walletTornBalanceDisplay.textContent);
+    const sum = parseDisplayNum(totalHoldingsSumDisplay.textContent);
+
+    walletStakedKrwEl.textContent = walletEthBalance > 0 ? formatKrw(krwFromEth(walletEthBalance)) : '';
+    unclaimedRewardKrwEl.textContent = reward > 0 ? formatKrw(krwFromTorn(reward)) : '';
+    walletTornBalanceKrwEl.textContent = walletBal > 0 ? formatKrw(krwFromTorn(walletBal)) : '';
+    totalHoldingsSumKrwEl.textContent = sum > 0 ? formatKrw(krwFromTorn(sum)) : '';
+  }
+
+  function updateAnalyticsCard() {
+    const totalTorn = parseDisplayNum(totalHoldingsSumDisplay.textContent);
+    const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 
+      ? totalTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+
+    // Gas price display update
+    (function () {
+      const ethKrw = (ethPriceUsd > 0 && krwPerUsdAuto > 0) ? (ethPriceUsd * krwPerUsdAuto) : 0;
+
+      function krwForLimit(limit) {
+        if (gasPriceGweiAuto <= 0 || ethKrw <= 0 || limit <= 0) return 0;
+        const maxFeeWei = gasPriceGweiAuto * 1e9;
+        const gasCostEth = (maxFeeWei * limit) / 1e18;
+        return gasCostEth * ethKrw;
+      }
+
+      const k70 = krwForLimit(70000);
+      const k120 = krwForLimit(120000);
+      const k220 = krwForLimit(220000);
+
+      var isLightTheme = document.body.classList.contains('theme-light');
+      var labelColor = isLightTheme ? 'var(--text)' : '#34d399';
+      var circleBg = isLightTheme ? 'var(--neon-dim)' : '#34d399';
+
+      gasPriceDisplay.innerHTML = 
+        '<span aria-hidden="true" style="display:inline-block;width:0.6em;height:0.6em;border-radius:50%;background:' + circleBg + ';margin-right:0.35em;vertical-align:middle;"></span>' +
+        '<span style="color:' + labelColor + '">가스비 실시간 측정</span>';
+      gasPriceDisplay.style.color = labelColor;
+
+      if (k70 > 0 && k120 > 0 && k220 > 0) {
+        gasPriceKrwDisplay.innerHTML = 
+          '일반 송금 : ' + '약 ' + formatKrw(k70) + '<br>' +
+          '보상 출금 : ' + '약 ' + formatKrw(k120) + '<br>' +
+          '예치 관리 : ' + '약 ' + formatKrw(k220);
+      } else {
+        gasPriceKrwDisplay.innerHTML = 
+          '일반 송금 : ' + (gasCostKrwAuto > 0 ? ('약 ' + formatKrw(gasCostKrwAuto)) : ' 로딩 중') + '<br>' +
+          '보상 출금 : ' + (gasCostKrwAuto > 0 ? ' 로딩 중' : ' 로딩 중') + '<br>' +
+          '예치 관리 : ' + (gasCostKrwAuto > 0 ? ' 로딩 중' : ' 로딩 중');
+      }
+    })();
+
+    // Holdings conversion
+    const ethHolding = totalTorn > 0 && tornPriceUsd > 0 && ethPriceUsd > 0 
+      ? (totalTorn * tornPriceUsd) / ethPriceUsd : 0;
+    const btcHolding = totalTorn > 0 && tornPriceUsd > 0 && btcPriceUsd > 0 
+      ? (totalTorn * tornPriceUsd) / btcPriceUsd : 0;
+
+    holdingsEthDisplay.textContent = formatAssetAmount(ethHolding, '', 2);
+    holdingsBtcDisplay.textContent = formatAssetAmount(btcHolding, '', 2);
+
+    // Investment analytics
+    const investmentKrw = parseNum(investmentKrwInput.value);
+    const avgBuyPriceKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw / totalTorn : 0;
+    const avgBuyPriceUsd = avgBuyPriceKrw > 0 && krwPerUsdAuto > 0 ? avgBuyPriceKrw / krwPerUsdAuto : 0;
+    const costBasisKrw = investmentKrw > 0 ? investmentKrw : 0;
+    const hasValuation = totalTorn > 0 && totalValueKrw >= 0;
+    const profitKrw = costBasisKrw > 0 && hasValuation ? totalValueKrw - costBasisKrw : 0;
+    const profitRate = costBasisKrw > 0 && hasValuation 
+      ? ((totalValueKrw - costBasisKrw) / costBasisKrw) * 100 : null;
+
+    avgBuyPriceDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
+    avgBuyPriceUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
+
+    const investmentUsd = investmentKrw > 0 && krwPerUsdAuto > 0 ? investmentKrw / krwPerUsdAuto : 0;
+    investmentUsdDisplay.textContent = investmentUsd > 0 ? formatUsd(investmentUsd) : '';
+
+    currentValueDisplay.textContent = hasValuation ? formatKrw(totalValueKrw) : '';
+    const currentValueUsd = hasValuation && krwPerUsdAuto > 0 ? totalValueKrw / krwPerUsdAuto : 0;
+    currentValueTornDisplay.textContent = currentValueUsd > 0 ? formatUsd(currentValueUsd) : '';
+
+    profitDisplay.textContent = costBasisKrw > 0 && hasValuation ? formatSignedKrw(profitKrw) : '';
+    profitDisplay.classList.toggle('analytics-result-value--positive', 
+      costBasisKrw > 0 && hasValuation && profitKrw > 0);
+    profitDisplay.classList.toggle('analytics-result-value--negative', 
+      costBasisKrw > 0 && hasValuation && profitKrw < 0);
+
+    profitRateDisplay.textContent = costBasisKrw > 0 && hasValuation && profitRate != null ? formatPercent(profitRate) : '';
+    profitRateDisplay.classList.toggle('analytics-result-sub--positive', 
+      costBasisKrw > 0 && hasValuation && profitKrw > 0);
+    profitRateDisplay.classList.toggle('analytics-result-sub--negative', 
+      costBasisKrw > 0 && hasValuation && profitKrw < 0);
+  }
+
+  function updateTotalHoldingsSum() {
+    const raw = (walletAddressInput.value || '').trim();
+    const loading = unclaimedRewardDisplay.textContent === '조회 중';
+    if (!raw || loading) {
+      totalHoldingsSumDisplay.textContent = '';
+      totalHoldingsSumKrwEl.textContent = '';
+      return;
+    }
+    const userTorn = parseNum(userTornInput.value);
+    const reward = parseDisplayNum(unclaimedRewardDisplay.textContent);
+    const walletBal = parseDisplayNum(walletTornBalanceDisplay.textContent);
+    totalHoldingsSumDisplay.textContent = formatTorn2Decimals(userTorn + reward + walletBal);
+    updateWalletKrwDisplays();
+  }
+
+  function setWalletSection(staked, reward, balance, sum) {
+    walletStakedDisplay.textContent = staked;
+    unclaimedRewardDisplay.textContent = reward;
+    walletTornBalanceDisplay.textContent = balance;
+    totalHoldingsSumDisplay.textContent = sum;
+  }
+
+  // ── Wallet Address Handler ───────────────────────────────────────────
+
+  function onWalletAddressChange() {
+    const raw = (walletAddressInput.value || '').trim();
+
+    if (!raw) {
+      walletEthBalance = 0;
+      setWalletSection('', '', '', '');
+      userTornInput.value = '';
+      userTornKrwEl.textContent = '';
+      calculate();
+      updateAnalyticsCard();
+      return;
+    }
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(raw)) {
+      walletEthBalance = 0;
+      setWalletSection('', '', '', '');
+      userTornInput.value = '';
+      userTornKrwEl.textContent = '';
+      calculate();
+      updateAnalyticsCard();
+      return;
+    }
+
+    setWalletSection('조회 중', '조회 중', '조회 중', '조회 중');
+
+    if (walletQueryTimer) clearTimeout(walletQueryTimer);
+    walletQueryTimer = setTimeout(function () {
+      fetch('/api/calculator/wallet?walletAddress=' + encodeURIComponent(raw))
+        .then(function (r) {
+          if (!r.ok) {
+            if (r.status === 400) throw new Error('유효한 이더리움 지갑 주소가 아닙니다.');
+            throw new Error('조회 실패');
+          }
+          return r.json();
+        })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.message || '조회 실패');
+          localStorage.setItem(WALLET_ADDRESS_KEY, raw);
+          walletEthBalance = data.ethBalance || 0;
+          walletStakedDisplay.textContent = 
+            walletEthBalance > 0 ? parseFloat(walletEthBalance.toFixed(4)) + ' ETH' : '0 ETH';
+          userTornInput.value = data.staked >= 1 ? Math.floor(data.staked) : (data.staked > 0 ? data.staked : '');
+          unclaimedRewardDisplay.textContent = formatTorn2Decimals(data.reward);
+          walletTornBalanceDisplay.textContent = formatTorn2Decimals(data.walletBalance);
+          updateTotalHoldingsSum();
+          calculate();
+        })
+        .catch(function (err) {
+          walletEthBalance = 0;
+          var msg = (err.message || '').indexOf('Unexpected') !== -1 
+            ? '유효한 이더리움 지갑 주소가 아닙니다.' : (err.message || '조회 실패');
+          walletStakedDisplay.textContent = ' ' + msg;
+          unclaimedRewardDisplay.textContent = '';
+          walletTornBalanceDisplay.textContent = '';
+          totalHoldingsSumDisplay.textContent = '';
+          updateWalletKrwDisplays();
+          updateAnalyticsCard();
+        });
+    }, 300);
+  }
+
+  // ── Price Data Handlers ───────────────────────────────────────────────
+
+  function applyApiPrices(d) {
+    if (!d || d.ok !== true) return;
+
+    tornPriceUsdDex = d.tornPriceUsdDex || 0;
+    tornPriceUsdCex = d.tornPriceUsdCex || 0;
+    tornPriceUsdCenter = d.tornPriceUsdCenter || 0;
+    tornPriceUsd = d.tornPriceUsd || tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
+    ethPriceUsd = d.ethPriceUsd || 0;
+    btcPriceUsd = d.btcPriceUsd || 0;
+
+    if (d.premium != null) kimchiPremiumAuto = d.premium;
+    if (d.tornPriceKrw > 0) tornPriceKrw = d.tornPriceKrw;
+    if (d.btcKrw > 0) btcKrwAuto = d.btcKrw;
+
+    gasPriceGweiAuto = d.gasPriceGwei > 0 ? d.gasPriceGwei : 0;
+    gasCostKrwAuto = d.gasCostKrw > 0 ? d.gasCostKrw : 0;
+
+    priceDisplayWrap.classList.remove('loading', 'error');
+    priceDisplayLeft.textContent = formatUsd(tornPriceUsdDex);
+
+    const dexCexAvg = (tornPriceUsdDex > 0 && tornPriceUsdCex > 0) 
+      ? (tornPriceUsdDex + tornPriceUsdCex) / 2 : (tornPriceUsdDex || tornPriceUsdCex || 0);
+    priceDisplayCenter.textContent = formatUsd(dexCexAvg);
+    priceDisplayRight.textContent = formatUsd(tornPriceUsdCex);
+
+    kimchiPremiumDisplay.textContent = 
+      kimchiPremiumAuto != null ? kimchiPremiumAuto + '%' : ' 로딩 중';
+    colorizeKimchi();
+
+    if (d.totalStaked != null) {
+      totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
+      try {
+        var pctEl = document.getElementById('totalPoolPercent');
+        if (pctEl) {
+          var pct = (d.totalStaked / TOTAL_SUPPLY) * 100;
+          pctEl.textContent = '(' + pct.toFixed(2) + '%)';
+        }
+      } catch (e) {}
+    } else {
+      try { 
+        var pctEl = document.getElementById('totalPoolPercent'); 
+        if (pctEl) pctEl.textContent = ''; 
+      } catch(e) {}
+    }
+
+    const btcKrw = btcKrwAuto > 0 ? btcKrwAuto : 0;
+    if (btcPriceUsd > 0 && btcKrw > 0) krwPerUsdAuto = btcKrw / btcPriceUsd;
+    const krwPerUsd = krwPerUsdAuto > 0 ? krwPerUsdAuto : 0;
+
+    function formatKrwFromUsd(usd) {
+      if (!usd || !krwPerUsd) return '';
+      return Math.floor(usd * krwPerUsd).toLocaleString('ko-KR') + ' 원';
+    }
+
+    setTextIfAvailable(priceDisplayLeftKrw, formatKrwFromUsd(tornPriceUsdDex), priceDisplayLeftKrw.textContent);
+    setTextIfAvailable(priceDisplayCenterKrw, formatKrwFromUsd(dexCexAvg), priceDisplayCenterKrw.textContent);
+    setTextIfAvailable(priceDisplayRightKrw, formatKrwFromUsd(tornPriceUsdCex), priceDisplayRightKrw.textContent);
+
+    const ethUsdText = ethPriceUsd > 0 ? '$' + Math.floor(ethPriceUsd).toLocaleString('en') : '';
+    const ethKrwText = ethPriceUsd > 0 && krwPerUsd > 0 
+      ? ' (' + Math.floor(ethPriceUsd * krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '';
+    setTextIfAvailable(dividendEthPriceDisplay, 
+      ethUsdText ? (ethUsdText + (ethKrwText || '')) : '', dividendEthPriceDisplay.textContent);
+
+    const btcUsdText = btcPriceUsd > 0 ? '$' + Math.floor(btcPriceUsd).toLocaleString('en') : '';
+    const btcKrwText = btcPriceUsd > 0 && krwPerUsd > 0 
+      ? ' (' + Math.floor(btcPriceUsd * krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '';
+    setTextIfAvailable(dividendWbtcPriceDisplay, 
+      btcUsdText ? (btcUsdText + (btcKrwText || '')) : '', dividendWbtcPriceDisplay.textContent);
+
+    setTextIfAvailable(dividendUsdPriceDisplay, 
+      krwPerUsd > 0 ? '$1 (' + Math.floor(krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '', 
+      dividendUsdPriceDisplay.textContent);
+
+    try {
+      sessionStorage.setItem(PRICE_CACHE_KEY, JSON.stringify({ t: Date.now(), ...d }));
+    } catch (e) {}
+
+    calculate();
+    updateAnalyticsCard();
+  }
+
+  function applyPremiumData(d) {
+    if (!d || d.ok !== true) return;
+    if (d.premium != null) {
+      kimchiPremiumAuto = d.premium;
+      kimchiPremiumDisplay.textContent = kimchiPremiumAuto + '%';
+      colorizeKimchi();
+      calculate();
+      updateAnalyticsCard();
+    }
+  }
+
+  function setPriceError(msg) {
+    priceDisplayWrap.classList.remove('loading');
+    priceDisplayWrap.classList.add('error');
+    priceDisplayLeft.textContent = ' ' + msg;
+    priceDisplayCenter.textContent = ' ' + msg;
+    priceDisplayRight.textContent = ' ' + msg;
+    if (kimchiPremiumAuto == null) kimchiPremiumDisplay.textContent = '';
+    try { var pctEl = document.getElementById('totalPoolPercent'); if (pctEl) pctEl.textContent = ''; } catch (e) {}
+  }
+
+  function applyPriceCache(cache) {
+    if (!cache || cache.t + PRICE_CACHE_TTL_MS < Date.now()) return false;
+    applyApiPrices(cache);
+    return true;
+  }
+
+  function updateMarketData() {
+    let cacheApplied = false;
+    try {
+      const raw = sessionStorage.getItem(PRICE_CACHE_KEY);
+      if (raw) cacheApplied = applyPriceCache(JSON.parse(raw));
+    } catch (e) {}
+
+    if (!cacheApplied) {
+      priceDisplayWrap.classList.add('loading');
+      kimchiPremiumDisplay.textContent = ' 로딩 중';
+    }
+
+    fetchCalculatorPrices().then(applyApiPrices).catch(function (err) {
+      const msg = String(err && err.message || '').includes('fetch') 
+        ? NETWORK_ERR_MSG : (err.message || '조회 실패');
+      setPriceError(msg);
+    });
+  }
+
+  function updatePremiumData() {
+    fetchCalculatorPremium().then(applyPremiumData).catch(function () {});
+  }
+
+  // ── Calculation Functions ────────────────────────────────────────────
+
+  function ethToTorn(ethAmount) {
+    if (!tornPriceUsd || !ethPriceUsd) return null;
+    return (ethAmount * ethPriceUsd) / tornPriceUsd;
+  }
+
+  function btcToTorn(btcAmount) {
+    if (!tornPriceUsd || !btcPriceUsd) return null;
+    return (btcAmount * btcPriceUsd) / tornPriceUsd;
+  }
+
+  function calculate() {
+    const userTorn = parseNum(userTornInput.value);
+    const totalPool = parseNum(totalPoolInput.value);
+
+    const sharePercent = totalPool > 0 && userTorn > 0 
+      ? Math.min(100, (userTorn / totalPool) * 100) : 0;
+    shareBar.style.width = sharePercent + '%';
+    shareText.textContent = sharePercent.toFixed(4) + '%';
+
+    updateTotalHoldingsSum();
+
+    const poolKrw = totalPool > 0 && tornPriceKrw > 0 
+      ? totalPool * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+    totalPoolKrwEl.textContent = poolKrw > 0 ? formatKrw(poolKrw) : '';
+
+    const userKrw = userTorn > 0 && tornPriceKrw > 0 
+      ? userTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+    userTornKrwEl.textContent = userKrw > 0 ? formatKrw(userKrw) : '';
+
+    function updateRow(ethAmount, el, krwEl) {
+      const totalFee = ethAmount * FEE_RATE;
+      const myDividendEth = totalPool > 0 && userTorn > 0 
+        ? totalFee * (userTorn / totalPool) : 0;
+      const myDividendTorn = ethToTorn(myDividendEth);
+      el.textContent = myDividendTorn != null ? formatTorn(myDividendTorn) : '0 TORN';
+
+      const baseKrw = myDividendTorn != null && tornPriceKrw > 0 
+        ? myDividendTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+      krwEl.textContent = baseKrw > 0 ? formatKrw(baseKrw) : ' 원';
+    }
+
+    WITHDRAW_AMOUNTS.forEach(function (amount) { 
+      updateRow(amount, divEls[amount], krwEls[amount]); 
+    });
+
+    WITHDRAW_WBTC_AMOUNTS.forEach(function (amount) {
+      const totalFee = amount * FEE_RATE;
+      const myDividendBtc = totalPool > 0 && userTorn > 0 
+        ? totalFee * (userTorn / totalPool) : 0;
+      const myDividendTorn = btcToTorn(myDividendBtc);
+      divElsWbtc[amount].textContent = myDividendTorn != null ? formatTorn(myDividendTorn) : '0 TORN';
+
+      const baseKrw = myDividendTorn != null && tornPriceKrw > 0 
+        ? myDividendTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+      krwElsWbtc[amount].textContent = baseKrw > 0 ? formatKrw(baseKrw) : ' 원';
+    });
+
+    WITHDRAW_USD_AMOUNTS.forEach(function (amount) {
+      const equivalentEth = ethPriceUsd > 0 ? amount / ethPriceUsd : 0;
+      updateRow(equivalentEth, divElsUsd[amount], krwElsUsd[amount]);
+    });
+
+    updateAnalyticsCard();
+  }
+
+  // ── Dividend Tabs & Swipe Handler ────────────────────────────────────
+
+  function initDividendTabs() {
+    const tabs = document.querySelectorAll('.dividend-tab');
+    const panels = document.querySelectorAll('.result-panel');
+    const track = document.querySelector('.result-panels-track');
+    const tabOrder = ['eth', 'wbtc', 'usd'];
+    let currentIndex = 0;
+
+    function switchToTab(tabName) {
+      tabs.forEach(function (tab) {
+        const active = tab.getAttribute('data-tab') === tabName;
+        tab.classList.toggle('dividend-tab--active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+
+      panels.forEach(function (panel) {
+        panel.classList.toggle('result-panel--active', 
+          panel.getAttribute('data-panel') === tabName);
+      });
+
+      currentIndex = Math.max(0, tabOrder.indexOf(tabName));
+      if (track) track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+    }
+
+    tabs.forEach(function (tab) { 
+      tab.addEventListener('click', function () { 
+        switchToTab(tab.getAttribute('data-tab')); 
+      }); 
+    });
+
+    // Swipe & drag support
+    const swipeArea = document.querySelector('.dividend-swipe-area');
+    let touchStartX = 0, touchStartY = 0, dragging = false, axisLocked = false, isHorizontalSwipe = false, lastDelta = 0;
+
+    function startDrag(x, y) {
+      touchStartX = x; touchStartY = y;
+      dragging = true; axisLocked = false; isHorizontalSwipe = false; lastDelta = 0;
+      track.style.transition = 'none';
+    }
+
+    function resetDrag() {
+      dragging = false; axisLocked = false;
+      track.style.transition = '';
+      track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+    }
+
+    function moveDrag(x, y) {
+      if (!dragging) return;
+      var dx = x - touchStartX, dy = y - touchStartY;
+
+      if (!axisLocked) {
+        var adx = Math.abs(dx), ady = Math.abs(dy);
+        if (adx > 10 && adx >= ady) { 
+          axisLocked = true; isHorizontalSwipe = true; 
+        }
+        else if (ady > 10 && ady > adx) { resetDrag(); return; }
+        else return;
+      }
+
+      if (!isHorizontalSwipe) return;
+      var w = swipeArea.clientWidth || 1;
+      lastDelta = Math.max(-1, Math.min(1, dx / w));
+      track.style.transform = 'translate3d(' + ((-100 * currentIndex) + lastDelta * 100) + '%,0,0)';
+    }
+
+    function finishSwipe(diffX) {
+      dragging = false; axisLocked = false; isHorizontalSwipe = false;
+      track.style.transition = '';
+      var w = swipeArea.clientWidth || 1, threshold = Math.min(50, w * 0.15);
+
+      if (!diffX || Math.abs(diffX) <= threshold) {
+        track.style.transform = 'translate3d(' + (-100 * currentIndex) + '%,0,0)';
+        return;
+      }
+
+      switchToTab(tabOrder[
+        diffX < 0 ? Math.min(tabOrder.length - 1, currentIndex + 1) 
+                  : Math.max(0, currentIndex - 1)
+      ]);
+    }
+
+    if (swipeArea && track) {
+      swipeArea.addEventListener('touchstart', function(e) {
+        startDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }, { passive: true });
+
+      swipeArea.addEventListener('touchmove', function(e) {
+        moveDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      }, { passive: true });
+
+      swipeArea.addEventListener('touchend', function(e) {
+        if (dragging) finishSwipe(e.changedTouches[0].clientX - touchStartX);
+      }, { passive: true });
+
+      swipeArea.addEventListener('touchcancel', function() {
+        if (dragging) finishSwipe(0);
+      }, { passive: true });
+
+      var mouseDown = false;
+      swipeArea.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        mouseDown = true;
+        startDrag(e.clientX, e.clientY);
+        document.body.classList.add('user-select-none');
+        e.preventDefault();
+      }, { passive: false });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!mouseDown) return;
+        moveDrag(e.clientX, e.clientY);
+        if (!dragging) { 
+          document.body.classList.remove('user-select-none'); 
+          mouseDown = false; 
+        }
+      }, { passive: true });
+
+      document.addEventListener('mouseup', function(e) {
+        if (!mouseDown) return;
+        mouseDown = false;
+        document.body.classList.remove('user-select-none');
+        if (dragging) finishSwipe(e.clientX - touchStartX);
+      }, { passive: true });
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        switchToTab(tabOrder[(currentIndex - 1 + tabOrder.length) % tabOrder.length]);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        switchToTab(tabOrder[(currentIndex + 1) % tabOrder.length]);
+      }
+    });
+
+    switchToTab('eth');
+  }
+
+  // ── Initialization ───────────────────────────────────────────────────
+
+  userTornInput.addEventListener('input', calculate);
+  userTornInput.addEventListener('change', calculate);
+  totalPoolInput.addEventListener('input', calculate);
+  totalPoolInput.addEventListener('change', calculate);
+  investmentKrwInput.addEventListener('input', updateInvestmentKrwDisplay);
+  investmentKrwInput.addEventListener('input', updateAnalyticsCard);
+  investmentKrwInput.addEventListener('change', updateAnalyticsCard);
+  walletAddressInput.addEventListener('input', onWalletAddressChange);
+  walletAddressInput.addEventListener('blur', onWalletAddressChange);
+
+  try {
+    const saved = localStorage.getItem(WALLET_ADDRESS_KEY);
+    if (saved) {
+      walletAddressInput.value = saved;
+      onWalletAddressChange();
+    }
+  } catch (e) {}
+
+  updateMarketData();
+  updatePremiumData();
+  calculate();
+  initDividendTabs();
+
+  setInterval(updateMarketData, REFRESH_INTERVAL_MS);
+  setInterval(updatePremiumData, PREMIUM_REFRESH_INTERVAL_MS);
+})();
