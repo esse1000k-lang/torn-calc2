@@ -835,7 +835,7 @@ body.theme-light .news-label {
   }
   .calculator-page .price-col-krw { font-size: 0.75rem; padding: 0.15rem 0 0; }
   .calculator-page .hint {
-    font-size: 0.7rem; line-height: 1.5;
+    font-size: 0.75rem; line-height: 1.5;
     word-break: keep-all; overflow-wrap: break-word;
     padding-right: 0.25rem;
   }
