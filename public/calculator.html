@@ -76,7 +76,7 @@
         <div class="data-value" id="kimchiPremiumDisplay"> 로딩 중</div>
       </div>
       <div class="input-group">
-        <label for="totalPool">전체 스테이킹 수량 <span id="totalPoolPercent"></span></label>
+        <label for="totalPool">전체 스테이킹 수량 <span id="totalPoolPercent" class="pool-percent-label"></span></label>
         <div class="data-value data-value--row data-value--total-pool">
           <input type="text" id="totalPool" inputmode="numeric" autocomplete="off" readonly>
           <span class="value-krw" id="totalPoolKrw"></span>
@@ -107,7 +107,7 @@
     <div class="card">
       <div class="card-title">🌪️ 조회</div>
       <div class="input-group input-group--wallet-address">
-        <label for="walletAddress">내 지갑 주소</label>
+        <label for="walletAddress">내 지갑 주소 (입력)</label>
         <input type="text" id="walletAddress" placeholder="예: 0x1234...abcd" spellcheck="false" autocomplete="off">
         <p class="hint hint--row" id="walletStakedRow">
           <span id="walletStakedDisplay"></span>
@@ -115,7 +115,7 @@
         </p>
       </div>
       <div class="input-group">
-        <label for="userTorn">TORN 스테이킹</label>
+        <label for="userTorn">스테이킹</label>
         <div class="data-value data-value--row data-value--input">
           <input type="number" id="userTorn" min="0" step="any" value="">
           <span class="value-krw" id="userTornKrw"></span>
