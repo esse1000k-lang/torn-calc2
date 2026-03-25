@@ -27,7 +27,9 @@ const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
 
 const SHARED_RPC_URL = (() => {
   const raw = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
-  return /^https?:\/\//i.test(raw) ? raw : (raw ? ('https://mainnet.infura.io/v3/' + raw) : '');
+  if (!raw) return 'https://rpc.ankr.com/eth';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return 'https://mainnet.infura.io/v3/' + raw;
 })();
 const sharedProvider = new JsonRpcProvider(SHARED_RPC_URL || 'https://rpc.ankr.com/eth', 1);
 
@@ -60,12 +62,11 @@ const tornTokenContract = new Contract(TORN_TOKEN, ['function balanceOf(address 
 // JSON parser with stricter limits (security)
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true }));
-// Compression middleware with optimized settings
-// Note: deflate only (safer than gzip for Express 4.x)
+// Compression middleware - maximum compression for bandwidth savings
 app.use(compression({ 
-  level: 9,           // 최대 압축률 (CPU 사용 증가하지만 트래픽 감소)
+  level: 9,           // 최대 압축률
   threshold: 1024,    // 1KB 이상 응답만 압축
-  filter: () => true  // 모든 MIME 타입 압축 허용
+  filter: () => true  // 모든 MIME 타입 허용
 }));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '2h',
@@ -102,12 +103,12 @@ app.get('/', (_req, res) => {
 
 app.get('/api/calculator/premium', async (_req, res) => {
   const now = Date.now();
+  // Return cached data if still valid
   if (calcPremiumCache && now - calcPremiumCache.at < CALC_PREMIUM_CACHE_TTL_MS) {
     return res.json(calcPremiumCache.data);
   }
 
   try {
-    // Use the fast, standalone calculator which fetches Upbit, Binance and FX.
     const kim = await getKimchiPremium({ timeoutMs: 2000 });
 
     const payload = {
@@ -135,17 +136,18 @@ app.get('/api/calculator/premium', async (_req, res) => {
 
 app.get('/api/calculator/prices', async (_req, res) => {
   const now = Date.now();
+  // Return cached data if still valid
   if (calcPriceCache && now - calcPriceCache.at < CALC_PRICE_CACHE_TTL_MS) {
     return res.json(calcPriceCache.data);
   }
 
   const timeoutFetch = (url, ms = 8000) => fetch(url, { signal: AbortSignal.timeout(ms) });
 
-  // totalStaked uses cache if fresh, else will be fetched via multicall below
+  // Check cache for totalStaked to avoid unnecessary multicall
   const totalStakedFromCache = (calcTotalStakedCache && now - calcTotalStakedCache.at < CALC_TOTAL_STAKED_CACHE_TTL_MS)
     ? calcTotalStakedCache.data : null;
 
-  // Uniswap + totalStaked in a single Multicall3 batch (1 RPC call instead of 3)
+  // Batch Uniswap + totalStaked via Multicall3 for efficiency
   const onChainPromise = (async () => {
     try {
       const pairAddr = await getUniswapPairAddress();
@@ -160,6 +162,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
         calls.push({ target: TORN_TOKEN, allowFailure: true, callData: balanceIface.encodeFunctionData('balanceOf', [GOVERNANCE]) });
       }
       const results = await multicallContract.aggregate3(calls);
+      
       // Decode Uniswap reserves
       let tornPriceInEth = null;
       if (results?.[0]?.returnData && results?.[1]?.returnData) {
@@ -170,6 +173,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
         const reserveWeth = isTorn0 ? reserve1 : reserve0;
         if (reserveTorn !== 0n) tornPriceInEth = Number(reserveWeth) / Number(reserveTorn);
       }
+      
       // Decode totalStaked if fetched
       let totalStaked = totalStakedFromCache;
       if (needStaked && results?.[2]?.success && results[2].returnData) {
@@ -284,8 +288,8 @@ app.get('/api/calculator/wallet', async (req, res) => {
 });
 
 app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ ok: false, message: err?.message || '서버 오류가 발생했습니다.' });
+  console.error('Server error:', err);
+  res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
 });
 
 app.listen(PORT, () => {

@@ -134,25 +134,37 @@
     return fetch('/api/calculator/premium').then(function (r) { return r.json(); });
   }
 
-  function parseNum(value) {
+  // ── Parsing Helpers (Unified) ───────────────────────────────────────
+
+  /**
+   * Parse numeric value from various input sources
+   * @param {*} value - Input value (string, number, or element text)
+   * @param {boolean} strictDisplayMode - If true, handles '조회 중' and non-numeric chars more aggressively
+   */
+  function parseNum(value, strictDisplayMode) {
+    if (strictDisplayMode) {
+      if (!value || value === '' || value === '조회 중') return 0;
+      const cleaned = String(value).replace(/,/g, '').replace(/[^0-9.\-]/g, '');
+      const n = parseFloat(cleaned);
+      return isNaN(n) || n < 0 ? 0 : n;
+    }
     const n = parseFloat(String(value || '').replace(/,/g, ''));
     return isNaN(n) || n < 0 ? 0 : n;
   }
 
-  function parseDisplayNum(text) {
-    if (!text || text === '' || text === '조회 중') return 0;
-    const n = parseFloat(String(text).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
-    return isNaN(n) || n < 0 ? 0 : n;
-  }
+  // ── Formatting Helpers ───────────────────────────────────────────────
 
-  function formatTorn2Decimals(value) {
+  /**
+   * Format TORN amount with optional compact mode (no 'TORN' suffix)
+   */
+  function formatTorn(value, compact) {
     const n = typeof value === 'number' ? value : parseFloat(value);
-    if (isNaN(n) || n < 0) return '0';
-    return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  }
-
-  function formatTorn(n) {
-    if (n == null) return '';
+    if (isNaN(n) || n < 0) return compact ? '0' : '0 TORN';
+    
+    if (compact) {
+      return n.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    
     if (n >= 1) return n.toFixed(2) + ' TORN';
     if (n > 0) return n.toFixed(4) + ' TORN';
     return '0 TORN';
@@ -266,10 +278,10 @@
       return eth * ethPriceUsd * krwPerUsdAuto;
     }
 
-    const staked = parseDisplayNum(walletStakedDisplay.textContent);
-    const reward = parseDisplayNum(unclaimedRewardDisplay.textContent);
-    const walletBal = parseDisplayNum(walletTornBalanceDisplay.textContent);
-    const sum = parseDisplayNum(totalHoldingsSumDisplay.textContent);
+    const staked = parseNum(walletStakedDisplay.textContent, true);
+    const reward = parseNum(unclaimedRewardDisplay.textContent, true);
+    const walletBal = parseNum(walletTornBalanceDisplay.textContent, true);
+    const sum = parseNum(totalHoldingsSumDisplay.textContent, true);
 
     walletStakedKrwEl.textContent = walletEthBalance > 0 ? formatKrw(krwFromEth(walletEthBalance)) : '';
     unclaimedRewardKrwEl.textContent = reward > 0 ? formatKrw(krwFromTorn(reward)) : '';
@@ -278,7 +290,7 @@
   }
 
   function updateAnalyticsCard() {
-    const totalTorn = parseDisplayNum(totalHoldingsSumDisplay.textContent);
+    const totalTorn = parseNum(totalHoldingsSumDisplay.textContent, true);
     const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 
       ? totalTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
 
@@ -370,9 +382,9 @@
       return;
     }
     const userTorn = parseNum(userTornInput.value);
-    const reward = parseDisplayNum(unclaimedRewardDisplay.textContent);
-    const walletBal = parseDisplayNum(walletTornBalanceDisplay.textContent);
-    totalHoldingsSumDisplay.textContent = formatTorn2Decimals(userTorn + reward + walletBal);
+    const reward = parseNum(unclaimedRewardDisplay.textContent, true);
+    const walletBal = parseNum(walletTornBalanceDisplay.textContent, true);
+    totalHoldingsSumDisplay.textContent = formatTorn(userTorn + reward + walletBal, true);
     updateWalletKrwDisplays();
   }
 
@@ -427,8 +439,8 @@
           walletStakedDisplay.textContent = 
             walletEthBalance > 0 ? parseFloat(walletEthBalance.toFixed(4)) + ' ETH' : '0 ETH';
           userTornInput.value = data.staked >= 1 ? Math.floor(data.staked) : (data.staked > 0 ? data.staked : '');
-          unclaimedRewardDisplay.textContent = formatTorn2Decimals(data.reward);
-          walletTornBalanceDisplay.textContent = formatTorn2Decimals(data.walletBalance);
+          unclaimedRewardDisplay.textContent = formatTorn(data.reward, true);
+          walletTornBalanceDisplay.textContent = formatTorn(data.walletBalance, true);
           updateTotalHoldingsSum();
           calculate();
         })

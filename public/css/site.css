@@ -696,7 +696,6 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
 .calculator-page .result-value {
   color: var(--neon);
   font-weight: 700;
-  text-shadow: 0 0 10px var(--neon-glow);
   font-size: 0.9rem;
 }
 .calculator-page .value-hangul {
@@ -710,8 +709,10 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   margin-top: 0.2rem;
 }
 
-/* Calculator responsive */
+/* ====== Responsive Styles ====== */
 @media (max-width: 640px) {
+  .calculator-page .container { padding: 0.5rem 1rem; max-width: 100%; }
+  
   .calculator-page .calc-page-hero {
     margin-bottom: 1.25rem;
     padding: 1.35rem 1.25rem;
@@ -719,7 +720,7 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   }
   .calculator-page .calc-page-hero__title { font-size: 1.2rem; }
   .calculator-page .calc-page-hero__desc { font-size: 0.8rem; }
-  .calculator-page .container { padding: 0.5rem 1rem; max-width: 100%; }
+  
   .calculator-page .card {
     padding: 1.15rem 1rem;
     margin-bottom: 1.25rem;
@@ -727,18 +728,22 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   }
   .calculator-page .card-dividend { min-height: 360px; }
   .calculator-page .results { min-height: 260px; }
+  
   .calculator-page .card-title { font-size: 0.98rem; margin-bottom: 1rem; }
   .calculator-page .input-group { margin-bottom: 1rem; }
+  
   .calculator-page .input-group--wallet-address {
     margin-left: -0.5rem; margin-right: -0.5rem;
     padding: 0.85rem; border-radius: 8px;
   }
-  .calculator-page .analytics-grid { gap: 0.75rem; }
+  
+  .calculator-page .analytics-grid, 
   .calculator-page .analytics-input-grid { gap: 0.75rem; }
   .calculator-page .analytics-panel { padding: 0.85rem; }
   .calculator-page .analytics-result-row { gap: 0.75rem; }
   .calculator-page .analytics-result-value { font-size: 0.88rem; }
   .calculator-page .analytics-result-sub { font-size: 0.75rem; }
+  
   .calculator-page .price-cols {
     flex-direction: row;
     align-items: stretch;
@@ -754,6 +759,7 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
     font-size: 0.85rem;
   }
   .calculator-page .price-col-krw { font-size: 0.75rem; padding: 0.15rem 0 0; }
+  
   .calculator-page .hint {
     font-size: 0.75rem; line-height: 1.5;
     word-break: keep-all; overflow-wrap: break-word;
@@ -761,6 +767,7 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
   }
   .calculator-page .data-value--row { flex-wrap: wrap; }
 }
+
 @media (max-width: 480px) {
   .calculator-page .container { padding: 0.5rem 0.75rem; }
   .calculator-page .card { padding: 1rem 0.75rem; margin-bottom: 1.25rem; }
