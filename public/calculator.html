@@ -82,7 +82,7 @@
           <span class="value-krw" id="totalPoolKrw"></span>
         </div>
       </div>
-      <p class="hint" style="font-size:0.5625rem">TORN 시세, DEX / CEX 활용, 김치 프리미엄 BTC 기반 반영(국내 미상장), 스테이킹 정보 이더스캔(etherscan)</p>
+      <p class="hint" style="font-size:0.5625rem; opacity:0.5">TORN 시세, DEX / CEX 활용, 김치 프리미엄 BTC 기반 반영(국내 미상장), 스테이킹 정보 이더스캔(etherscan)</p>
     </div>
     
     <!-- One-line news slot between 정보 and 조회 -->
@@ -181,7 +181,6 @@
           <label>투자금 달러 환산</label>
           <div class="data-value data-value--row analytics-average-box">
             <span class="analytics-average-box__value" id="investmentUsdDisplay"></span>
-            <span class="analytics-average-box__sub" id="investmentUsdRateDisplay"></span>
           </div>
         </div>
       </div>
@@ -311,7 +310,6 @@
       const investmentKrwInput = document.getElementById('investmentKrw');
       const investmentKrwHangul = document.getElementById('investmentKrwHangul');
       const investmentUsdDisplay = document.getElementById('investmentUsdDisplay');
-      const investmentUsdRateDisplay = document.getElementById('investmentUsdRateDisplay');
       const avgBuyPriceDisplay = document.getElementById('avgBuyPriceDisplay');
       const avgBuyPriceUsdDisplay = document.getElementById('avgBuyPriceUsdDisplay');
       const currentValueDisplay = document.getElementById('currentValueDisplay');
@@ -548,7 +546,6 @@
         avgBuyPriceUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
         const investmentUsd = investmentKrw > 0 && krwPerUsdAuto > 0 ? investmentKrw / krwPerUsdAuto : 0;
         investmentUsdDisplay.textContent = investmentUsd > 0 ? formatUsd(investmentUsd) : '';
-        investmentUsdRateDisplay.textContent = krwPerUsdAuto > 0 ? '₩' + Math.round(krwPerUsdAuto).toLocaleString() + '/USD' : '';
         currentValueDisplay.textContent = hasValuation ? formatKrw(totalValueKrw) : '';
         const currentValueUsd = hasValuation && krwPerUsdAuto > 0 ? totalValueKrw / krwPerUsdAuto : 0;
         currentValueTornDisplay.textContent = currentValueUsd > 0 ? formatUsd(currentValueUsd) : '';
