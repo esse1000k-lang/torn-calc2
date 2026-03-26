@@ -6,40 +6,51 @@ const compression = require('compression');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
 const { getKimchiPremium } = require('./scripts/compute-kimchi');
 
-// ── Rate Limiting (식당 줄 서기) ───────────────────────────────────────
+// ── Rate Limiting (식당 줄 서기) - Optimized with O(1) operations ───────────────────────────────
 /**
- * Simple in-memory rate limiter for API endpoints
- * Prevents clients from overwhelming external APIs
+ * Optimized in-memory rate limiter for API endpoints
+ * Uses sliding window with efficient cleanup - O(1) per request
  */
 class RateLimiter {
   constructor(windowMs, maxRequests) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
-    this.requests = new Map();
+    this.requests = new Map(); // key -> { timestamps: [], lastCleanup: number }
   }
 
   isAllowed(identifier) {
     const now = Date.now();
     const windowStart = now - this.windowMs;
 
-    // Clean old entries
-    for (const [key, timestamps] of this.requests.entries()) {
-      const recentTimestamps = timestamps.filter(ts => ts > windowStart);
-      if (recentTimestamps.length === 0) {
-        this.requests.delete(key);
-      } else {
-        this.requests.set(key, recentTimestamps);
-      }
+    let clientData = this.requests.get(identifier);
+    
+    if (!clientData) {
+      // New client
+      this.requests.set(identifier, { timestamps: [now], lastCleanup: now });
+      return true;
     }
 
-    const clientRequests = this.requests.get(identifier) || [];
+    // Lazy cleanup - only clean when needed (amortized O(1))
+    if (now - clientData.lastCleanup > this.windowMs / 2) {
+      const idx = clientData.timestamps.findIndex(ts => ts > windowStart);
+      if (idx === -1) {
+        // All timestamps expired
+        this.requests.delete(identifier);
+        return true;
+      } else if (idx > 0) {
+        // Remove only expired timestamps from front
+        clientData.timestamps = clientData.timestamps.slice(idx);
+      }
+      clientData.lastCleanup = now;
+    }
+
+    const timestamps = clientData.timestamps;
     
-    if (clientRequests.length >= this.maxRequests) {
+    if (timestamps.length >= this.maxRequests) {
       return false; // Rate limited
     }
 
-    clientRequests.push(now);
-    this.requests.set(identifier, clientRequests);
+    timestamps.push(now);
     return true;
   }
 }
@@ -172,11 +183,11 @@ const tornTokenContract = new Contract(TORN_TOKEN, ['function balanceOf(address 
 // JSON parser with stricter limits (security)
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true }));
-// Compression middleware - maximum compression for bandwidth savings
+// Compression middleware - optimized for speed vs size balance
 app.use(compression({ 
-  level: 9,           // 최대 압축률
-  threshold: 1024,    // 1KB 이상 응답만 압축
-  filter: () => true  // 모든 MIME 타입 허용
+  level: 6,          // 균형 잡힌 압축 (Level 9 → 6: CPU 부하 ↓, 속도 ↑)
+  threshold: 512,    // 512B 이상 응답만 압축 (1KB → 512B: 작은 JSON 도 압축)
+  filter: () => true // 모든 MIME 타입 허용
 }));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '2h',

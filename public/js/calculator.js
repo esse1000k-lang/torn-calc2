@@ -7,8 +7,8 @@
 
   // ── Constants ───────────────────────────────────────────────────────
   const FEE_RATE = 0.003;
-  const REFRESH_INTERVAL_MS = 12000;
-  const PREMIUM_REFRESH_INTERVAL_MS = 4000;
+  const REFRESH_INTERVAL_MS = 15000;     // 가격 조회: 15 초 (캐시 TTL 과 동기화)
+  const PREMIUM_REFRESH_INTERVAL_MS = 15000; // 프리미엄 조회: 15 초 (prices 와 통합, 중복 호출 제거)
   const TOTAL_SUPPLY = 10000000; // 총 발행량 고정
   const NETWORK_ERR_MSG = '네트워크 오류';
   const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
@@ -470,6 +470,7 @@
     ethPriceUsd = d.ethPriceUsd || 0;
     btcPriceUsd = d.btcPriceUsd || 0;
 
+    // Premium 데이터는 prices 응답에서도 가져옴 (중복 호출 제거)
     if (d.premium != null) kimchiPremiumAuto = d.premium;
     if (d.tornPriceKrw > 0) tornPriceKrw = d.tornPriceKrw;
     if (d.btcKrw > 0) btcKrwAuto = d.btcKrw;
