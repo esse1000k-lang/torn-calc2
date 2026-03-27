@@ -464,7 +464,7 @@
 
     // 테더 가격 표시
     usdtPriceDisplay.textContent = 
-      usdtKrwRate > 0 ? Math.floor(usdtKrwRate).toLocaleString('ko-KR') + ' 원' : '로딩 중';
+      usdtKrwRate > 0 ? Math.floor(usdtKrwRate).toLocaleString('ko-KR') : '로딩 중';
 
     if (d.totalStaked != null) {
       totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
