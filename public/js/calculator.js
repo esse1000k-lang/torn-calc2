@@ -8,11 +8,10 @@
   // ── Constants ───────────────────────────────────────────────────────
   const FEE_RATE = 0.003;
   const REFRESH_INTERVAL_MS = 15000;     // 가격 조회: 15 초 (캐시 TTL 과 동기화)
-  const PREMIUM_REFRESH_INTERVAL_MS = 15000; // 프리미엄 조회: 15 초 (prices 와 통합, 중복 호출 제거)
   const TOTAL_SUPPLY = 10000000; // 총 발행량 고정
   const NETWORK_ERR_MSG = '네트워크 오류';
   const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
-  const PRICE_CACHE_KEY = 'calculator-price-cache-v5';
+  const PRICE_CACHE_KEY = 'calculator-price-cache-v6'; // 버저업 (김치프리미엄 제거)
   const PRICE_CACHE_TTL_MS = 18000;
 
   const WITHDRAW_AMOUNTS = [0.1, 1, 10, 100];
@@ -72,7 +71,7 @@
   const dividendEthPriceDisplay = document.getElementById('dividendEthPriceDisplay');
   const dividendWbtcPriceDisplay = document.getElementById('dividendWbtcPriceDisplay');
   const dividendUsdPriceDisplay = document.getElementById('dividendUsdPriceDisplay');
-  const kimchiPremiumDisplay = document.getElementById('kimchiPremiumDisplay');
+  const usdtPriceDisplay = document.getElementById('kimchiPremiumDisplay'); // 테더 가격 표시
 
   const userTornKrwEl = document.getElementById('userTornKrw');
   const walletAddressInput = document.getElementById('walletAddress');
@@ -110,28 +109,16 @@
   let btcPriceUsd = 0;
   let tornPriceKrw = 0;
   let btcKrwAuto = 0;
-  let krwPerUsdAuto = 0;
+  let usdtKrwRate = 0; // 테더 가격 (USDT/KRW 환율)
   let gasPriceGweiAuto = 0;
   let gasCostKrwAuto = 0;
-  let kimchiPremiumAuto = null;
   let walletQueryTimer = null;
   let walletEthBalance = 0;
 
   // ── Helper Functions ─────────────────────────────────────────────────
 
-  function colorizeKimchi() {
-    if (kimchiPremiumAuto == null) return;
-    kimchiPremiumDisplay.style.color = 
-      kimchiPremiumAuto < 0 ? 'rgba(255, 100, 100, 0.8)' :
-      kimchiPremiumAuto > 0 ? 'rgba(100, 150, 255, 0.8)' : '#ffffff';
-  }
-
   function fetchCalculatorPrices() {
     return fetch('/api/calculator/prices').then(function (r) { return r.json(); });
-  }
-
-  function fetchCalculatorPremium() {
-    return fetch('/api/calculator/premium').then(function (r) { return r.json(); });
   }
 
   // ── Parsing Helpers (Unified) ───────────────────────────────────────
@@ -267,36 +254,25 @@
   // ── Wallet & Analytics Updates ───────────────────────────────────────
 
   function updateWalletKrwDisplays() {
-    function krwFromTorn(torn) {
-      if (torn == null || torn <= 0 || tornPriceKrw <= 0) return 0;
-      var krw = torn * tornPriceKrw;
-      if (kimchiPremiumAuto != null) krw = krw * (1 + kimchiPremiumAuto / 100);
-      return krw;
-    }
-    function krwFromEth(eth) {
-      if (eth == null || eth <= 0 || ethPriceUsd <= 0 || krwPerUsdAuto <= 0) return 0;
-      return eth * ethPriceUsd * krwPerUsdAuto;
-    }
-
     const staked = parseNum(walletStakedDisplay.textContent, true);
     const reward = parseNum(unclaimedRewardDisplay.textContent, true);
     const walletBal = parseNum(walletTornBalanceDisplay.textContent, true);
     const sum = parseNum(totalHoldingsSumDisplay.textContent, true);
 
-    walletStakedKrwEl.textContent = walletEthBalance > 0 ? formatKrw(krwFromEth(walletEthBalance)) : '';
-    unclaimedRewardKrwEl.textContent = reward > 0 ? formatKrw(krwFromTorn(reward)) : '';
-    walletTornBalanceKrwEl.textContent = walletBal > 0 ? formatKrw(krwFromTorn(walletBal)) : '';
-    totalHoldingsSumKrwEl.textContent = sum > 0 ? formatKrw(krwFromTorn(sum)) : '';
+    // Simple calculation: KRW = TORN × tornPriceKrw (already includes premium via usdtKrwRate)
+    walletStakedKrwEl.textContent = walletEthBalance > 0 ? formatKrw(walletEthBalance * ethPriceUsd * usdtKrwRate) : '';
+    unclaimedRewardKrwEl.textContent = reward > 0 ? formatKrw(reward * tornPriceKrw) : '';
+    walletTornBalanceKrwEl.textContent = walletBal > 0 ? formatKrw(walletBal * tornPriceKrw) : '';
+    totalHoldingsSumKrwEl.textContent = sum > 0 ? formatKrw(sum * tornPriceKrw) : '';
   }
 
   function updateAnalyticsCard() {
     const totalTorn = parseNum(totalHoldingsSumDisplay.textContent, true);
-    const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 
-      ? totalTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+    const totalValueKrw = totalTorn > 0 && tornPriceKrw > 0 ? totalTorn * tornPriceKrw : 0;
 
     // Gas price display update
     (function () {
-      const ethKrw = (ethPriceUsd > 0 && krwPerUsdAuto > 0) ? (ethPriceUsd * krwPerUsdAuto) : 0;
+      const ethKrw = ethPriceUsd > 0 && usdtKrwRate > 0 ? ethPriceUsd * usdtKrwRate : 0;
 
       function krwForLimit(limit) {
         if (gasPriceGweiAuto <= 0 || ethKrw <= 0 || limit <= 0) return 0;
@@ -343,7 +319,7 @@
     // Investment analytics
     const investmentKrw = parseNum(investmentKrwInput.value);
     const avgBuyPriceKrw = investmentKrw > 0 && totalTorn > 0 ? investmentKrw / totalTorn : 0;
-    const avgBuyPriceUsd = avgBuyPriceKrw > 0 && krwPerUsdAuto > 0 ? avgBuyPriceKrw / krwPerUsdAuto : 0;
+    const avgBuyPriceUsd = avgBuyPriceKrw > 0 && usdtKrwRate > 0 ? avgBuyPriceKrw / usdtKrwRate : 0;
     const costBasisKrw = investmentKrw > 0 ? investmentKrw : 0;
     const hasValuation = totalTorn > 0 && totalValueKrw >= 0;
     const profitKrw = costBasisKrw > 0 && hasValuation ? totalValueKrw - costBasisKrw : 0;
@@ -353,11 +329,11 @@
     avgBuyPriceDisplay.textContent = avgBuyPriceKrw > 0 ? formatKrw(avgBuyPriceKrw) : '';
     avgBuyPriceUsdDisplay.textContent = avgBuyPriceUsd > 0 ? formatUsd(avgBuyPriceUsd) : '';
 
-    const investmentUsd = investmentKrw > 0 && krwPerUsdAuto > 0 ? investmentKrw / krwPerUsdAuto : 0;
+    const investmentUsd = investmentKrw > 0 && usdtKrwRate > 0 ? investmentKrw / usdtKrwRate : 0;
     investmentUsdDisplay.textContent = investmentUsd > 0 ? formatUsd(investmentUsd) : '';
 
     currentValueDisplay.textContent = hasValuation ? formatKrw(totalValueKrw) : '';
-    const currentValueUsd = hasValuation && krwPerUsdAuto > 0 ? totalValueKrw / krwPerUsdAuto : 0;
+    const currentValueUsd = hasValuation && usdtKrwRate > 0 ? totalValueKrw / usdtKrwRate : 0;
     currentValueTornDisplay.textContent = currentValueUsd > 0 ? formatUsd(currentValueUsd) : '';
 
     profitDisplay.textContent = costBasisKrw > 0 && hasValuation ? formatSignedKrw(profitKrw) : '';
@@ -470,8 +446,8 @@
     ethPriceUsd = d.ethPriceUsd || 0;
     btcPriceUsd = d.btcPriceUsd || 0;
 
-    // Premium 데이터는 prices 응답에서도 가져옴 (중복 호출 제거)
-    if (d.premium != null) kimchiPremiumAuto = d.premium;
+    // 테더 가격 (USDT/KRW 환율) - 프리미엄 이미 포함됨
+    if (d.usdtKrwRate > 0) usdtKrwRate = d.usdtKrwRate;
     if (d.tornPriceKrw > 0) tornPriceKrw = d.tornPriceKrw;
     if (d.btcKrw > 0) btcKrwAuto = d.btcKrw;
 
@@ -486,9 +462,9 @@
     priceDisplayCenter.textContent = formatUsd(dexCexAvg);
     priceDisplayRight.textContent = formatUsd(tornPriceUsdCex);
 
-    kimchiPremiumDisplay.textContent = 
-      kimchiPremiumAuto != null ? kimchiPremiumAuto + '%' : ' 로딩 중';
-    colorizeKimchi();
+    // 테더 가격 표시
+    usdtPriceDisplay.textContent = 
+      usdtKrwRate > 0 ? Math.floor(usdtKrwRate).toLocaleString('ko-KR') + ' 원' : '로딩 중';
 
     if (d.totalStaked != null) {
       totalPoolInput.value = Math.floor(d.totalStaked).toLocaleString('en');
@@ -507,12 +483,11 @@
     }
 
     const btcKrw = btcKrwAuto > 0 ? btcKrwAuto : 0;
-    if (btcPriceUsd > 0 && btcKrw > 0) krwPerUsdAuto = btcKrw / btcPriceUsd;
-    const krwPerUsd = krwPerUsdAuto > 0 ? krwPerUsdAuto : 0;
+    // krwPerUsd 는 이제 usdtKrwRate 로 대체됨
 
     function formatKrwFromUsd(usd) {
-      if (!usd || !krwPerUsd) return '';
-      return Math.floor(usd * krwPerUsd).toLocaleString('ko-KR') + ' 원';
+      if (!usd || !usdtKrwRate) return '';
+      return Math.floor(usd * usdtKrwRate).toLocaleString('ko-KR') + ' 원';
     }
 
     setTextIfAvailable(priceDisplayLeftKrw, formatKrwFromUsd(tornPriceUsdDex), priceDisplayLeftKrw.textContent);
@@ -520,19 +495,19 @@
     setTextIfAvailable(priceDisplayRightKrw, formatKrwFromUsd(tornPriceUsdCex), priceDisplayRightKrw.textContent);
 
     const ethUsdText = ethPriceUsd > 0 ? '$' + Math.floor(ethPriceUsd).toLocaleString('en') : '';
-    const ethKrwText = ethPriceUsd > 0 && krwPerUsd > 0 
-      ? ' (' + Math.floor(ethPriceUsd * krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '';
+    const ethKrwText = ethPriceUsd > 0 && usdtKrwRate > 0 
+      ? ' (' + Math.floor(ethPriceUsd * usdtKrwRate).toLocaleString('ko-KR') + ' 원)' : '';
     setTextIfAvailable(dividendEthPriceDisplay, 
       ethUsdText ? (ethUsdText + (ethKrwText || '')) : '', dividendEthPriceDisplay.textContent);
 
     const btcUsdText = btcPriceUsd > 0 ? '$' + Math.floor(btcPriceUsd).toLocaleString('en') : '';
-    const btcKrwText = btcPriceUsd > 0 && krwPerUsd > 0 
-      ? ' (' + Math.floor(btcPriceUsd * krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '';
+    const btcKrwText = btcPriceUsd > 0 && usdtKrwRate > 0 
+      ? ' (' + Math.floor(btcPriceUsd * usdtKrwRate).toLocaleString('ko-KR') + ' 원)' : '';
     setTextIfAvailable(dividendWbtcPriceDisplay, 
       btcUsdText ? (btcUsdText + (btcKrwText || '')) : '', dividendWbtcPriceDisplay.textContent);
 
     setTextIfAvailable(dividendUsdPriceDisplay, 
-      krwPerUsd > 0 ? '$1 (' + Math.floor(krwPerUsd).toLocaleString('ko-KR') + ' 원)' : '', 
+      usdtKrwRate > 0 ? '$1 (' + Math.floor(usdtKrwRate).toLocaleString('ko-KR') + ' 원)' : '', 
       dividendUsdPriceDisplay.textContent);
 
     try {
@@ -543,24 +518,13 @@
     updateAnalyticsCard();
   }
 
-  function applyPremiumData(d) {
-    if (!d || d.ok !== true) return;
-    if (d.premium != null) {
-      kimchiPremiumAuto = d.premium;
-      kimchiPremiumDisplay.textContent = kimchiPremiumAuto + '%';
-      colorizeKimchi();
-      calculate();
-      updateAnalyticsCard();
-    }
-  }
-
   function setPriceError(msg) {
     priceDisplayWrap.classList.remove('loading');
     priceDisplayWrap.classList.add('error');
     priceDisplayLeft.textContent = ' ' + msg;
     priceDisplayCenter.textContent = ' ' + msg;
     priceDisplayRight.textContent = ' ' + msg;
-    if (kimchiPremiumAuto == null) kimchiPremiumDisplay.textContent = '';
+    usdtPriceDisplay.textContent = '';
     try { var pctEl = document.getElementById('totalPoolPercent'); if (pctEl) pctEl.textContent = ''; } catch (e) {}
   }
 
@@ -579,7 +543,7 @@
 
     if (!cacheApplied) {
       priceDisplayWrap.classList.add('loading');
-      kimchiPremiumDisplay.textContent = ' 로딩 중';
+      usdtPriceDisplay.textContent = '로딩 중';
     }
 
     fetchCalculatorPrices().then(applyApiPrices).catch(function (err) {
@@ -587,10 +551,6 @@
         ? NETWORK_ERR_MSG : (err.message || '조회 실패');
       setPriceError(msg);
     });
-  }
-
-  function updatePremiumData() {
-    fetchCalculatorPremium().then(applyPremiumData).catch(function () {});
   }
 
   // ── Calculation Functions ────────────────────────────────────────────
@@ -616,12 +576,10 @@
 
     updateTotalHoldingsSum();
 
-    const poolKrw = totalPool > 0 && tornPriceKrw > 0 
-      ? totalPool * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+    const poolKrw = totalPool > 0 && tornPriceKrw > 0 ? totalPool * tornPriceKrw : 0;
     totalPoolKrwEl.textContent = poolKrw > 0 ? formatKrw(poolKrw) : '';
 
-    const userKrw = userTorn > 0 && tornPriceKrw > 0 
-      ? userTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+    const userKrw = userTorn > 0 && tornPriceKrw > 0 ? userTorn * tornPriceKrw : 0;
     userTornKrwEl.textContent = userKrw > 0 ? formatKrw(userKrw) : '';
 
     function updateRow(ethAmount, el, krwEl) {
@@ -631,8 +589,7 @@
       const myDividendTorn = ethToTorn(myDividendEth);
       el.textContent = myDividendTorn != null ? formatTorn(myDividendTorn) : '0 TORN';
 
-      const baseKrw = myDividendTorn != null && tornPriceKrw > 0 
-        ? myDividendTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+      const baseKrw = myDividendTorn != null && tornPriceKrw > 0 ? myDividendTorn * tornPriceKrw : 0;
       krwEl.textContent = baseKrw > 0 ? formatKrw(baseKrw) : ' 원';
     }
 
@@ -647,8 +604,7 @@
       const myDividendTorn = btcToTorn(myDividendBtc);
       divElsWbtc[amount].textContent = myDividendTorn != null ? formatTorn(myDividendTorn) : '0 TORN';
 
-      const baseKrw = myDividendTorn != null && tornPriceKrw > 0 
-        ? myDividendTorn * tornPriceKrw * (1 + ((kimchiPremiumAuto || 0) / 100)) : 0;
+      const baseKrw = myDividendTorn != null && tornPriceKrw > 0 ? myDividendTorn * tornPriceKrw : 0;
       krwElsWbtc[amount].textContent = baseKrw > 0 ? formatKrw(baseKrw) : ' 원';
     });
 
@@ -821,10 +777,8 @@
   } catch (e) {}
 
   updateMarketData();
-  updatePremiumData();
   calculate();
   initDividendTabs();
 
   setInterval(updateMarketData, REFRESH_INTERVAL_MS);
-  setInterval(updatePremiumData, PREMIUM_REFRESH_INTERVAL_MS);
 })();

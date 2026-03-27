@@ -4,7 +4,6 @@ const path = require('path');
 const express = require('express');
 const compression = require('compression');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
-const { getKimchiPremium } = require('./scripts/compute-kimchi');
 
 // ── Rate Limiting (식당 줄 서기) - Optimized with O(1) operations ───────────────────────────────
 /**
@@ -55,17 +54,14 @@ class RateLimiter {
   }
 }
 
-// Create rate limiters: 5 requests/second for general API, stricter for blockchain calls
-const GENERAL_RATE_LIMITER = new RateLimiter(1000, 10);   // 10 req/sec
+// Create rate limiter for blockchain calls
 const BLOCKCHAIN_RATE_LIMITER = new RateLimiter(1000, 3); // 3 req/sec (more strict)
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const CALC_PRICE_CACHE_TTL_MS = 30 * 1000;      // 가격 캐시: 30 초 (불필요한 외부 API 호출 감소)
-const CALC_PREMIUM_CACHE_TTL_MS = 15 * 1000;     // 김치프리미엄: 15 초
 const CALC_TOTAL_STAKED_CACHE_TTL_MS = 120 * 1000; // 총 스테이킹량: 2 분
 let calcPriceCache = null;
-let calcPremiumCache = null;
 let calcTotalStakedCache = null;
 
 /* ── Shared RPC provider & contract constants (created once) ── */
@@ -115,35 +111,6 @@ const buildRpcEndpoints = () => {
 };
 
 const RPC_ENDPOINTS = buildRpcEndpoints();
-let currentRpcIndex = 0;
-
-/**
- * Fetch with RPC failover - tries multiple endpoints until one succeeds
- */
-async function fetchWithRpcFailover(url, options = {}, maxRetries = RPC_ENDPOINTS.length) {
-  let lastError;
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, { ...options });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      lastError = error;
-      console.debug(`RPC attempt ${attempt + 1} failed:`, error.message);
-      
-      // Try next endpoint on next iteration
-      if (attempt < maxRetries - 1) {
-        currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
-      }
-    }
-  }
-  
-  console.error('All RPC endpoints failed:', lastError?.message);
-  throw lastError || new Error('All RPC endpoints unavailable');
-}
 
 // Create provider with failover support
 const createProviderWithFailover = () => {
@@ -222,45 +189,6 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'calculator.html'));
 });
 
-app.get('/api/calculator/premium', async (_req, res) => {
-  // ── Rate Limiting Check (식당 줄 서기) ───────────────────────────────
-  const clientIp = _req.ip || _req.socket.remoteAddress || 'unknown';
-  if (!GENERAL_RATE_LIMITER.isAllowed(clientIp)) {
-    return res.status(429).json({ ok: false, message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
-  }
-
-  const now = Date.now();
-  // Return cached data if still valid
-  if (calcPremiumCache && now - calcPremiumCache.at < CALC_PREMIUM_CACHE_TTL_MS) {
-    return res.json(calcPremiumCache.data);
-  }
-
-  try {
-    const kim = await getKimchiPremium({ timeoutMs: 2000 });
-
-    const payload = {
-      ok: kim.ok === true,
-      sources: {
-        upbitKrw: kim.upbitKrw ?? null,
-        binanceUsdt: kim.binanceUsdt ?? null,
-        usdToKrw: kim.usdToKrw ?? null,
-      },
-      derived: {
-        foreignBtcKrw: kim.foreignKrw ?? null,
-      },
-      premium: kim.premiumPercent ?? null,
-      btcKrw: kim.upbitKrw ?? kim.foreignKrw ?? null,
-    };
-
-    calcPremiumCache = { at: now, data: payload };
-    return res.json(payload);
-  } catch (e) {
-    // fallback to cached value if available
-    if (calcPremiumCache) return res.json(calcPremiumCache.data);
-    return res.status(502).json({ ok: false, message: e && e.message ? e.message : 'premium fetch failed' });
-  }
-});
-
 app.get('/api/calculator/prices', async (_req, res) => {
   // ── Rate Limiting Check (식당 줄 서기 - 블록체인 호출은 더 엄격하게 제한) ─────────────────
   const clientIp = _req.ip || _req.socket.remoteAddress || 'unknown';
@@ -322,14 +250,15 @@ app.get('/api/calculator/prices', async (_req, res) => {
     } catch { return { tornPriceInEth: null, totalStaked: totalStakedFromCache }; }
   })();
 
-  const [llamaRes, coingeckoRes, mexcRes, onChainRes, gasFeeDataResult, latestBlockResult, upbitRes] = await Promise.allSettled([
+  const [llamaRes, coingeckoRes, mexcRes, onChainRes, gasFeeDataResult, latestBlockResult, upbitUsdtRes] = await Promise.allSettled([
     timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then((r) => r.json()),
     timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin,ethereum&vs_currencies=krw').then((r) => r.json()),
     timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then((r) => r.json()),
     onChainPromise,
     sharedProvider.getFeeData().catch(() => null),
     sharedProvider.getBlock('latest').catch(() => null),
-    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-BTC').then((r) => r.json()),
+    // Upbit KRW-USDT only - this IS the "premium-included exchange rate"
+    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-USDT').then((r) => r.json()),
   ]);
 
   const llama = llamaRes.status === 'fulfilled' ? llamaRes.value : null;
@@ -340,7 +269,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const totalStakedMaybe = onChain.totalStaked ?? null;
   const gasFeeData = gasFeeDataResult.status === 'fulfilled' ? gasFeeDataResult.value : null;
   const latestBlock = latestBlockResult.status === 'fulfilled' ? latestBlockResult.value : null;
-  const upbit = upbitRes.status === 'fulfilled' ? upbitRes.value : null;
+  const upbitUsdt = upbitUsdtRes.status === 'fulfilled' ? upbitUsdtRes.value : null;
 
   const coins = (llama && llama.coins) || {};
   const ethPriceUsd = coins['ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']?.price || 0;
@@ -351,10 +280,16 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const tornPriceUsdCex = mexcObj?.price ? Number(mexcObj.price) || 0 : 0;
   const tornPriceUsdCenter = defiLlamaTorn > 0 ? defiLlamaTorn : 0;
   const tornPriceUsd = tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
-  const upbitBtcKrw = Array.isArray(upbit) && upbit[0]?.trade_price ? Number(upbit[0].trade_price) : 0;
-  const btcKrw = coingecko?.bitcoin?.krw || upbitBtcKrw || calcPriceCache?.data?.btcKrw || calcPremiumCache?.data?.btcKrw || null;
+  
+  // USDT/KRW exchange rate from Upbit (includes premium automatically)
+  // Simple calculation: KRW price = USD price × USDT/KRW
+  const upbitUsdtObj = Array.isArray(upbitUsdt) && upbitUsdt[0]?.trade_price ? upbitUsdt[0] : null;
+  const usdtKrwRate = upbitUsdtObj ? Number(upbitUsdtObj.trade_price) : 0;
+  
+  // Calculate KRW prices using simple formula: USD price × USDT/KRW rate
+  const btcKrw = coingecko?.bitcoin?.krw || (usdtKrwRate > 0 && btcPriceUsd > 0 ? btcPriceUsd * usdtKrwRate : calcPriceCache?.data?.btcKrw || null);
   const ethKrw = coingecko?.ethereum?.krw || ((btcKrw && btcPriceUsd > 0 && ethPriceUsd > 0) ? (btcKrw / btcPriceUsd) * ethPriceUsd : 0) || calcPriceCache?.data?.ethKrw || 0;
-  const premium = calcPremiumCache?.data?.premium != null ? calcPremiumCache.data.premium : (calcPriceCache?.data?.premium != null ? calcPriceCache.data.premium : null);
+  const tornPriceKrw = coingecko?.['tornado-cash']?.krw || (usdtKrwRate > 0 && tornPriceUsd > 0 ? tornPriceUsd * usdtKrwRate : calcPriceCache?.data?.tornPriceKrw || 0);
   const CALCULATOR_GAS_LIMIT = 120000n;
   const MIN_FAST_TIP_WEI = 1170000000n;
   const feeDataBaseWei = typeof gasFeeData?.lastBaseFeePerGas === 'bigint'
@@ -389,11 +324,11 @@ app.get('/api/calculator/prices', async (_req, res) => {
     btcPriceUsd,
     btcKrw,
     ethKrw,
+    usdtKrwRate, // 테더 가격 (원화 환율)
     gasPriceGwei,
     gasCostKrw,
-    premium,
     totalStaked,
-    tornPriceKrw: coingecko?.['tornado-cash']?.krw || calcPriceCache?.data?.tornPriceKrw || 0,
+    tornPriceKrw,
   };
 
   calcPriceCache = { at: now, data: payload };
