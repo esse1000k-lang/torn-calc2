@@ -11,9 +11,9 @@
   "lang": "ko",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon",
+      "src": "/torn.png",
+      "sizes": "any",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
