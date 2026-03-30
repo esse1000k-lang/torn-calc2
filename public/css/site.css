@@ -773,6 +773,9 @@ body.theme-light .nav-theme-toggle { color: var(--neon); }
     word-break: keep-all; overflow-wrap: break-word;
     padding-right: 0.25rem;
   }
+  .calculator-page .hint--small {
+    font-size: 0.5rem;
+  }
   .calculator-page .data-value--row { flex-wrap: wrap; }
 }
 
