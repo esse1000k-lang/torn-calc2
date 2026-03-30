@@ -69,6 +69,7 @@ const TORN_TOKEN = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
 const GOVERNANCE = '0x2F50508a8a3D323B91336FA3eA6ae50E55f32185';
 const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
 const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+const UNISWAP_PAIR_ADDRESS = '0x0c722a487876989af8a05fffb6e32e45cc23fb3a'; // TORN/WETH 페어 주소 (하드코딩)
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
 const DEFILLAMA_COINS = 'ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C,ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599';
 const STAKING_CONTRACT_ADDRESS = '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce';
@@ -120,22 +121,6 @@ const createProviderWithFailover = () => {
 };
 
 const sharedProvider = createProviderWithFailover();
-
-// Cache the immutable Uniswap V2 pair address (TORN/WETH)
-let cachedPairAddr = null;
-async function getUniswapPairAddress() {
-  if (cachedPairAddr) return cachedPairAddr;
-  try {
-    const factory = new Contract(UNISWAP_V2_FACTORY, ['function getPair(address,address) view returns (address)'], sharedProvider);
-    const addr = await factory.getPair(TORN_TOKEN, WETH);
-    if (addr && addr !== '0x0000000000000000000000000000000000000000') {
-      cachedPairAddr = addr;
-    }
-    return cachedPairAddr;
-  } catch { return null; }
-}
-// Pre-warm pair address on startup
-setTimeout(() => getUniswapPairAddress().catch(() => {}), 500);
 
 const pairAbi = ['function getReserves() view returns (uint112,uint112,uint32)', 'function token0() view returns (address)'];
 const pairIface = new Interface(pairAbi);
@@ -216,8 +201,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
   // Batch Uniswap + totalStaked via Multicall3 for efficiency
   const onChainPromise = (async () => {
     try {
-      const pairAddr = await getUniswapPairAddress();
-      if (!pairAddr) return { tornPriceInEth: null, totalStaked: totalStakedFromCache };
+      const pairAddr = UNISWAP_PAIR_ADDRESS;
       const calls = [
         { target: pairAddr, allowFailure: false, callData: pairIface.encodeFunctionData('getReserves', []) },
         { target: pairAddr, allowFailure: false, callData: pairIface.encodeFunctionData('token0', []) },
