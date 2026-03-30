@@ -256,10 +256,11 @@ app.get('/api/calculator/prices', async (_req, res) => {
     return null;
   });
 
-  const [llamaRes, coingeckoRes, mexcRes, onChainRes, gasFeeDataResult, latestBlockResult, upbitUsdtRes] = await Promise.allSettled([
+  const [llamaRes, coingeckoRes, mexcRes, binanceRes, onChainRes, gasFeeDataResult, latestBlockResult, upbitUsdtRes] = await Promise.allSettled([
     timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then(r => r.json()),
     timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin,ethereum&vs_currencies=krw').then(r => r.json()),
     timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then(r => r.json()),
+    timeoutFetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT').then(r => r.json()),
     onChainPromise,
     gasFeePromise,
     latestBlockPromise,
@@ -269,6 +270,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const llama = llamaRes.status === 'fulfilled' ? llamaRes.value : null;
   const coingecko = coingeckoRes.status === 'fulfilled' ? coingeckoRes.value : null;
   const mexc = mexcRes.status === 'fulfilled' ? mexcRes.value : null;
+  const binance = binanceRes.status === 'fulfilled' ? binanceRes.value : null;
   const onChain = onChainRes.status === 'fulfilled' ? onChainRes.value : {};
   const tornPriceInEth = onChain.tornPriceInEth ?? null;
   const totalStakedMaybe = onChain.totalStaked ?? null;
@@ -277,7 +279,9 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const upbitUsdt = upbitUsdtRes.status === 'fulfilled' ? upbitUsdtRes.value : null;
 
   const coins = (llama && llama.coins) || {};
-  const ethPriceUsd = coins['ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']?.price || 0;
+  // 1 순위: Binance, 2 순위: DeFi Llama
+  const binanceEthPrice = binance?.price ? Number(binance.price) : null;
+  const ethPriceUsd = binanceEthPrice ?? (coins['ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']?.price || 0);
   const btcPriceUsd = coins['ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599']?.price || 0;
   const defiLlamaTorn = coins['ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C']?.price || 0;
   const tornPriceUsdDex = tornPriceInEth && ethPriceUsd ? tornPriceInEth * ethPriceUsd : 0;
