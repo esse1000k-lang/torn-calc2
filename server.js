@@ -5,12 +5,28 @@ const express = require('express');
 const compression = require('compression');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
 
-// ── Rate Limiting (식당 줄 서기) ───────────────────────────────
+// ── Rate Limiting ───────────────────────────────────────────────────────────
 class RateLimiter {
   constructor(windowMs, maxRequests) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
     this.requests = new Map();
+
+    // 메모리 누수 방지: 오래된 IP 주기적으로 정리 (5분마다)
+    setInterval(() => this._cleanup(), 5 * 60 * 1000).unref();
+  }
+
+  _cleanup() {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    for (const [key, clientData] of this.requests.entries()) {
+      const valid = clientData.timestamps.findIndex(ts => ts > windowStart);
+      if (valid === -1) {
+        this.requests.delete(key);
+      } else if (valid > 0) {
+        clientData.timestamps = clientData.timestamps.slice(valid);
+      }
+    }
   }
 
   isAllowed(identifier) {
@@ -18,7 +34,7 @@ class RateLimiter {
     const windowStart = now - this.windowMs;
 
     let clientData = this.requests.get(identifier);
-    
+
     if (!clientData) {
       this.requests.set(identifier, { timestamps: [now], lastCleanup: now });
       return true;
@@ -36,7 +52,7 @@ class RateLimiter {
     }
 
     const timestamps = clientData.timestamps;
-    
+
     if (timestamps.length >= this.maxRequests) {
       return false;
     }
@@ -46,53 +62,46 @@ class RateLimiter {
   }
 }
 
-// Create rate limiter for blockchain calls
-const BLOCKCHAIN_RATE_LIMITER = new RateLimiter(1000, 3); // 3 req/sec (more strict)
+const BLOCKCHAIN_RATE_LIMITER = new RateLimiter(1000, 3);
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const CALC_PRICE_CACHE_TTL_MS = 30 * 1000;      // 가격 캐시: 30 초 (불필요한 외부 API 호출 감소)
-const CALC_TOTAL_STAKED_CACHE_TTL_MS = 120 * 1000; // 총 스테이킹량: 2 분
+const CALC_PRICE_CACHE_TTL_MS = 30 * 1000;
+const CALC_TOTAL_STAKED_CACHE_TTL_MS = 120 * 1000;
 let calcPriceCache = null;
 let calcTotalStakedCache = null;
 
-/* ── Shared RPC provider & contract constants (created once) ── */
+// ── 상수 ────────────────────────────────────────────────────────────────────
 const TORN_TOKEN = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
 const GOVERNANCE = '0x2F50508a8a3D323B91336FA3eA6ae50E55f32185';
 const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
 const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const UNISWAP_PAIR_ADDRESS = '0x0c722a487876989af8a05fffb6e32e45cc23fb3a'; // TORN/WETH 페어 주소 (하드코딩)
+const UNISWAP_PAIR_ADDRESS = '0x0c722a487876989af8a05fffb6e32e45cc23fb3a';
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
 const DEFILLAMA_COINS = 'ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C,ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599';
 const STAKING_CONTRACT_ADDRESS = '0x5efda50f22d34F262c29268506C5Fa42cB56A1Ce';
 const REWARD_CONTRACT_ADDRESS = '0x5B3f656C80E8ddb9ec01Dd9018815576E9238c29';
 
-// ── RPC Failover (우체국 여러 개) ───────────────────────────────────────
-/**
- * Multiple RPC endpoints with automatic failover
- * If one endpoint fails, automatically tries the next one
- */
+// ── RPC Failover ─────────────────────────────────────────────────────────────
 const buildRpcEndpoints = () => {
   const endpoints = [];
-  
-  // Add user-provided RPC from environment variables
+
   const envRpc = process.env.CALC_RPC_URL || process.env.INFURA_URL || '';
   if (envRpc) {
     if (/^https?:\/\//i.test(envRpc)) {
       endpoints.push(envRpc);
     } else {
-      // Assume it's an Infura API key
       endpoints.push(`https://mainnet.infura.io/v3/${envRpc}`);
     }
   }
 
-  // Add public RPC fallbacks
   const publicFallbacks = [
-    'https://rpc.ankr.com/eth',
-    'https://cloudflare-eth.com'
+    'https://eth.drpc.org',
+    'https://ethereum-rpc.publicnode.com',
+    'https://1rpc.io/eth',
+    'https://rpc.flashbots.net',
   ];
 
-  // Add fallbacks that aren't already in the list
   for (const fallback of publicFallbacks) {
     if (!endpoints.includes(fallback)) {
       endpoints.push(fallback);
@@ -104,33 +113,47 @@ const buildRpcEndpoints = () => {
 
 const RPC_ENDPOINTS = buildRpcEndpoints();
 
-// Create provider with failover support
-const createProviderWithFailover = () => {
-  // Use the first available endpoint initially
-  const primaryUrl = RPC_ENDPOINTS[0] || 'https://rpc.ankr.com/eth';
-  return new JsonRpcProvider(primaryUrl, 1);
+/**
+ * 진짜 RPC failover: 첫 번째 RPC 실패 시 다음 RPC로 자동 전환
+ * @param {(provider: JsonRpcProvider) => Promise<any>} fn
+ */
+const callWithFailover = async (fn) => {
+  let lastError;
+  for (const url of RPC_ENDPOINTS) {
+    try {
+      const provider = new JsonRpcProvider(url, 1);
+      return await fn(provider);
+    } catch (e) {
+      lastError = e;
+      console.warn(`[RPC] Failed: ${url} → ${e?.message || e}`);
+    }
+  }
+  throw lastError || new Error('All RPC endpoints failed');
 };
 
-const sharedProvider = createProviderWithFailover();
+// 기본 provider (healthz, getBalance 등 단순 호출용)
+const sharedProvider = new JsonRpcProvider(RPC_ENDPOINTS[0] || 'https://rpc.ankr.com/eth', 1);
 
-const pairAbi = ['function getReserves() view returns (uint112,uint112,uint32)', 'function token0() view returns (address)'];
+// ── ABI & Interface ──────────────────────────────────────────────────────────
+const pairAbi = [
+  'function getReserves() view returns (uint112,uint112,uint32)',
+  'function token0() view returns (address)',
+];
 const pairIface = new Interface(pairAbi);
 const balanceIface = new Interface(['function balanceOf(address account) view returns (uint256)']);
-const multicallContract = new Contract(MULTICALL3, ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] returnData)'], sharedProvider);
 
-// Wallet contracts (created once, reused across all requests)
-const stakingContract = new Contract(STAKING_CONTRACT_ADDRESS, ['function lockedBalance(address account) view returns (uint256)'], sharedProvider);
-const rewardContract = new Contract(REWARD_CONTRACT_ADDRESS, ['function checkReward(address account) view returns (uint256 rewards)'], sharedProvider);
-const tornTokenContract = new Contract(TORN_TOKEN, ['function balanceOf(address account) view returns (uint256)'], sharedProvider);
+const MULTICALL3_ABI = ['function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[] returnData)'];
+const STAKING_ABI = ['function lockedBalance(address account) view returns (uint256)'];
+const REWARD_ABI = ['function checkReward(address account) view returns (uint256 rewards)'];
+const ERC20_ABI = ['function balanceOf(address account) view returns (uint256)'];
 
-// JSON parser with stricter limits (security)
+// ── 미들웨어 ─────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true }));
-// Compression middleware - optimized for speed vs size balance
-app.use(compression({ 
-  level: 6,          // 균형 잡힌 압축 (Level 9 → 6: CPU 부하 ↓, 속도 ↑)
-  threshold: 512,    // 512B 이상 응답만 압축 (1KB → 512B: 작은 JSON 도 압축)
-  filter: () => true // 모든 MIME 타입 허용
+app.use(compression({
+  level: 6,
+  threshold: 512,
+  filter: () => true,
 }));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: '2h',
@@ -138,9 +161,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
     if (filePath.endsWith('.html') || filePath.endsWith('.css') || filePath.endsWith('.js')) {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     }
-  }
+  },
 }));
-// Prevent browsers from caching API responses to ensure clients always fetch fresh data
 app.use('/api', (_req, res, next) => {
   try {
     res.setHeader('Cache-Control', 'no-store');
@@ -150,6 +172,7 @@ app.use('/api', (_req, res, next) => {
   next();
 });
 
+// ── 유틸 ─────────────────────────────────────────────────────────────────────
 function validateAndNormalizeEthAddress(str) {
   if (!str || typeof str !== 'string') return null;
   const trimmed = str.trim();
@@ -157,6 +180,7 @@ function validateAndNormalizeEthAddress(str) {
   return trimmed;
 }
 
+// ── 라우트 ───────────────────────────────────────────────────────────────────
 app.get('/healthz', (_req, res) => {
   res.json({ ok: true });
 });
@@ -166,74 +190,80 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/api/calculator/prices', async (_req, res) => {
-  // ── Rate Limiting Check (식당 줄 서기 - 블록체인 호출은 더 엄격하게 제한) ─────────────────
   const clientIp = _req.ip || _req.socket.remoteAddress || 'unknown';
   if (!BLOCKCHAIN_RATE_LIMITER.isAllowed(clientIp)) {
-    // If rate limited, return cached data instead of error (기능 상실 방지)
     if (calcPriceCache) {
-      console.log('Rate limit exceeded, returning cached price data');
+      console.log('[RateLimit] 캐시된 가격 데이터 반환');
       return res.json(calcPriceCache.data);
     }
     return res.status(429).json({ ok: false, message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
   }
 
   const now = Date.now();
-  // Return cached data if still valid
   if (calcPriceCache && now - calcPriceCache.at < CALC_PRICE_CACHE_TTL_MS) {
     return res.json(calcPriceCache.data);
   }
 
   const timeoutFetch = (url, ms = 8000) => fetch(url, { signal: AbortSignal.timeout(ms) });
 
-  // Check cache for totalStaked to avoid unnecessary multicall
   const totalStakedFromCache = (calcTotalStakedCache && now - calcTotalStakedCache.at < CALC_TOTAL_STAKED_CACHE_TTL_MS)
     ? calcTotalStakedCache.data : null;
 
-  // Batch Uniswap + totalStaked via Multicall3 for efficiency
-  const onChainPromise = (async () => {
-    try {
-      const pairAddr = UNISWAP_PAIR_ADDRESS;
-      const calls = [
-        { target: pairAddr, allowFailure: false, callData: pairIface.encodeFunctionData('getReserves', []) },
-        { target: pairAddr, allowFailure: false, callData: pairIface.encodeFunctionData('token0', []) },
-      ];
-      // Include totalStaked in the same multicall if cache is stale
-      const needStaked = totalStakedFromCache === null;
-      if (needStaked) {
-        calls.push({ target: TORN_TOKEN, allowFailure: true, callData: balanceIface.encodeFunctionData('balanceOf', [GOVERNANCE]) });
-      }
-      const results = await multicallContract.aggregate3(calls);
-      
-      // Decode Uniswap reserves
-      let tornPriceInEth = null;
-      if (results?.[0]?.returnData && results?.[1]?.returnData) {
-        const [reserve0, reserve1] = pairIface.decodeFunctionResult('getReserves', results[0].returnData);
-        const token0Addr = pairIface.decodeFunctionResult('token0', results[1].returnData)[0];
-        const isTorn0 = String(token0Addr).toLowerCase() === TORN_TOKEN.toLowerCase();
-        const reserveTorn = isTorn0 ? reserve0 : reserve1;
-        const reserveWeth = isTorn0 ? reserve1 : reserve0;
-        if (reserveTorn !== 0n) tornPriceInEth = Number(reserveWeth) / Number(reserveTorn);
-      }
-      
-      // Decode totalStaked if fetched
-      let totalStaked = totalStakedFromCache;
-      if (needStaked && results?.[2]?.success && results[2].returnData) {
-        const [wei] = balanceIface.decodeFunctionResult('balanceOf', results[2].returnData);
-        totalStaked = Number(wei) / 1e18;
-      }
-      return { tornPriceInEth, totalStaked };
-    } catch { return { tornPriceInEth: null, totalStaked: totalStakedFromCache }; }
-  })();
+  // 온체인 데이터: RPC failover 적용
+  const onChainPromise = callWithFailover(async (provider) => {
+    const multicall = new Contract(MULTICALL3, MULTICALL3_ABI, provider);
+    const pairAddr = UNISWAP_PAIR_ADDRESS;
+    const calls = [
+      { target: pairAddr, allowFailure: false, callData: pairIface.encodeFunctionData('getReserves', []) },
+      { target: pairAddr, allowFailure: false, callData: pairIface.encodeFunctionData('token0', []) },
+    ];
+    const needStaked = totalStakedFromCache === null;
+    if (needStaked) {
+      calls.push({ target: TORN_TOKEN, allowFailure: true, callData: balanceIface.encodeFunctionData('balanceOf', [GOVERNANCE]) });
+    }
+
+    const results = await multicall.aggregate3(calls);
+
+    let tornPriceInEth = null;
+    if (results?.[0]?.returnData && results?.[1]?.returnData) {
+      const [reserve0, reserve1] = pairIface.decodeFunctionResult('getReserves', results[0].returnData);
+      const token0Addr = pairIface.decodeFunctionResult('token0', results[1].returnData)[0];
+      const isTorn0 = String(token0Addr).toLowerCase() === TORN_TOKEN.toLowerCase();
+      const reserveTorn = isTorn0 ? reserve0 : reserve1;
+      const reserveWeth = isTorn0 ? reserve1 : reserve0;
+      if (reserveTorn !== 0n) tornPriceInEth = Number(reserveWeth) / Number(reserveTorn);
+    }
+
+    let totalStaked = totalStakedFromCache;
+    if (needStaked && results?.[2]?.success && results[2].returnData) {
+      const [wei] = balanceIface.decodeFunctionResult('balanceOf', results[2].returnData);
+      totalStaked = Number(wei) / 1e18;
+    }
+
+    return { tornPriceInEth, totalStaked };
+  }).catch((e) => {
+    console.error('[OnChain] 모든 RPC 실패:', e?.message || e);
+    return { tornPriceInEth: null, totalStaked: totalStakedFromCache };
+  });
+
+  // 가스비도 failover 적용
+  const gasFeePromise = callWithFailover(p => p.getFeeData()).catch((e) => {
+    console.error('[GasFee] 실패:', e?.message || e);
+    return null;
+  });
+  const latestBlockPromise = callWithFailover(p => p.getBlock('latest')).catch((e) => {
+    console.error('[LatestBlock] 실패:', e?.message || e);
+    return null;
+  });
 
   const [llamaRes, coingeckoRes, mexcRes, onChainRes, gasFeeDataResult, latestBlockResult, upbitUsdtRes] = await Promise.allSettled([
-    timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then((r) => r.json()),
-    timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin,ethereum&vs_currencies=krw').then((r) => r.json()),
-    timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then((r) => r.json()),
+    timeoutFetch('https://coins.llama.fi/prices/current/' + DEFILLAMA_COINS).then(r => r.json()),
+    timeoutFetch('https://api.coingecko.com/api/v3/simple/price?ids=tornado-cash,bitcoin,ethereum&vs_currencies=krw').then(r => r.json()),
+    timeoutFetch('https://api.mexc.com/api/v3/ticker/price?symbol=TORNUSDT').then(r => r.json()),
     onChainPromise,
-    sharedProvider.getFeeData().catch(() => null),
-    sharedProvider.getBlock('latest').catch(() => null),
-    // Upbit KRW-USDT only - this IS the "premium-included exchange rate"
-    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-USDT').then((r) => r.json()),
+    gasFeePromise,
+    latestBlockPromise,
+    timeoutFetch('https://api.upbit.com/v1/ticker?markets=KRW-USDT').then(r => r.json()),
   ]);
 
   const llama = llamaRes.status === 'fulfilled' ? llamaRes.value : null;
@@ -255,16 +285,14 @@ app.get('/api/calculator/prices', async (_req, res) => {
   const tornPriceUsdCex = mexcObj?.price ? Number(mexcObj.price) || 0 : 0;
   const tornPriceUsdCenter = defiLlamaTorn > 0 ? defiLlamaTorn : 0;
   const tornPriceUsd = tornPriceUsdDex || tornPriceUsdCenter || tornPriceUsdCex;
-  
-  // USDT/KRW exchange rate from Upbit (includes premium automatically)
-  // Simple calculation: KRW price = USD price × USDT/KRW
+
   const upbitUsdtObj = Array.isArray(upbitUsdt) && upbitUsdt[0]?.trade_price ? upbitUsdt[0] : null;
   const usdtKrwRate = upbitUsdtObj ? Number(upbitUsdtObj.trade_price) : 0;
-  
-  // Calculate KRW prices using simple formula: USD price × USDT/KRW rate
+
   const btcKrw = coingecko?.bitcoin?.krw || (usdtKrwRate > 0 && btcPriceUsd > 0 ? btcPriceUsd * usdtKrwRate : calcPriceCache?.data?.btcKrw || null);
   const ethKrw = coingecko?.ethereum?.krw || ((btcKrw && btcPriceUsd > 0 && ethPriceUsd > 0) ? (btcKrw / btcPriceUsd) * ethPriceUsd : 0) || calcPriceCache?.data?.ethKrw || 0;
   const tornPriceKrw = coingecko?.['tornado-cash']?.krw || (usdtKrwRate > 0 && tornPriceUsd > 0 ? tornPriceUsd * usdtKrwRate : calcPriceCache?.data?.tornPriceKrw || 0);
+
   const CALCULATOR_GAS_LIMIT = 120000n;
   const MIN_FAST_TIP_WEI = 1170000000n;
   const feeDataBaseWei = typeof gasFeeData?.lastBaseFeePerGas === 'bigint'
@@ -279,9 +307,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
     ? Number(maxFeePerGasWei) / 1e9
     : (calcPriceCache?.data?.gasPriceGwei || 0);
   const gasCostEth = maxFeePerGasWei > 0n ? Number(maxFeePerGasWei * CALCULATOR_GAS_LIMIT) / 1e18 : 0;
-  const gasCostKrw = gasCostEth > 0 && ethKrw > 0
-    ? gasCostEth * ethKrw
-    : 0;
+  const gasCostKrw = gasCostEth > 0 && ethKrw > 0 ? gasCostEth * ethKrw : 0;
 
   let totalStaked = typeof totalStakedMaybe === 'number' ? totalStakedMaybe : 0;
   if (totalStaked > 0) calcTotalStakedCache = { at: now, data: totalStaked };
@@ -299,7 +325,7 @@ app.get('/api/calculator/prices', async (_req, res) => {
     btcPriceUsd,
     btcKrw,
     ethKrw,
-    usdtKrwRate, // 테더 가격 (원화 환율)
+    usdtKrwRate,
     gasPriceGwei,
     gasCostKrw,
     totalStaked,
@@ -311,7 +337,6 @@ app.get('/api/calculator/prices', async (_req, res) => {
 });
 
 app.get('/api/calculator/wallet', async (req, res) => {
-  // ── Rate Limiting Check (식당 줄 서기) ───────────────────────────────
   const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
   if (!BLOCKCHAIN_RATE_LIMITER.isAllowed(clientIp)) {
     return res.status(429).json({ ok: false, message: '요청이 너무 잦습니다. 잠시 후 다시 시도해주세요.' });
@@ -322,30 +347,34 @@ app.get('/api/calculator/wallet', async (req, res) => {
 
   try {
     const [stakedWei, rewardWei, balanceWei, ethBalanceWei] = await Promise.all([
-      stakingContract.lockedBalance(walletAddress),
-      rewardContract.checkReward(walletAddress).catch(() => 0n),
-      tornTokenContract.balanceOf(walletAddress).catch(() => 0n),
-      sharedProvider.getBalance(walletAddress).catch(() => 0n),
+      // 지갑 조회도 failover 적용
+      callWithFailover(p => new Contract(STAKING_CONTRACT_ADDRESS, STAKING_ABI, p).lockedBalance(walletAddress)),
+      callWithFailover(p => new Contract(REWARD_CONTRACT_ADDRESS, REWARD_ABI, p).checkReward(walletAddress)).catch(() => 0n),
+      callWithFailover(p => new Contract(TORN_TOKEN, ERC20_ABI, p).balanceOf(walletAddress)).catch(() => 0n),
+      callWithFailover(p => p.getBalance(walletAddress)).catch(() => 0n),
     ]);
+
     const toNumber = (value) => Number(value) / Math.pow(10, 18);
     res.json({
       ok: true,
       walletAddress,
-      staked: toNumber(stakedWei),
-      reward: toNumber(rewardWei),
-      walletBalance: toNumber(balanceWei),
-      ethBalance: toNumber(ethBalanceWei),
+      staked: toNumber(stakedWei),       // TORN 스테이킹량
+      reward: toNumber(rewardWei),       // 미수령 리워드
+      walletBalance: toNumber(balanceWei), // TORN 지갑 잔액
+      ethBalance: toNumber(ethBalanceWei), // ETH 잔액
     });
   } catch (error) {
+    console.error('[Wallet] 조회 실패:', error?.message || error);
     res.status(502).json({ ok: false, message: error?.message || '지갑 조회에 실패했습니다.' });
   }
 });
 
 app.use((err, _req, res, _next) => {
-  console.error('Server error:', err);
+  console.error('[Server] 오류:', err);
   res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });
 });
 
 app.listen(PORT, () => {
-  console.log(`TornFi portfolio server listening on http://localhost:${PORT}`);
+  console.log(`TornFi server listening on http://localhost:${PORT}`);
+  console.log(`RPC endpoints: ${RPC_ENDPOINTS.join(', ')}`);
 });
