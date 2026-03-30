@@ -11,7 +11,7 @@
   const TOTAL_SUPPLY = 10000000; // 총 발행량 고정
   const NETWORK_ERR_MSG = '네트워크 오류';
   const WALLET_ADDRESS_KEY = 'torn-calc-wallet';
-  const PRICE_CACHE_KEY = 'calculator-price-cache-v6'; // 버저업 (김치프리미엄 제거)
+  const PRICE_CACHE_KEY = 'calculator-price-cache-v6';
   const PRICE_CACHE_TTL_MS = 18000;
 
   const WITHDRAW_AMOUNTS = [0.1, 1, 10, 100];
@@ -108,7 +108,6 @@
   let ethPriceUsd = 0;
   let btcPriceUsd = 0;
   let tornPriceKrw = 0;
-  let btcKrwAuto = 0;
   let usdtKrwRate = 0; // 테더 가격 (USDT/KRW 환율)
   let gasPriceGweiAuto = 0;
   let gasCostKrwAuto = 0;
@@ -449,7 +448,6 @@
     // 테더 가격 (USDT/KRW 환율) - 프리미엄 이미 포함됨
     if (d.usdtKrwRate > 0) usdtKrwRate = d.usdtKrwRate;
     if (d.tornPriceKrw > 0) tornPriceKrw = d.tornPriceKrw;
-    if (d.btcKrw > 0) btcKrwAuto = d.btcKrw;
 
     gasPriceGweiAuto = d.gasPriceGwei > 0 ? d.gasPriceGwei : 0;
     gasCostKrwAuto = d.gasCostKrw > 0 ? d.gasCostKrw : 0;
@@ -482,8 +480,7 @@
       } catch(e) {}
     }
 
-    const btcKrw = btcKrwAuto > 0 ? btcKrwAuto : 0;
-    // krwPerUsd 는 이제 usdtKrwRate 로 대체됨
+
 
     function formatKrwFromUsd(usd) {
       if (!usd || !usdtKrwRate) return '';

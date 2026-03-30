@@ -5,16 +5,12 @@ const express = require('express');
 const compression = require('compression');
 const { Contract, Interface, JsonRpcProvider } = require('ethers');
 
-// ── Rate Limiting (식당 줄 서기) - Optimized with O(1) operations ───────────────────────────────
-/**
- * Optimized in-memory rate limiter for API endpoints
- * Uses sliding window with efficient cleanup - O(1) per request
- */
+// ── Rate Limiting (식당 줄 서기) ───────────────────────────────
 class RateLimiter {
   constructor(windowMs, maxRequests) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
-    this.requests = new Map(); // key -> { timestamps: [], lastCleanup: number }
+    this.requests = new Map();
   }
 
   isAllowed(identifier) {
@@ -24,20 +20,16 @@ class RateLimiter {
     let clientData = this.requests.get(identifier);
     
     if (!clientData) {
-      // New client
       this.requests.set(identifier, { timestamps: [now], lastCleanup: now });
       return true;
     }
 
-    // Lazy cleanup - only clean when needed (amortized O(1))
     if (now - clientData.lastCleanup > this.windowMs / 2) {
       const idx = clientData.timestamps.findIndex(ts => ts > windowStart);
       if (idx === -1) {
-        // All timestamps expired
         this.requests.delete(identifier);
         return true;
       } else if (idx > 0) {
-        // Remove only expired timestamps from front
         clientData.timestamps = clientData.timestamps.slice(idx);
       }
       clientData.lastCleanup = now;
@@ -46,7 +38,7 @@ class RateLimiter {
     const timestamps = clientData.timestamps;
     
     if (timestamps.length >= this.maxRequests) {
-      return false; // Rate limited
+      return false;
     }
 
     timestamps.push(now);
@@ -94,10 +86,9 @@ const buildRpcEndpoints = () => {
     }
   }
 
-  // Add public RPC fallbacks (우체국 목록)
+  // Add public RPC fallbacks
   const publicFallbacks = [
     'https://rpc.ankr.com/eth',
-    'https://eth-mainnet.g.alchemy.com/v2/demo',
     'https://cloudflare-eth.com'
   ];
 
