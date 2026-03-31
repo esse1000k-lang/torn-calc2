@@ -280,9 +280,9 @@
         return gasCostEth * ethKrw;
       }
 
-      const k70 = krwForLimit(70000);
-      const k120 = krwForLimit(120000);
-      const k220 = krwForLimit(220000);
+      const k65 = krwForLimit(65000);    // ERC-20 일반 송금
+      const k120 = krwForLimit(120000);  // 리워드 보상 출금
+      const k200 = krwForLimit(200000);  // 스테이킹 예치
 
       var isLightTheme = document.body.classList.contains('theme-light');
       var labelColor = isLightTheme ? 'var(--text)' : '#34d399';
@@ -293,11 +293,11 @@
         '<span style="color:' + labelColor + '">가스비 실시간 측정</span>';
       gasPriceDisplay.style.color = labelColor;
 
-      if (k70 > 0 && k120 > 0 && k220 > 0) {
+      if (k65 > 0 && k120 > 0 && k200 > 0) {
         gasPriceKrwDisplay.innerHTML = 
-          '일반 송금 : ' + '약 ' + formatKrw(k70) + '<br>' +
+          '일반 송금 : ' + '약 ' + formatKrw(k65) + '<br>' +
           '보상 출금 : ' + '약 ' + formatKrw(k120) + '<br>' +
-          '예치 관리 : ' + '약 ' + formatKrw(k220);
+          '예치 관리 : ' + '약 ' + formatKrw(k200);
       } else {
         gasPriceKrwDisplay.innerHTML = 
           '일반 송금 : ' + (gasCostKrwAuto > 0 ? ('약 ' + formatKrw(gasCostKrwAuto)) : ' 로딩 중') + '<br>' +
