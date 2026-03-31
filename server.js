@@ -10,10 +10,7 @@ class RateLimiter {
   constructor(windowMs, maxRequests) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
-    this.requests = new Map();
-
-    // 메모리 누수 방지: 오래된 IP 주기적으로 정리 (5분마다)
-    setInterval(() => this._cleanup(), 5 * 60 * 1000).unref();
+        this.requests = new Map();
   }
 
   _cleanup() {
@@ -74,8 +71,7 @@ let calcTotalStakedCache = null;
 // ── 상수 ────────────────────────────────────────────────────────────────────
 const TORN_TOKEN = '0x77777FeDdddFfC19Ff86DB637967013e6C6A116C';
 const GOVERNANCE = '0x2F50508a8a3D323B91336FA3eA6ae50E55f32185';
-const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
-const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+
 const UNISWAP_PAIR_ADDRESS = '0x0c722a487876989af8a05fffb6e32e45cc23fb3a';
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
 const DEFILLAMA_COINS = 'ethereum:0x77777FeDdddFfC19Ff86DB637967013e6C6A116C,ethereum:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,ethereum:0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599';
@@ -131,8 +127,7 @@ const callWithFailover = async (fn) => {
   throw lastError || new Error('All RPC endpoints failed');
 };
 
-// 기본 provider (healthz, getBalance 등 단순 호출용)
-const sharedProvider = new JsonRpcProvider(RPC_ENDPOINTS[0] || 'https://rpc.ankr.com/eth', 1);
+
 
 // ── ABI & Interface ──────────────────────────────────────────────────────────
 const pairAbi = [
